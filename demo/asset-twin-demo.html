@@ -222,29 +222,73 @@
     <p class="eyebrow">Internes Konzeptpapier &middot; Fokus: Asset Twin</p>
     <h1>Gait<span>&trade;</span></h1>
     <p class="lede">Der Kernloop von GAIT: ein KI-Zwilling, der aus deinen eigenen Bewegungsdaten lernt, dich vorherzusagen &ndash; und den du nie besser werden lassen willst.</p>
-    <p class="intro">Kein Wettkampf gegen fremde Menschen, keine Termine, keine Ausreden der anderen. Du aktivierst GAIT, bewegst dich real &ndash; die App baut daraus einen Zwilling, dem <strong>du selbst einen Namen gibst</strong>. Unten der komplette Loop, Phase für Phase, als Bildschirm-Mockup.</p>
+    <p class="intro">Kein Wettkampf gegen fremde Menschen, keine Termine, keine Ausreden der anderen. Du wählst deine Sportart, aktivierst GAIT, bewegst dich real &ndash; die App baut daraus einen Zwilling, dem <strong>du selbst einen Namen gibst</strong>. Unten der komplette Loop, Phase für Phase, als Bildschirm-Mockup.</p>
     <div class="legend">
       <span class="legend-chip"><span class="legend-dot" style="background:var(--brass)"></span><b>Fidelity</b>&nbsp;&mdash; wie gut dich der Zwilling vorhersagt</span>
       <span class="legend-chip"><span class="legend-dot" style="background:var(--cyan)"></span><b>Divergenz</b>&nbsp;&mdash; wie sehr du live abweichst</span>
       <span class="legend-chip"><span class="legend-dot" style="background:var(--text-faint)"></span><b>Generation</b>&nbsp;&mdash; welche Zwilling-Version aktiv ist</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:var(--alert)"></span><b>Composure</b>&nbsp;&mdash; wie sicher sich der Zwilling gerade fühlt</span>
     </div>
   </header>
+
+  <!-- 0a — SETUP: ACTIVITY -->
+  <article class="pitch">
+    <div class="pitch-copy">
+      <p class="eyebrow">Setup &middot; Schritt 1 von 2</p>
+      <h2>Wähle deine Sportart</h2>
+      <p class="lede">Jede Aktivität bekommt ein eigenständiges Twin-Profil. Und nicht überall zählt Tempo: Bei motorunterstützter Fortbewegung verschieben sich die Wettbewerbsdimensionen automatisch.</p>
+      <ul class="specs">
+        <li>Laufen, Radfahren, Wandern, Hand-Bike-Rollstuhl und mehr &ndash; jeweils mit eigener Fidelity, eigener Generation, eigener Persona.</li>
+        <li>Bei E-Scooter oder E-Bike ersetzt die App Pace automatisch durch Konsistenz und Routen-Neuheit.</li>
+        <li>Später frei kombinierbar: mehrere aktive Twin-Profile parallel, plus optionaler Overseer-Twin für sportartübergreifende Muster.</li>
+      </ul>
+    </div>
+    <div class="pitch-device">
+      <div class="device"><div class="screen">
+        <div class="statusbar"><span>SETUP</span><span>STEP 1/2</span><span>&middot;</span></div>
+        <div class="sc-body">
+          <p class="sc-title">Activity Selection</p>
+          <p class="sc-headline">What are you training against?</p>
+          <div class="preset-row">
+            <span class="preset active">RUNNING</span>
+            <span class="preset">CYCLING</span>
+            <span class="preset">E-SCOOTER</span>
+            <span class="preset">HIKING</span>
+            <span class="preset">HAND-CYCLE</span>
+            <span class="preset">+9 MORE</span>
+          </div>
+          <div class="card">
+            <p class="sc-title" style="margin:0">Dimensions for Running</p>
+            <div class="preset-row" style="margin-top:0.4rem">
+              <span class="preset active">PACE</span>
+              <span class="preset active">CONSISTENCY</span>
+              <span class="preset active">ROUTE NOVELTY</span>
+              <span class="preset">ELEVATION</span>
+              <span class="preset">ROUTE EFFICIENCY</span>
+            </div>
+            <p class="foot-note" style="margin-top:0.4rem">Switch to E-Scooter and Pace is replaced automatically.</p>
+          </div>
+          <div class="btnrow"><span class="btn safe">CONTINUE</span></div>
+        </div>
+      </div></div>
+    </div>
+  </article>
 
   <!-- 0 — SETUP: NAMING -->
   <article class="pitch">
     <div class="pitch-copy">
-      <p class="eyebrow">Setup &middot; Einmalig</p>
+      <p class="eyebrow">Setup &middot; Schritt 2 von 2</p>
       <h2>Der Zwilling bekommt deinen Namen für ihn</h2>
-      <p class="lede">Bevor der Loop beginnt, benennst du den Zwilling selbst. Ein neutraler Code motiviert die wenigsten am meisten &ndash; ein Name, der etwas auslöst, treibt an.</p>
+      <p class="lede">Ein neutraler Code motiviert die wenigsten am meisten &ndash; ein Name, der etwas auslöst, treibt an. 17 vorgesprochene Personas stehen zur Wahl, jede mit eigener Stimme.</p>
       <ul class="specs">
         <li>Nennst du ihn wie jemanden, den du nie wieder gewinnen sehen willst, wird jede Session persönlich.</li>
-        <li>Wer lieber gegen eine bessere Version von sich selbst antritt, nennt ihn entsprechend.</li>
+        <li>Wer lieber gegen eine bessere Version von sich selbst antritt, nennt ihn entsprechend &ndash; oder wählt einen der 14 Archetypen von „The Auditor" bis „The Doppelgänger".</li>
         <li>Der Name taucht überall auf &ndash; in Prognosen, Live-Vergleichen und Nachrichten.</li>
       </ul>
     </div>
     <div class="pitch-device">
       <div class="device"><div class="screen">
-        <div class="statusbar"><span>SETUP</span><span>SCHRITT 2/2</span><span>&middot;</span></div>
+        <div class="statusbar"><span>SETUP</span><span>STEP 2/2</span><span>&middot;</span></div>
         <div class="sc-body">
           <p class="sc-title">Twin Identity Assignment</p>
           <p class="sc-headline">Wer soll dich schlagen wollen?</p>
@@ -253,11 +297,14 @@
             <span class="v">MARKUS K.<span class="caret"></span></span>
           </div>
           <div class="preset-row">
-            <span class="preset active">GEHASSTE PERSON</span>
-            <span class="preset">BESSERES ICH</span>
-            <span class="preset">NUR TWIN-7</span>
+            <span class="preset active">HATED PERSON</span>
+            <span class="preset">BETTER SELF</span>
+            <span class="preset">THE EX</span>
+            <span class="preset">THE AUDITOR</span>
+            <span class="preset">FUTURE YOU</span>
+            <span class="preset">+12 MORE</span>
           </div>
-          <p class="foot-note">Der Name erscheint in jeder Nachricht, jedem Vergleich, jedem Duell. Jederzeit änderbar.</p>
+          <p class="foot-note">17 Personas verfügbar. Name &amp; Stimme erscheinen in jeder Nachricht, jedem Vergleich, jedem Duell.</p>
           <div class="btnrow"><span class="btn safe">BESTÄTIGEN</span></div>
         </div>
       </div></div>
@@ -374,6 +421,41 @@
     </div>
   </article>
 
+  <!-- COMPOSURE -->
+  <article class="pitch">
+    <div class="pitch-copy">
+      <p class="eyebrow">Systemübergreifend</p>
+      <h2>Composure &mdash; zwei Gesichter desselben Rivalen</h2>
+      <p class="lede">Je besser du bist als Markus K., desto kleinlauter wird er. Sobald er merkt, dass du schwächelst, wartet er nicht auf den nächsten geplanten Check-in &ndash; er haut sofort rein.</p>
+      <ul class="specs">
+        <li>Kleinlaut werden kostet den Zwilling nichts &ndash; das kann er sich in seinem eigenen Tempo leisten.</li>
+        <li>Aggressiv werden funktioniert nur, wenn es genau in dem Moment trifft, in dem du selbst schon zweifelst &ndash; deshalb der einzige Zustand, der als Push-Nachricht noch am selben Tag durchbrechen darf.</li>
+        <li>Ein Intensitäts-Regler (Off/Rival/Brutal) macht daraus eine Wahl statt eines Zwangs für alle.</li>
+      </ul>
+    </div>
+    <div class="pitch-device">
+      <div class="device"><div class="screen">
+        <div class="statusbar"><span>MON&ndash;THU</span><span>MESSAGE LOG</span><span>&middot;</span></div>
+        <div class="sc-body">
+          <p class="sc-title">Same Twin. Same Week.</p>
+          <div class="card">
+            <div class="msg-head">
+              <span class="foot-note" style="text-transform:uppercase">MON &middot; COWED</span>
+            </div>
+            <p class="msg-body">&hellip;Okay. That was fast. I don't have anything for that.</p>
+          </div>
+          <div class="card warn">
+            <div class="msg-head">
+              <span class="foot-note" style="text-transform:uppercase; color:var(--alert)">THU &middot; PREDATORY</span>
+            </div>
+            <p class="msg-body">There it is. Every time things get hard, you fold. At least you're consistent about something.</p>
+          </div>
+          <p class="foot-note">INTENSITY: BRUTAL &middot; ADJUSTABLE IN SETTINGS</p>
+        </div>
+      </div></div>
+    </div>
+  </article>
+
   <!-- 4 — DECOMMISSION TRIAL -->
   <article class="pitch">
     <div class="pitch-copy">
@@ -445,7 +527,7 @@
   </article>
 
   <footer class="footer">
-    <p class="colophon">Konzeptdemo für interne Diskussion. Vertieft den Asset-Twin-Loop als Kernmechanik von GAIT &ndash; die anderen vier Modul-Ideen (Datenbroker, Overwatch Zones, Cyberware, Übernahmeangebote) bleiben als spätere Erweiterungen zurückgestellt.</p>
+    <p class="colophon">Konzeptdemo für interne Diskussion. Vertieft den Asset-Twin-Loop als Kernmechanik von GAIT &ndash; inklusive Sportarten-Auswahl, 17 Twin-Personas und dem Composure-System. Die anderen vier Modul-Ideen (Datenbroker, Overwatch Zones, Cyberware, Übernahmeangebote) bleiben als spätere Erweiterungen zurückgestellt.</p>
     <span class="stamp">GAIT SYSTEMS &middot; R&amp;D INTERNAL</span>
   </footer>
 </div>

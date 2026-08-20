@@ -66,6 +66,14 @@ docs/telemetry-and-forecasting.md     — sensor inputs and the forecasting/fide
 demo/asset-twin-demo.html             — interactive HTML mockups of the Asset Twin loop
 ```
 
+## Support
+
+If you'd like to support this project:
+
+- Ko-fi: [ko-fi.com/eversorhn](https://ko-fi.com/eversorhn)
+- PayPal: [paypal.me/FAMarco](https://paypal.me/FAMarco)
+- Bitcoin: `bc1qv92c3eyeqvhgfnez7spfd7v2aytkhpshsl65yv`
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
