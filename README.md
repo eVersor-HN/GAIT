@@ -1,6 +1,6 @@
 # GAIT
 
-**Status:** Early concept — no code yet, product design and interactive mockups only.
+**Status:** Early concept — no code yet, product design and interactive mockups only. Target: native Android, free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope.
 
 GAIT is a concept for a GPS movement app (running, walking, cycling, e-scooter, ...) that deliberately avoids generic missions, achievements, or leaderboards against strangers. Everything is cyberpunk-corpo themed at its core: your movement data is a commodity that fictional corporations compete over.
 
@@ -68,6 +68,7 @@ docs/activities-and-dimensions.md     — activities, competitive dimensions, pr
 docs/composure-system.md              — dominance-reactive tone system
 docs/telemetry-and-forecasting.md     — sensor inputs, forecasting/fidelity algorithms, rest days
 docs/live-audio.md                    — real-time spoken callouts during an activity
+docs/scope-and-stack.md               — Android tech stack, on-device architecture, MVP scope
 demo/asset-twin-demo.html             — interactive HTML mockups of the Asset Twin loop
 ```
 
