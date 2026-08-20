@@ -20,6 +20,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Composure system documented (`docs/composure-system.md`): dominance-reactive tone separate from Fidelity — the Twin goes quiet ("Cowed") as you outperform it, and turns immediately hostile ("Predatory") the moment it detects you slipping, including a same-day notification exception, live-ghost and forecast-confidence behavior changes, and a user-facing intensity setting.
 - Telemetry and forecasting design documented (`docs/telemetry-and-forecasting.md`): sensor inputs and their reliability caveats, activity auto-classification, a k-nearest-analog forecasting approach suited to small per-user datasets, an EWMA-based Fidelity formula, route-novelty via polyline similarity, and z-score-based personalized Composure thresholds.
 - All project documentation translated to English (default project language, including on GitHub).
+- Support/funding links added (Ko-fi, PayPal, Bitcoin) to README, plus `.github/FUNDING.yml` for GitHub's native Sponsor button.
+- Demo extended with a Setup Step 1 activity-selection screen (activity-aware dimension defaults) and a Composure section showing the same Twin's message log across one week.
+- Demo naming screen's persona presets expanded to reflect the full 17-persona roster.
+- Rest day handling specified in `docs/telemetry-and-forecasting.md`: declared rest days, inferred rest days via the cold-start forecast behavior, anti-gaming commentary past ~2–3 declared rest days/week, and a 24–48h post-Trial calibration window for new Twin generations.
+- Live audio callouts designed (`docs/live-audio.md`): event-triggered (gap-threshold crossings, route events, session phase, Composure state) rather than timer-based, with a hard cooldown and per-session cap, reusing the existing persona/Composure content system as a new delivery channel.
 
 ## [0.1.0] - 2026-08-20
 ### Added

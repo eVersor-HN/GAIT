@@ -30,6 +30,15 @@ Auto-detecting activity type (run vs. walk vs. ride vs. scooter) from speed prof
 
 **Cold start:** a brand-new activity type has no analog pool. The Forecast screen should say so explicitly rather than guess ("No baseline on you yet"), as noted in [`activities-and-dimensions.md`](activities-and-dimensions.md).
 
+## Rest days
+
+Two mechanisms combine, rather than one rigid rule:
+
+- **Declared rest days.** At setup, users can mark specific days (e.g. "never Sundays") as rest days. On a declared rest day: no Forecast fires, no Composure evaluation happens, Fidelity is frozen rather than penalized. Useful immediately, without waiting on weeks of history.
+- **Inferred rest days.** The k-nearest-analog engine above naturally has no confident analog pool for a day-of-week with no training history, so it stays silent there without being told to — the same cold-start behavior already covers this, not a separate rule.
+- **Anti-gaming.** Declaring most of the week as "rest" defeats the point. Past a small number of declared rest days (roughly 2–3/week), the Twin should comment on the pattern itself in character rather than silently comply — *"Four rest days this week. I've stopped scheduling around them."* — treating excessive rest-day declaration as a Composure-relevant behavior signal, not a silent quota check.
+- **The Twin's own downtime.** After a Decommission Trial, the new Generation doesn't start at full aggression — a short calibration window (24–48h) follows where Predatory-state behavior is suppressed, framed in-world as *"Twin-8 — recalibration in progress."* Corporate self-interest, not kindness, but it functions as a built-in pacing break so confrontation never feels relentless.
+
 ## Fidelity
 
 Fidelity is an exponentially-weighted moving average (EWMA) of `1 − normalized forecast error`, so recent sessions move the number more than old ones — matching the week-over-week trend shown in the Debrief sparkline, rather than an unweighted lifetime average that would barely move.

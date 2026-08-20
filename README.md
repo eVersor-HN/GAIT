@@ -37,7 +37,11 @@ GPS naturally captures pace/route/distance — a good fit for endurance sports, 
 
 ## Telemetry & forecasting
 
-How the Forecast, Fidelity, and Composure numbers actually get computed — sensor inputs, activity auto-classification, a small-data-appropriate forecasting approach, and the training-load concepts (EWMA, ACWR-style load, route-similarity metrics) behind them. Details: [`docs/telemetry-and-forecasting.md`](docs/telemetry-and-forecasting.md).
+How the Forecast, Fidelity, and Composure numbers actually get computed — sensor inputs, activity auto-classification, a small-data-appropriate forecasting approach, the training-load concepts (EWMA, ACWR-style load, route-similarity metrics) behind them, and how rest days work (declared, inferred, and the Twin's own post-Trial calibration window). Details: [`docs/telemetry-and-forecasting.md`](docs/telemetry-and-forecasting.md).
+
+## Live audio callouts
+
+Spoken lines from the Twin mid-activity, for when the phone is in a pocket — triggered by live gap-threshold crossings and route events rather than a timer, with a hard cooldown and per-session cap so it never turns into constant chatter. Reuses the persona/Composure system as a new delivery channel. Details: [`docs/live-audio.md`](docs/live-audio.md).
 
 ## Interactive demo
 
@@ -62,7 +66,8 @@ docs/concept.md                      — full idea collection (all 5 original me
 docs/twin-personas.md                 — 17 Twin personas + dialogue variation system
 docs/activities-and-dimensions.md     — activities, competitive dimensions, profile architecture
 docs/composure-system.md              — dominance-reactive tone system
-docs/telemetry-and-forecasting.md     — sensor inputs and the forecasting/fidelity algorithms
+docs/telemetry-and-forecasting.md     — sensor inputs, forecasting/fidelity algorithms, rest days
+docs/live-audio.md                    — real-time spoken callouts during an activity
 demo/asset-twin-demo.html             — interactive HTML mockups of the Asset Twin loop
 ```
 
