@@ -18,7 +18,12 @@ import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.ui.theme.CorpoPanel
 
 @Composable
-fun ForecastScreen(onStartActivity: () -> Unit, onLogSession: () -> Unit, onRestDays: () -> Unit) {
+fun ForecastScreen(
+    onStartActivity: () -> Unit,
+    onLogSession: () -> Unit,
+    onRestDays: () -> Unit,
+    onSimulate: () -> Unit,
+) {
     val viewModel: ForecastViewModel = dev.eversorhn.gait.ui.gaitViewModel()
     val state by viewModel.uiState.collectAsState()
 
@@ -71,6 +76,9 @@ fun ForecastScreen(onStartActivity: () -> Unit, onLogSession: () -> Unit, onRest
                 }
                 TextButton(onClick = onRestDays, modifier = Modifier.fillMaxWidth()) {
                     Text("Rest days & vacation")
+                }
+                TextButton(onClick = onSimulate, modifier = Modifier.fillMaxWidth()) {
+                    Text("Watch a simulation")
                 }
             }
         }
