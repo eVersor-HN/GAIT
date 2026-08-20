@@ -23,6 +23,14 @@ Der Loop hat sechs Phasen:
 
 Die zentrale Spannung: Du willst explizit **nicht**, dass dein Zwilling besser wird oder gewinnt.
 
+## Twin-Personas & Dialog-Variation
+
+17 wählbare Ausgangs-Personas für den Zwilling (3 Basis-Presets + 14 vorgesprochene Archetypen wie „The Auditor", „The Doppelgänger", „Future You"), jede mit eigener Stimme. Alles, was der Zwilling sagt, muss sich wie eine echte, nie repetitive Person/KI anfühlen — dafür ein daten-basiertes Template- statt Festtext-System mit Zustands-abhängigem Ton und bewussten Callbacks. Details: [`docs/twin-personas.md`](docs/twin-personas.md). Standard-Content-Sprache der App ist Englisch.
+
+## Sportarten & Wettbewerbsdimensionen
+
+GPS liefert von Natur aus Pace/Route/Distanz — passt gut zu Ausdauersportarten, aber nicht zu motorunterstützter Fortbewegung (E-Scooter, E-Bike), wo nicht Tempo, sondern Konsistenz, Routen-Neuheit und Zuverlässigkeit die faire Wettbewerbsdimension sind. Jede Aktivität bekommt ein eigenständiges Twin-Profil (eigene Fidelity, eigene Generation, eigene Persona). Details: [`docs/activities-and-dimensions.md`](docs/activities-and-dimensions.md).
+
 ## Interaktive Demo
 
 `demo/asset-twin-demo.html` — Handy-Mockups aller sechs Phasen, cyberpunk-corpo gestaltet. Einfach lokal im Browser öffnen (keine Abhängigkeiten, keine externen Requests außer Google Fonts).
@@ -39,11 +47,13 @@ Aus der ursprünglichen Ideenrunde, dokumentiert in [`docs/concept.md`](docs/con
 ## Projektstruktur
 
 ```
-README.md          — dieses Dokument
-CHANGELOG.md        — Verlauf der Konzeptentscheidungen
-LICENSE             — MIT
-docs/concept.md      — vollständige Ideensammlung (alle 5 ursprünglichen Mechaniken)
-demo/asset-twin-demo.html — interaktive HTML-Mockups des Asset-Twin-Loops
+README.md                      — dieses Dokument
+CHANGELOG.md                    — Verlauf der Konzeptentscheidungen
+LICENSE                         — MIT
+docs/concept.md                  — vollständige Ideensammlung (alle 5 ursprünglichen Mechaniken)
+docs/twin-personas.md             — 17 Twin-Personas + Dialog-Variationssystem
+docs/activities-and-dimensions.md — Sportarten, Wettbewerbsdimensionen, Profil-Architektur
+demo/asset-twin-demo.html         — interaktive HTML-Mockups des Asset-Twin-Loops
 ```
 
 ## Lizenz
