@@ -34,6 +34,7 @@ Everything designed so far is the full vision, not the first release.
 ### Ships in v1
 - One activity: **Running** only. No activity picker, no per-activity dimension logic yet — real complexity worth deferring.
 - GPS tracking via a foreground service — live distance/pace/elapsed time, manual entry kept as a fallback. *(built)*
+- Indoor mode (treadmill) — same timed foreground service without GPS, self-reported distance on stop, tagged and shown as unverified. *(built — see "Indoor vs. outdoor" in `activities-and-dimensions.md`)*
 - Forecast → session logged (tracked or manual) → Fidelity/Composure update → Debrief, in one loop. *(built)*
 - A curated starting set of **5 personas** rather than all 17 — Hated Person, Better Self, Just Twin-7, The Ex, The Auditor — enough range to see what resonates before writing templates for the rest. *(built)*
 - Composure (Cowed/Predatory tone shift) — core to the hook, not optional. *(built)*

@@ -33,6 +33,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `SessionFinalizer` extracted so GPS-tracked and manually-logged sessions share one path into Forecast/Fidelity/Composure/notifications instead of duplicating the logic.
 - A confirmation dialog intercepts the back gesture while a session is actively recording ("Stop tracking" vs. "Keep tracking"), so it can't be lost by an accidental back-press.
 - Manual session entry kept as a fallback, secondary to "Start Activity" on the Forecast screen.
+- Verified live on device: foreground service confirmed running (`isForeground=true`, type `location`), permission flow, live stats, and the back-confirm dialog (both "Keep Tracking" and "Stop Tracking") all worked correctly.
+- Fixed a real bug found during that on-device test: near-zero distance from GPS jitter while stationary produced nonsense pace values (e.g. "953:50/km") and could have saved a garbage session on stop. Added minimum-distance guards to both the live display and the save path.
+- Indoor tracking added: a mode chooser (Outdoor/Indoor) on the Track screen, an indoor path that skips the location permission entirely and times the session without GPS, and a distance-entry prompt on stop for what the machine's console showed.
+- `SessionEntity.dataSource` (`gps` | `manual`) added — every session is now tagged verified or self-reported, surfaced on the Debrief screen ("Self-reported · Not GPS-verified"). Room DB bumped to version 2 with destructive migration (pre-release, no installed base to preserve).
+- Verified the indoor flow live on device end to end: mode chooser → permission-free timer → stop → distance entry → Debrief showing the unverified tag → session persisted correctly.
 
 ## [0.1.0] - 2026-08-20
 ### Added

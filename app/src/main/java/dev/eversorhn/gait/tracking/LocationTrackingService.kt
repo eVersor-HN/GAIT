@@ -28,7 +28,8 @@ import kotlinx.coroutines.launch
 class LocationTrackingService : Service() {
 
     companion object {
-        const val ACTION_START = "dev.eversorhn.gait.tracking.START"
+        const val ACTION_START_OUTDOOR = "dev.eversorhn.gait.tracking.START_OUTDOOR"
+        const val ACTION_START_INDOOR = "dev.eversorhn.gait.tracking.START_INDOOR"
         const val ACTION_STOP = "dev.eversorhn.gait.tracking.STOP"
         private const val NOTIFICATION_ID = 42
 
@@ -57,16 +58,24 @@ class LocationTrackingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> startTracking()
+            ACTION_START_OUTDOOR -> startTracking(useGps = true)
+            ACTION_START_INDOOR -> startTracking(useGps = false)
             ACTION_STOP -> stopTracking()
         }
         return START_NOT_STICKY
     }
 
-    private fun startTracking() {
+    /**
+     * Indoor sessions (treadmill, ergometer, ...) skip GPS entirely -- there's nothing to
+     * fix a location to. Distance is 0 for the whole session; the UI collects a
+     * self-reported distance on stop instead. See docs/activities-and-dimensions.md.
+     */
+    private fun startTracking(useGps: Boolean) {
         val notification = NotificationCompat.Builder(this, TwinNotifier.trackingChannelId(this))
             .setContentTitle("GAIT is tracking")
-            .setContentText("Recording your session in the background.")
+            .setContentText(
+                if (useGps) "Recording your session in the background." else "Timing your indoor session."
+            )
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
             .build()
@@ -82,10 +91,12 @@ class LocationTrackingService : Service() {
         TrackingSessionState.reset()
         TrackingSessionState.update { it.copy(isTracking = true, startEpochMillis = System.currentTimeMillis()) }
 
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3_000L)
-            .setMinUpdateIntervalMillis(2_000L)
-            .build()
-        fusedLocationClient.requestLocationUpdates(request, locationCallback, mainLooper)
+        if (useGps) {
+            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3_000L)
+                .setMinUpdateIntervalMillis(2_000L)
+                .build()
+            fusedLocationClient.requestLocationUpdates(request, locationCallback, mainLooper)
+        }
 
         tickerJob = serviceScope.launch {
             while (true) {

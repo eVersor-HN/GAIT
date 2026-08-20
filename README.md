@@ -33,7 +33,7 @@ The better you are than the Twin, the smaller it gets — quiet, defensive, some
 
 ## Activities & competitive dimensions
 
-GPS naturally captures pace/route/distance — a good fit for endurance sports, but not for motor-assisted movement (e-scooter, e-bike), where consistency, route novelty, and reliability are the fair competitive dimension instead of speed. Every activity gets an independent Twin profile (own Fidelity, own Generation, own persona). Details: [`docs/activities-and-dimensions.md`](docs/activities-and-dimensions.md).
+GPS naturally captures pace/route/distance — a good fit for endurance sports, but not for motor-assisted movement (e-scooter, e-bike), where consistency, route novelty, and reliability are the fair competitive dimension instead of speed. Every activity gets an independent Twin profile (own Fidelity, own Generation, own persona). Includes indoor vs. outdoor: outdoor is GPS-verified, indoor (treadmill, ergometer, ...) is timed-only with a self-reported distance, tagged and shown as unverified rather than trusted the same as GPS data. Details: [`docs/activities-and-dimensions.md`](docs/activities-and-dimensions.md).
 
 ## Telemetry & forecasting
 

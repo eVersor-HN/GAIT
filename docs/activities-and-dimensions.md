@@ -30,6 +30,21 @@ Pace is not a meaningful signal here. Default competitive dimensions shift to co
 
 Low-intensity, frequency-driven. The Twin behaves more like a habit auditor here than a performance rival.
 
+### Indoor
+- Treadmill (running)
+- Ergometer / indoor cycling
+- Rowing machine, elliptical, stair climber
+
+No GPS signal exists to verify anything — the machine's own console is the only source of truth, and the user has to type in whatever it shows. See **Indoor vs. outdoor** below for how that changes the trust model. *(Treadmill mode is built for Running in v1; other indoor equipment types are additional activities, scoped for v1.2+ alongside their outdoor counterparts — see [`scope-and-stack.md`](scope-and-stack.md).)*
+
+## Indoor vs. outdoor: verified vs. self-reported
+
+Outdoor sessions are GPS-verified — the device measured the distance itself. Indoor sessions are self-reported — typed in off a console, unverifiable by the app. Both are real training and both feed the same Twin, but they aren't the same *kind* of data, and pretending otherwise would let anyone inflate an indoor number risk-free.
+
+- Every session carries a `dataSource`: `gps` or `manual`. *(built — `SessionEntity.dataSource`, surfaced on the Debrief screen as "Self-reported · Not GPS-verified.")*
+- Indoor mode skips the location permission flow entirely — there's nothing to request it for — and times the session with the same foreground-service ticker as outdoor tracking, just without GPS updates. *(built)*
+- Not yet built, worth doing next: weighting self-reported sessions down in the Forecast engine's confidence score (an unverifiable number shouldn't sharpen a prediction as much as a verified one), and giving the Twin dialogue that's openly skeptical of suspiciously strong indoor numbers — a natural extension of the Composure voice work in [`twin-personas.md`](twin-personas.md).
+
 ## Competitive dimensions (not just pace)
 
 | Dimension | What it measures | Works for |

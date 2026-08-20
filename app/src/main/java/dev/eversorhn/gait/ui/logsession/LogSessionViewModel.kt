@@ -3,6 +3,7 @@ package dev.eversorhn.gait.ui.logsession
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.session.DebriefResult
 import dev.eversorhn.gait.domain.session.SessionFinalizer
@@ -51,6 +52,7 @@ class LogSessionViewModel(
             val result = finalizer.finalize(
                 distanceMeters = distanceKm * 1000.0,
                 durationSeconds = (durationMinutes * 60).toInt(),
+                dataSource = SessionSource.MANUAL,
             )
             _uiState.value = _uiState.value.copy(submitting = false, result = result)
         }

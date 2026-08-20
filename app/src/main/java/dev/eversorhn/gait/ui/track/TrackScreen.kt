@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import dev.eversorhn.gait.ui.debrief.DebriefContent
@@ -50,27 +54,46 @@ fun TrackScreen(onDone: () -> Unit) {
         hasLocationPermission = results[Manifest.permission.ACCESS_FINE_LOCATION] == true
     }
 
-    // Intercept the system back gesture/button while a recording is live, instead of
-    // silently losing (or ambiguously keeping) an in-progress session.
-    BackHandler(enabled = snapshot.isTracking) {
+    // Intercept the system back gesture/button whenever there's a live recording or an
+    // unsaved indoor result waiting on a distance, instead of silently losing either.
+    val hasUnsavedWork = snapshot.isTracking || uiState.awaitingIndoorDistance
+    BackHandler(enabled = hasUnsavedWork) {
         showLeaveConfirmation = true
     }
 
     if (showLeaveConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showLeaveConfirmation = false },
-            title = { Text("Still tracking") },
-            text = { Text("Your session is still recording. Stop it before leaving, or keep going.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showLeaveConfirmation = false
-                    viewModel.stop()
-                }) { Text("STOP TRACKING") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLeaveConfirmation = false }) { Text("KEEP TRACKING") }
-            },
-        )
+        if (snapshot.isTracking) {
+            AlertDialog(
+                onDismissRequest = { showLeaveConfirmation = false },
+                title = { Text("Still tracking") },
+                text = { Text("Your session is still recording. Stop it before leaving, or keep going.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showLeaveConfirmation = false
+                        viewModel.stop()
+                    }) { Text("STOP TRACKING") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLeaveConfirmation = false }) { Text("KEEP TRACKING") }
+                },
+            )
+        } else {
+            AlertDialog(
+                onDismissRequest = { showLeaveConfirmation = false },
+                title = { Text("Discard this session?") },
+                text = { Text("You timed a session but haven't entered a distance yet. Leaving now discards it.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showLeaveConfirmation = false
+                        viewModel.reset()
+                        onDone()
+                    }) { Text("DISCARD") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLeaveConfirmation = false }) { Text("KEEP EDITING") }
+                },
+            )
+        }
     }
 
     Column(
@@ -88,7 +111,51 @@ fun TrackScreen(onDone: () -> Unit) {
                 })
             }
 
-            !hasLocationPermission -> {
+            uiState.awaitingIndoorDistance -> {
+                Text("TRACK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Text("What did the machine say?", style = MaterialTheme.typography.headlineLarge)
+                Text(
+                    "Timed at ${formatElapsed(uiState.indoorElapsedSeconds)}. Enter the distance shown on the console.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = uiState.indoorDistanceKm,
+                    onValueChange = viewModel::updateIndoorDistance,
+                    label = { Text("Distance (km)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Button(
+                    onClick = viewModel::submitIndoorDistance,
+                    enabled = !uiState.finishing,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (uiState.finishing) "SAVING…" else "SUBMIT")
+                }
+            }
+
+            uiState.mode == null -> {
+                Text("TRACK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Text("Indoor or outdoor?", style = MaterialTheme.typography.headlineLarge)
+                Text(
+                    "Outdoor uses GPS to verify pace and distance. Indoor (treadmill, ergometer, ...) is timed only — you enter the distance the machine shows.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(onClick = { viewModel.chooseMode(TrackMode.OUTDOOR) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("OUTDOOR — GPS")
+                }
+                Button(onClick = { viewModel.chooseMode(TrackMode.INDOOR) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("INDOOR — TREADMILL / ERGOMETER")
+                }
+                OutlinedButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
+                    Text("BACK")
+                }
+            }
+
+            uiState.mode == TrackMode.OUTDOOR && !hasLocationPermission -> {
                 Text("TRACK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 Text("GAIT needs your location", style = MaterialTheme.typography.headlineLarge)
                 Text(
@@ -112,14 +179,22 @@ fun TrackScreen(onDone: () -> Unit) {
             snapshot.isTracking -> {
                 Text("LIVE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                 Text(formatElapsed(snapshot.elapsedSeconds), style = MaterialTheme.typography.headlineLarge)
-                Text(
-                    "${"%.2f".format(snapshot.distanceMeters / 1000.0)} km" +
-                        (snapshot.currentPaceSecPerKm?.let { "  ·  ${formatLivePace(it)}/km" } ?: ""),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                if (snapshot.gpsFixCount == 0) {
+                if (uiState.mode == TrackMode.OUTDOOR) {
                     Text(
-                        "Waiting for a GPS fix…",
+                        "${"%.2f".format(snapshot.distanceMeters / 1000.0)} km" +
+                            (snapshot.currentPaceSecPerKm?.let { "  ·  ${formatLivePace(it)}/km" } ?: ""),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    if (snapshot.gpsFixCount == 0) {
+                        Text(
+                            "Waiting for a GPS fix…",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    Text(
+                        "Indoor session — distance logged on stop.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.domain.composure.ComposureState
 import dev.eversorhn.gait.domain.session.DebriefResult
 
@@ -43,6 +44,13 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (result.dataSource == SessionSource.MANUAL) {
+                Text(
+                    "SELF-REPORTED · NOT GPS-VERIFIED",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         if (result.twinLine != null) {

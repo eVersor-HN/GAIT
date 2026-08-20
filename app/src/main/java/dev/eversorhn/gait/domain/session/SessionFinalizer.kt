@@ -2,6 +2,7 @@ package dev.eversorhn.gait.domain.session
 
 import android.content.Context
 import dev.eversorhn.gait.data.db.entity.SessionEntity
+import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.data.repository.ACTIVITY_RUNNING
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.composure.ComposureEngine
@@ -22,6 +23,7 @@ data class DebriefResult(
     val composureState: ComposureState,
     val twinLine: String?,
     val newFidelityPercent: Int,
+    val dataSource: String,
 )
 
 /**
@@ -38,7 +40,11 @@ class SessionFinalizer(
     private val composureEngine = ComposureEngine()
     private val fidelityAlpha = 0.2f
 
-    suspend fun finalize(distanceMeters: Double, durationSeconds: Int): DebriefResult {
+    suspend fun finalize(
+        distanceMeters: Double,
+        durationSeconds: Int,
+        dataSource: String = SessionSource.GPS,
+    ): DebriefResult {
         val now = Instant.now()
         val avgPace = durationSeconds / (distanceMeters / 1000.0)
         val dayOfWeek = now.atZone(ZoneId.systemDefault()).dayOfWeek.value
@@ -56,6 +62,7 @@ class SessionFinalizer(
                 avgPaceSecPerKm = avgPace,
                 forecastPaceSecPerKm = forecast?.forecastPaceSecPerKm,
                 forecastFinishSeconds = forecast?.forecastFinishSeconds,
+                dataSource = dataSource,
             )
         )
 
@@ -94,6 +101,7 @@ class SessionFinalizer(
             composureState = composureState,
             twinLine = twinLine,
             newFidelityPercent = newFidelityPercent,
+            dataSource = dataSource,
         )
     }
 }
