@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import dev.eversorhn.gait.ui.debrief.DebriefContent
 import dev.eversorhn.gait.ui.gaitViewModel
+import dev.eversorhn.gait.ui.theme.CorpoPanel
 
 @Composable
 fun TrackScreen(onDone: () -> Unit) {
@@ -51,7 +52,8 @@ fun TrackScreen(onDone: () -> Unit) {
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
-        hasLocationPermission = results[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        hasLocationPermission = results[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            results[Manifest.permission.ACCESS_COARSE_LOCATION] == true
     }
 
     // Intercept the system back gesture/button whenever there's a live recording or an
@@ -85,6 +87,7 @@ fun TrackScreen(onDone: () -> Unit) {
                 confirmButton = {
                     TextButton(onClick = {
                         showLeaveConfirmation = false
+                        viewModel.discardIndoor()
                         viewModel.reset()
                         onDone()
                     }) { Text("DISCARD") }
@@ -94,6 +97,25 @@ fun TrackScreen(onDone: () -> Unit) {
                 },
             )
         }
+    }
+
+    uiState.recoverable?.let { r ->
+        AlertDialog(
+            onDismissRequest = { /* force a choice */ },
+            title = { Text("Interrupted session found") },
+            text = {
+                Text(
+                    when (r.mode) {
+                        TrackMode.OUTDOOR -> "GAIT was stopped mid-run. Captured so far: " +
+                            "${"%.2f".format(r.distanceMeters / 1000.0)} km over ${formatElapsed(r.movingSeconds)} moving. Save it?"
+                        TrackMode.INDOOR -> "GAIT was stopped mid-session. ${formatElapsed(r.durationSeconds)} were timed. " +
+                            "Save it? You'll be asked for the distance next."
+                    }
+                )
+            },
+            confirmButton = { TextButton(onClick = viewModel::saveRecovered) { Text("SAVE") } },
+            dismissButton = { TextButton(onClick = viewModel::discardRecovered) { Text("DISCARD") } },
+        )
     }
 
     Column(
@@ -144,6 +166,7 @@ fun TrackScreen(onDone: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                uiState.stopMessage?.let { StopNotice(it) }
                 Button(onClick = { viewModel.chooseMode(TrackMode.OUTDOOR) }, modifier = Modifier.fillMaxWidth()) {
                     Text("OUTDOOR — GPS")
                 }
@@ -174,16 +197,28 @@ fun TrackScreen(onDone: () -> Unit) {
                 ) {
                     Text("GRANT LOCATION ACCESS")
                 }
+                OutlinedButton(onClick = { viewModel.chooseMode(TrackMode.INDOOR) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("USE INDOOR MODE INSTEAD")
+                }
             }
 
             snapshot.isTracking -> {
-                Text("LIVE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                Text(
+                    if (snapshot.autoPaused) "AUTO-PAUSED" else "LIVE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (snapshot.autoPaused) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+                )
                 Text(formatElapsed(snapshot.elapsedSeconds), style = MaterialTheme.typography.headlineLarge)
                 if (uiState.mode == TrackMode.OUTDOOR) {
                     Text(
                         "${"%.2f".format(snapshot.distanceMeters / 1000.0)} km" +
                             (snapshot.currentPaceSecPerKm?.let { "  ·  ${formatLivePace(it)}/km" } ?: ""),
                         style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        "moving ${formatElapsed(snapshot.movingSeconds)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     if (snapshot.gpsFixCount == 0) {
                         Text(
@@ -199,6 +234,7 @@ fun TrackScreen(onDone: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                snapshot.error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error) }
                 Button(onClick = viewModel::stop, enabled = !uiState.finishing, modifier = Modifier.fillMaxWidth()) {
                     Text(if (uiState.finishing) "SAVING…" else "STOP")
                 }
@@ -207,14 +243,31 @@ fun TrackScreen(onDone: () -> Unit) {
             else -> {
                 Text("TRACK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 Text("Ready when you are", style = MaterialTheme.typography.headlineLarge)
+                Text(
+                    if (uiState.mode == TrackMode.OUTDOOR) "Outdoor · GPS-verified" else "Indoor · timed, distance entered on stop",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                uiState.stopMessage?.let { StopNotice(it) }
+                snapshot.error?.let { StopNotice(it) }
                 Button(onClick = viewModel::start, modifier = Modifier.fillMaxWidth()) {
                     Text("START ACTIVITY")
+                }
+                OutlinedButton(onClick = { viewModel.chooseMode(TrackMode.OUTDOOR).also { viewModel.reset() } }, modifier = Modifier.fillMaxWidth()) {
+                    Text("CHANGE MODE")
                 }
                 OutlinedButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
                     Text("BACK")
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StopNotice(message: String) {
+    CorpoPanel {
+        Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
     }
 }
 

@@ -2,7 +2,7 @@ package dev.eversorhn.gait.ui.forecast
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.eversorhn.gait.data.db.entity.OpponentType
+import dev.eversorhn.gait.data.db.entity.isHorde
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.forecast.ForecastEngine
 import dev.eversorhn.gait.domain.horde.HordeIntensity
@@ -28,6 +28,8 @@ sealed interface ForecastUiState {
         val generation: Int,
         val coldStart: Boolean,
         val forecastLine: String,
+        /** Horde only: the atmospheric caption shown above the numbers. Null for a Twin. */
+        val hordeCaption: String?,
         val basedOnSessions: Int,
         val confidencePercent: Int,
         val restStateLabel: String?,
@@ -52,22 +54,26 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                 _uiState.value = ForecastUiState.NoTwin
                 return@launch
             }
-            val isHorde = profile.opponentType == OpponentType.HORDE
+            val isHorde = profile.isHorde
             val sessions = repository.getSessions()
             val now = Instant.now()
             val todayIso = now.atZone(ZoneId.systemDefault()).dayOfWeek.value // 1..7
             val forecast = engine.forecast(sessions, todayIso, now.toEpochMilli())
 
+            val metricLabel = if (isHorde) "Proximity" else "Fidelity"
             val restLabel = when {
                 RestDayPolicy.isOnVacation(profile, now.toEpochMilli()) ->
-                    "On vacation. No forecast, no fidelity change while you're away."
+                    "On vacation. Sessions still count, but $metricLabel stays frozen and nobody reacts."
                 RestDayPolicy.isRestDay(profile, todayIso) ->
-                    "Declared rest day. No forecast today — train anyway if you want to."
+                    "Declared rest day. Train anyway if you want — $metricLabel stays frozen and nobody reacts."
                 else -> null
             }
 
-            val opponentLabel = if (isHorde) HordeIntensity.label(profile.personaKey) else Personas.byKey(profile.personaKey).label
-            val metricLabel = if (isHorde) "Proximity" else "Fidelity"
+            val opponentLabel = if (isHorde) {
+                HordeIntensity.label(profile.hordeIntensity ?: HordeIntensity.STANDARD)
+            } else {
+                Personas.byKey(profile.personaKey).label
+            }
             val generationLabel = if (isHorde) "Wave" else "Generation"
 
             _uiState.value = if (forecast == null) {
@@ -79,7 +85,8 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                     generationLabel = generationLabel,
                     generation = profile.generation,
                     coldStart = true,
-                    forecastLine = if (isHorde) HordeSoundCues.forecastCaption(0) else "No baseline on you yet. Log a session first.",
+                    forecastLine = "No baseline on you yet. Log a session first.",
+                    hordeCaption = if (isHorde) HordeSoundCues.forecastCaption(0) else null,
                     basedOnSessions = 0,
                     confidencePercent = 0,
                     restStateLabel = restLabel,
@@ -87,8 +94,10 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
             } else {
                 val paceLabel = formatPace(forecast.forecastPaceSecPerKm)
                 val finishLabel = formatDuration(forecast.forecastFinishSeconds)
+                // A Horde has no voice, so its "forecast line" is the plain projection --
+                // the atmospheric caption sits alongside it rather than replacing the numbers.
                 val line = if (isHorde) {
-                    HordeSoundCues.forecastCaption(forecast.basedOnSessions)
+                    "Projected: pace $paceLabel, finish around $finishLabel."
                 } else {
                     Personas.byKey(profile.personaKey).forecastLine(forecast.basedOnSessions, paceLabel, finishLabel)
                 }
@@ -101,6 +110,7 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                     generation = profile.generation,
                     coldStart = false,
                     forecastLine = line,
+                    hordeCaption = if (isHorde) HordeSoundCues.forecastCaption(forecast.basedOnSessions) else null,
                     basedOnSessions = forecast.basedOnSessions,
                     confidencePercent = forecast.confidencePercent,
                     restStateLabel = restLabel,

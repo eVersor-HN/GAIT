@@ -52,7 +52,7 @@ Same numbers, different names, so the fiction stays consistent everywhere they'r
 
 ## What's shared with the Twin system (not duplicated)
 
-- `TwinProfileEntity` gains one `opponentType` column (`"twin"` | `"horde"`) rather than a parallel table — `fidelity`/`generation` are reinterpreted as Proximity/Wave, `personaKey` holds the intensity key instead of a persona key. See the entity's doc comment.
+- `TwinProfileEntity` gains one `opponentType` column (`"twin"` | `"horde"`) rather than a parallel table — `fidelity`/`generation` are the same numbers, relabeled Proximity/Wave in the UI. Type-specific data lives in its own nullable column (`personaKey` for a Twin, `hordeIntensity` for a Horde) rather than overloading one field with two meanings; `isHorde` is an extension property. See the entity's doc comment.
 - `ForecastEngine`, `ComposureEngine`, `SessionFinalizer`, Rest Days/Vacation — all identical code paths, branching only on `opponentType` where the *content* differs (caption vs. persona line), never the underlying math.
 - `SessionFinalizer` is the single place that branches: Horde → `HordeSoundCues.captionFor(...)`, Twin → persona line banks. Both still route through the same same-day Predatory/Swarming notification exception.
 

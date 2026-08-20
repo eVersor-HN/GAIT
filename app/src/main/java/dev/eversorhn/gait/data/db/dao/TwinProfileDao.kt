@@ -20,4 +20,7 @@ interface TwinProfileDao {
 
     @Query("SELECT * FROM twin_profiles WHERE activityType = :activityType LIMIT 1")
     suspend fun getProfile(activityType: String): TwinProfileEntity?
+
+    @Query("DELETE FROM twin_profiles")
+    suspend fun deleteAll()
 }

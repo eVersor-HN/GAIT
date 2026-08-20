@@ -5,6 +5,10 @@ node_modules/
 
 # Android / Gradle
 local.properties
+# Release signing secrets -- never commit these (see keystore.properties.example)
+keystore.properties
+*.jks
+*.keystore
 .gradle/
 build/
 app/build/

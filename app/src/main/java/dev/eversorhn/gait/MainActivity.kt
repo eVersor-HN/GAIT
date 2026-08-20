@@ -1,17 +1,12 @@
 package dev.eversorhn.gait
 
-import android.Manifest
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -24,17 +19,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enterImmersiveFullscreen()
 
+        // Notification permission is requested from the Forecast screen, after setup --
+        // not here, so the very first thing a new user sees isn't a system dialog.
         setContent {
-            val notificationPermissionLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.RequestPermission()
-            ) { /* denial just means idle taunts and same-day pings stay silent */ }
-
-            LaunchedEffect(Unit) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-
             GaitTheme {
                 Surface(
                     modifier = Modifier
@@ -55,8 +42,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * True fullscreen HUD, not just edge-to-edge: hides both system bars and lets the
-     * user bring them back with a swipe (BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE), which
-     * is what "the app must run in fullscreen" asked for.
+     * user bring them back with a swipe (BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE).
      */
     private fun enterImmersiveFullscreen() {
         WindowCompat.setDecorFitsSystemWindows(window, false)

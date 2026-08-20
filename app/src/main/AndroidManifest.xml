@@ -5,6 +5,14 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!--
+      Indoor sessions run as a `health`-typed foreground service (a workout timer), which
+      needs FOREGROUND_SERVICE_HEALTH plus at least one sensor-class permission on Android 14+.
+      HIGH_SAMPLING_RATE_SENSORS is install-time (no runtime prompt), so Indoor mode stays
+      permission-prompt-free while no longer crashing with a location-typed FGS.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!--
       No ACCESS_BACKGROUND_LOCATION: tracking runs inside a foreground service with a
@@ -16,6 +24,8 @@
     <application
         android:name=".GaitApplication"
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:supportsRtl="true">
@@ -23,6 +33,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@android:style/Theme.Material.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -33,7 +44,7 @@
         <service
             android:name=".tracking.LocationTrackingService"
             android:exported="false"
-            android:foregroundServiceType="location" />
+            android:foregroundServiceType="location|health" />
     </application>
 
 </manifest>

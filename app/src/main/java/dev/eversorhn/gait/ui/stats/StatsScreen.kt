@@ -2,6 +2,8 @@ package dev.eversorhn.gait.ui.stats
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,26 +13,54 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
+import dev.eversorhn.gait.R
 import dev.eversorhn.gait.ui.gaitViewModel
+import dev.eversorhn.gait.ui.theme.Brass
 import dev.eversorhn.gait.ui.theme.CorpoPanel
+import dev.eversorhn.gait.ui.theme.Good
 
 @Composable
 fun StatsScreen(onDone: () -> Unit) {
     val viewModel: StatsViewModel = gaitViewModel()
     val state by viewModel.uiState.collectAsState()
+    var pendingDelete by remember { mutableStateOf<SessionRow?>(null) }
+
+    pendingDelete?.let { row ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Delete this session?") },
+            text = {
+                Text(
+                    "${row.dateLabel} · ${row.distanceLabel} · ${row.paceLabel}\n\n" +
+                        "It's removed from your history and from future forecasts. " +
+                        "${state.metricLabel} isn't recomputed — it already moved when this was logged."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteSession(row.id)
+                    pendingDelete = null
+                }) { Text("DELETE") }
+            },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("CANCEL") } },
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -63,25 +93,29 @@ fun StatsScreen(onDone: () -> Unit) {
         }
 
         CorpoPanel {
-            Text("${state.totalSessions} sessions · ${state.totalDistanceLabel}", style = MaterialTheme.typography.bodyLarge)
             Text(
-                "Avg pace ${state.avgPaceLabel} · Fidelity now ${state.fidelityPercent}%",
+                "${pluralStringResource(R.plurals.sessions_count, state.totalSessions, state.totalSessions)} · ${state.totalDistanceLabel}",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                "Avg pace ${state.avgPaceLabel} · ${state.metricLabel} now ${state.metricPercent}%",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (state.fidelityTrend.size >= 2) {
+            if (state.accuracyTrend.size >= 2) {
+                Text(
+                    "FORECAST ACCURACY PER SESSION",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Canvas(modifier = Modifier.fillMaxWidth().height(40.dp)) {
-                    val points = state.fidelityTrend
+                    val points = state.accuracyTrend
                     val stepX = size.width / (points.size - 1)
                     for (i in 0 until points.size - 1) {
-                        val x1 = i * stepX
-                        val y1 = size.height * (1 - points[i])
-                        val x2 = (i + 1) * stepX
-                        val y2 = size.height * (1 - points[i + 1])
                         drawLine(
-                            color = androidx.compose.ui.graphics.Color(0xFFC9A227),
-                            start = Offset(x1, y1),
-                            end = Offset(x2, y2),
+                            color = Brass,
+                            start = Offset(i * stepX, size.height * (1 - points[i])),
+                            end = Offset((i + 1) * stepX, size.height * (1 - points[i + 1])),
                             strokeWidth = 3f,
                         )
                     }
@@ -105,16 +139,30 @@ fun StatsScreen(onDone: () -> Unit) {
                 CorpoPanel {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(row.dateLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (!row.isVerified) {
-                            Text("MANUAL", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            if (row.isRestDay) {
+                                Text("REST DAY", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                            }
+                            if (!row.isVerified) {
+                                Text("MANUAL", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                            }
                         }
                     }
                     Text("${row.distanceLabel} · ${row.paceLabel}", style = MaterialTheme.typography.bodyLarge)
-                    if (row.deltaLabel != null) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(
-                            row.deltaLabel,
+                            row.deltaLabel ?: "no forecast yet",
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (row.deltaIsGood) dev.eversorhn.gait.ui.theme.Good else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (row.deltaLabel != null && row.deltaIsGood) Good else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            "DELETE",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { pendingDelete = row },
                         )
                     }
                 }

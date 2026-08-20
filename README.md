@@ -1,6 +1,6 @@
 # GAIT
 
-**Status:** v0.3.0 — a real Android app, verified on a physical device. Setup → Forecast → GPS or indoor tracking → Debrief works end to end, against either a Rival Twin or a Zombie Horde, with Composure, Rest Days/Vacation, Statistics, and full cyberpunk-corpo visual chrome. A separate small `:simdemo` APK is a shareable teaser with no real data. Free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope, [`CHANGELOG.md`](CHANGELOG.md) for the detailed history, and `app/` for the source.
+**Status:** v0.4.0 — a real Android app, verified on a physical device. Setup → Forecast → GPS or indoor tracking → Debrief works end to end, against either a Rival Twin or a Zombie Horde, with Composure, Rest Days/Vacation (now actually enforced), Statistics with per-session delete, a Settings screen, crash-safe session recovery, unit-tested engines, a signed + R8-shrunk release pipeline, and full cyberpunk-corpo visual chrome. A separate small `:simdemo` APK is a shareable teaser with no real data. Free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope, [`CHANGELOG.md`](CHANGELOG.md) for the detailed history, and `app/` for the source.
 
 GAIT is a concept for a GPS movement app (running, walking, cycling, e-scooter, ...) that deliberately avoids generic missions, achievements, or leaderboards against strangers. Everything is cyberpunk-corpo themed at its core: your movement data is a commodity that fictional corporations compete over.
 
@@ -86,8 +86,20 @@ docs/zombie-mode.md                   — the Zombie Horde alternate opponent
 docs/simulation-mode.md               — why the demo is a separate APK
 demo/asset-twin-demo.html             — interactive HTML mockups of the Asset Twin loop
 app/                                   — the main Android app (Kotlin + Jetpack Compose)
+app/src/test/                          — unit tests for the Forecast/Composure/RestDay engines
 simdemo/                               — standalone demo APK, no real data
+keystore.properties.example            — template for release signing (real file is gitignored)
 ```
+
+## Building
+
+```
+./gradlew :app:assembleDebug                      # debug APK (applicationId dev.eversorhn.gait.debug)
+./gradlew :app:testDebugUnitTest                  # unit tests
+./gradlew :app:assembleRelease :simdemo:assembleRelease   # R8-shrunk release APKs; signed if keystore.properties exists
+```
+
+Debug and release builds use different application IDs (`.debug` suffix) and can be installed side by side.
 
 ## Support
 

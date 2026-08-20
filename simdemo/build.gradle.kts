@@ -1,8 +1,17 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+// Same optional release signing as :app -- see keystore.properties.example.
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val hasReleaseKeystore = keystoreProps.getProperty("storeFile")?.isNotBlank() == true
 
 android {
     namespace = "dev.eversorhn.gait.simdemo"
@@ -14,13 +23,29 @@ android {
         applicationId = "dev.eversorhn.gait.simdemo"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
+    }
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -39,8 +64,8 @@ android {
 }
 
 dependencies {
-    // Deliberately minimal: no Room, no WorkManager, no location/health-connect --
-    // this app has no real data to track. Just enough to render Compose UI.
+    // Deliberately minimal: no Room, no WorkManager, no location -- this app has no real
+    // data to track. Just enough to render Compose UI.
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
 

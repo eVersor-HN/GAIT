@@ -33,8 +33,8 @@ class NamingViewModel(private val repository: GaitRepository) : ViewModel() {
         val state = _uiState.value
         viewModelScope.launch {
             repository.createTwinProfile(
-                personaKey = state.selectedPersonaKey,
                 twinName = state.twinName.ifBlank { Personas.byKey(state.selectedPersonaKey).defaultName },
+                personaKey = state.selectedPersonaKey,
             )
             _uiState.value = state.copy(saved = true)
         }

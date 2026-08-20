@@ -22,4 +22,10 @@ interface SessionDao {
 
     @Query("SELECT COUNT(*) FROM sessions WHERE activityType = :activityType")
     suspend fun countSessions(activityType: String): Int
+
+    @Query("DELETE FROM sessions WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM sessions")
+    suspend fun deleteAll()
 }

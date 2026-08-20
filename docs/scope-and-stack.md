@@ -24,6 +24,8 @@ These three compound: Android-only removes the cross-platform tax, donation-only
 | Maps / route rendering | osmdroid (OpenStreetMap) over Google Maps SDK | Avoids Google Maps' per-load billing — meaningful for a donation-funded project with no guaranteed revenue. |
 | Notifications | WorkManager | Schedules the same-day Predatory notification exception from [`composure-system.md`](composure-system.md); needs a battery-optimization exemption prompt to fire reliably. |
 | Backend | None | Everything above runs on-device. No server, no hosting cost, nothing to maintain solo. |
+| Release build | R8 + resource shrinking; signing via untracked `keystore.properties` | Release APK ~1.5 MB vs ~13 MB debug. The keystore never enters the repo (`keystore.properties.example` documents creating one with `keytool`). Debug builds get an `applicationIdSuffix` so debug and release coexist on a test device. |
+| Tests | JUnit 4 unit tests on the pure engines | `ForecastEngine`, `ComposureEngine`, `RestDayPolicy` are plain Kotlin with no Android deps — exactly where a silent numeric bug would hide, and exactly where tests are cheap. |
 
 ## Why no backend
 
@@ -42,11 +44,15 @@ Everything designed so far is the full vision, not the first release.
 - Composure (Cowed/Predatory tone shift) — core to the hook, not optional. *(built)*
 - Same-day Predatory notifications and sparse, randomized idle taunts. *(built — see `docs/notifications.md`)*
 - A confirmation dialog when leaving mid-recording, so the back gesture can't silently interrupt a live session. *(built)*
-- Rest days (declared + inferred) — cheap to implement, meaningfully improves fairness from day one. *(built)*
-- Vacation bank (30 days/year) on top of declared rest days. *(built)*
-- Statistics screen — period summary plus per-session history. *(built)*
+- Rest days (declared + inferred) and the 30-day vacation bank — *enforced* in `SessionFinalizer` / `IdleTauntWorker`, not just displayed: Fidelity frozen, Composure neutral, no notifications. *(built, verified)*
+- Statistics screen — period summary, per-session history, per-session delete. *(built)*
+- Settings — rename / re-voice the Twin, change horde intensity, switch opponent type, erase everything. *(built)*
+- Crash-safe sessions — `START_STICKY` service + persisted in-progress snapshot + "Interrupted session found" recovery. *(built, verified by force-stopping mid-run)*
+- Moving-time pace with auto-pause, monotonic clock, clear "not saved because…" feedback on a too-short stop. *(built)*
 - Zombie Horde as a selectable alternate opponent at setup, alongside the Rival Twin — see `docs/zombie-mode.md`. *(built)*
 - Simulation as a separate, standalone `:simdemo` APK rather than a mode inside the real app — see `docs/simulation-mode.md`. *(built)*
+- Unit tests for the three pure engines (Forecast, Composure, RestDayPolicy). *(built — 26 tests)*
+- Release signing (untracked `keystore.properties`) + R8/resource shrinking, debug/release installable side by side. *(built, verified on device)*
 - Live Divergence and Decommission Trial screens (currently only in the HTML concept demo, not yet wired into the app).
 
 ### v1.1

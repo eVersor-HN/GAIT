@@ -3,10 +3,6 @@ package dev.eversorhn.gait.data.db.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-/**
- * One Twin per activity type (see docs/activities-and-dimensions.md).
- * v1 only ever creates a single row, for RUNNING.
- */
 /** Yearly PTO-style allowance -- see "Vacation days" in docs/telemetry-and-forecasting.md. */
 const val VACATION_DAYS_PER_YEAR = 30
 
@@ -16,17 +12,21 @@ object OpponentType {
 }
 
 /**
- * One opponent per activity type (see docs/activities-and-dimensions.md). Doubles as either
- * a Rival Twin or a Zombie Horde profile -- see docs/zombie-mode.md for why they share a
- * table: `fidelity` reads as Horde Proximity and `generation` as Wave number when
- * [opponentType] is [OpponentType.HORDE], and `personaKey` holds the horde intensity key
- * instead of a persona key. v1 only ever creates a single row, for RUNNING.
+ * One opponent per activity type (see docs/activities-and-dimensions.md) -- either a Rival
+ * Twin or a Zombie Horde, per [opponentType]. The two share [fidelity] and [generation]
+ * because they genuinely are the same numbers (relabeled Proximity/Wave for a Horde in the
+ * UI); everything type-specific lives in its own nullable column rather than reusing a
+ * field with a different meaning. v1 only ever creates a single row, for RUNNING.
  */
 @Entity(tableName = "twin_profiles")
 data class TwinProfileEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val activityType: String,
-    val personaKey: String,
+    val opponentType: String = OpponentType.TWIN,
+    /** Twin only: key into Personas. Null for a Horde. */
+    val personaKey: String? = null,
+    /** Horde only: key into HordeIntensity. Null for a Twin. */
+    val hordeIntensity: String? = null,
     val twinName: String,
     val fidelity: Float,
     val generation: Int,
@@ -38,5 +38,7 @@ data class TwinProfileEntity(
     val vacationYear: Int = 0,
     /** Set and in the future while an active vacation period is running. */
     val vacationEndEpochMillis: Long? = null,
-    val opponentType: String = OpponentType.TWIN,
 )
+
+/** Extension rather than a member so Room never has to reason about a non-column property. */
+val TwinProfileEntity.isHorde: Boolean get() = opponentType == OpponentType.HORDE

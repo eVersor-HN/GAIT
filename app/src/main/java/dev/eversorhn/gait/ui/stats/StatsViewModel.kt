@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.eversorhn.gait.data.db.entity.SessionEntity
 import dev.eversorhn.gait.data.db.entity.SessionSource
+import dev.eversorhn.gait.data.db.entity.isHorde
 import dev.eversorhn.gait.data.repository.GaitRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +29,7 @@ data class SessionRow(
     val deltaLabel: String?,
     val deltaIsGood: Boolean,
     val isVerified: Boolean,
+    val isRestDay: Boolean,
 )
 
 data class StatsUiState(
@@ -35,8 +37,14 @@ data class StatsUiState(
     val totalSessions: Int = 0,
     val totalDistanceLabel: String = "0.0 km",
     val avgPaceLabel: String = "—",
-    val fidelityPercent: Int = 0,
-    val fidelityTrend: List<Float> = emptyList(),
+    val metricLabel: String = "Fidelity",
+    val metricPercent: Int = 0,
+    /**
+     * Per-session forecast accuracy (1 - |forecast - actual| / forecast), oldest first.
+     * Deliberately labeled as *accuracy*, not Fidelity: Fidelity is the EWMA of this, and the
+     * two shouldn't be confused on screen.
+     */
+    val accuracyTrend: List<Float> = emptyList(),
     val rows: List<SessionRow> = emptyList(),
     val loaded: Boolean = false,
 )
@@ -49,21 +57,31 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
     private var allSessions: List<SessionEntity> = emptyList()
 
     init {
+        reload(StatsPeriod.ALL)
+    }
+
+    fun selectPeriod(period: StatsPeriod) = reload(period)
+
+    fun deleteSession(id: Long) {
+        viewModelScope.launch {
+            repository.deleteSession(id)
+            reload(_uiState.value.period)
+        }
+    }
+
+    private fun reload(period: StatsPeriod) {
         viewModelScope.launch {
             allSessions = repository.getSessions() // newest-first, per SessionDao
             val profile = repository.getTwinProfile()
-            applyPeriod(StatsPeriod.ALL, profile?.fidelity ?: 0f)
+            applyPeriod(
+                period = period,
+                currentFidelity = profile?.fidelity ?: 0f,
+                metricLabel = if (profile?.isHorde == true) "Proximity" else "Fidelity",
+            )
         }
     }
 
-    fun selectPeriod(period: StatsPeriod) {
-        viewModelScope.launch {
-            val profile = repository.getTwinProfile()
-            applyPeriod(period, profile?.fidelity ?: 0f)
-        }
-    }
-
-    private fun applyPeriod(period: StatsPeriod, currentFidelity: Float) {
+    private fun applyPeriod(period: StatsPeriod, currentFidelity: Float, metricLabel: String) {
         val cutoff = period.days?.let { System.currentTimeMillis() - it * 86_400_000L }
         val filtered = if (cutoff == null) allSessions else allSessions.filter { it.startTimeEpochMillis >= cutoff }
 
@@ -71,8 +89,6 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
         val totalDurationSec = filtered.sumOf { it.durationSeconds }
         val avgPace = if (totalDistanceKm > 0) totalDurationSec / totalDistanceKm else null
 
-        // Oldest-first for a left-to-right trend line, using each session's own delta from
-        // its forecast (0 when there wasn't one yet) as a cheap fidelity-shape proxy.
         val trend = filtered.reversed().mapNotNull { s ->
             s.forecastPaceSecPerKm?.let { fp -> (1.0 - abs(fp - s.avgPaceSecPerKm) / fp).toFloat().coerceIn(0f, 1f) }
         }
@@ -82,8 +98,9 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
             totalSessions = filtered.size,
             totalDistanceLabel = "%.1f km".format(totalDistanceKm),
             avgPaceLabel = avgPace?.let { formatMinSec(it) + "/km" } ?: "—",
-            fidelityPercent = (currentFidelity * 100).toInt(),
-            fidelityTrend = trend,
+            metricLabel = metricLabel,
+            metricPercent = (currentFidelity * 100).toInt(),
+            accuracyTrend = trend,
             rows = filtered.map { it.toRow() },
             loaded = true,
         )
@@ -102,6 +119,7 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
             },
             deltaIsGood = (delta ?: 0.0) >= 0,
             isVerified = dataSource == SessionSource.GPS,
+            isRestDay = isRestDay,
         )
     }
 

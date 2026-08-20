@@ -4,6 +4,36 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.4.0] - 2026-08-20
+
+A hardening pass driven by a full code review of v0.3.0: one shipped crash fixed, several "built" features made actually true, the UX holes a real user would hit first, and the plumbing a real release needs (tests, signing, R8, icons).
+
+### Fixed
+- **Crash: Indoor mode on a fresh install** (`LocationTrackingService`). The service started as a `location`-typed foreground service for Indoor too; on Android 14+ that throws `SecurityException` unless a location runtime permission is held — and Indoor deliberately never asks for one. Reproduced live on device (permission `granted=false` → FATAL). Indoor now runs as a `health`-typed FGS (new `FOREGROUND_SERVICE_HEALTH` + install-time `HIGH_SAMPLING_RATE_SENSORS` permissions, no runtime prompt); Outdoor stays `location` and is gated on the permission before `startForeground`. Both start paths are also wrapped so a failure surfaces as an on-screen error instead of a dead timer. Verified live: fresh install, no location permission, Indoor start → service foreground with `types=0x100` (health), no exception.
+- **Rest days & vacation were cosmetic.** `SessionFinalizer` now actually freezes Fidelity/Proximity, keeps Composure neutral, and suppresses notifications on a declared rest day or during vacation (the session is still saved — training is training). `IdleTauntWorker` goes silent during vacation. The Debrief shows an explicit rest-day note. Verified live: Forecast 5:00 vs Actual 6:00 on a rest day left Fidelity at 50% with the note shown.
+- **Dead code made live:** `ComposureEngine.isGapPredatory()` is now called from `IdleTauntWorker` — going quiet for far longer than your own rhythm triggers a Predatory line (the "three days and you're already negotiating with yourself" behavior from the concept), once per day, never during vacation. `SessionEntity.isRestDay` is now written and shown as a REST DAY tag in Statistics.
+- **Silent too-short stop.** Stopping an outdoor session with no GPS fix / under 20 m / no moving time now says exactly why nothing was saved instead of silently returning to "Ready".
+- **Pace math.** Elapsed time uses `SystemClock.elapsedRealtime()` (monotonic; a clock change mid-run can't corrupt the session). Pace is computed over *moving* time only: the wait for the first GPS fix and auto-paused stretches (interval speed < 0.5 m/s) no longer inflate it. Live screen shows AUTO-PAUSED and a separate moving-time readout.
+- **Process death mid-session no longer loses the run.** The service is `START_STICKY` and persists the in-progress session every 10 s (`ActiveSessionStore`); if the system restarts the service it resumes from that snapshot, and if only the app relaunches it offers an "Interrupted session found — Save / Discard" recovery. Verified live by force-stopping mid-session: recovery dialog → save → distance prompt → Debrief.
+- Notifications (opponent messages and the tracking notification) now open the app on tap.
+- Horde Forecast shows the projected pace/finish alongside the atmospheric caption instead of hiding the numbers.
+- Persona forecast templates use correct singular/plural ("1 session", "Once"); UI counts use `plurals` resources.
+- The notification-permission prompt moved from app launch to the Forecast screen, after setup.
+- HUD battery readout refreshes every 30 s instead of reading once.
+
+### Added
+- **Settings screen**: rename the Twin, change its voice / the horde's intensity, switch opponent type (Twin ↔ Horde — a new opponent, so Fidelity/Proximity and Generation/Wave reset; session history stays), and a confirmed "Erase all data" that returns to setup. Verified live.
+- **Delete a session** from Statistics, with confirmation. Verified live.
+- **Watchful line banks** for every persona, so the Twin is never silent in the first few sessions before Composure has enough history to judge.
+- **Launcher icons** (adaptive, vector): three ascending brass strides on ink for the app; the same in cyan with a dashed scanline for the demo. No more default Android robot.
+- **Unit tests** for `ForecastEngine`, `ComposureEngine`, `RestDayPolicy` — 26 tests covering recency weighting, day-of-week weighting, confidence vs. cluster tightness, z-score Composure (incl. noisy-baseline and flat-baseline cases), gap-predatory, rest-day toggles, and the vacation bank. All green.
+- **Release build pipeline**: optional signing from an untracked `keystore.properties` (`keystore.properties.example` documents the setup), R8 + resource shrinking enabled for release (app APK 12.9 MB → 1.5 MB), keep rules for the reflective ViewModel factory / Room entities / persisted enums. Verified: a locally-signed release APK installs and runs through setup → Forecast alongside the debug build. Debug builds now carry an `applicationIdSuffix` (`.debug`) so both can coexist.
+
+### Changed
+- `TwinProfileEntity` no longer overloads `personaKey` for horde intensity: separate nullable `personaKey` / `hordeIntensity` columns plus `isHorde`. DB bumped to version 5 (destructive, pre-release).
+- Removed the unused Health Connect dependency (heart-rate input is v1.1+).
+- Statistics' trend line is labeled "forecast accuracy per session" — it was never the Fidelity EWMA and shouldn't have implied it.
+
 ## [0.3.0] - 2026-08-20
 
 Zombie Horde as a full alternate opponent mode, Simulation moved out into its own standalone APK, and a reduced-motion fix.

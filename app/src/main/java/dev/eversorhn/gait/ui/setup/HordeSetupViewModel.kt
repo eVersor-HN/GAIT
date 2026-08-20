@@ -2,7 +2,6 @@ package dev.eversorhn.gait.ui.setup
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.horde.HordeIntensity
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,11 +26,7 @@ class HordeSetupViewModel(private val repository: GaitRepository) : ViewModel() 
     fun confirm() {
         val state = _uiState.value
         viewModelScope.launch {
-            repository.createTwinProfile(
-                personaKey = state.intensityKey,
-                twinName = "The Horde",
-                opponentType = OpponentType.HORDE,
-            )
+            repository.createHordeProfile(hordeIntensity = state.intensityKey)
             _uiState.value = state.copy(saved = true)
         }
     }

@@ -125,12 +125,17 @@ private fun currentTimeLabel(): String =
 
 @Composable
 private fun rememberBatteryPercent(context: Context): Int? {
+    // Re-read the sticky battery broadcast every 30 s so a long session's HUD doesn't show a
+    // stale level for an hour -- still cheap (no receiver registered, just a sticky-intent read).
     val state by produceState<Int?>(initialValue = null) {
-        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-        val sticky: Intent? = context.registerReceiver(null, filter)
-        val level = sticky?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-        val scale = sticky?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-        value = if (level >= 0 && scale > 0) (level * 100) / scale else null
+        while (true) {
+            val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+            val sticky: Intent? = context.registerReceiver(null, filter)
+            val level = sticky?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+            val scale = sticky?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+            value = if (level >= 0 && scale > 0) (level * 100) / scale else null
+            delay(30_000L)
+        }
     }
     return state
 }

@@ -8,14 +8,35 @@ import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.session.DebriefResult
 import dev.eversorhn.gait.domain.session.SessionFinalizer
+import dev.eversorhn.gait.tracking.ActiveSessionStore
 import dev.eversorhn.gait.tracking.LocationTrackingService
+import dev.eversorhn.gait.tracking.TrackingMode
 import dev.eversorhn.gait.tracking.TrackingSessionState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/** Kept as the UI-facing name; maps 1:1 onto the service's TrackingMode. */
 enum class TrackMode { OUTDOOR, INDOOR }
+
+private fun TrackMode.toTracking() = when (this) {
+    TrackMode.OUTDOOR -> TrackingMode.OUTDOOR
+    TrackMode.INDOOR -> TrackingMode.INDOOR
+}
+
+private fun TrackingMode.toUi() = when (this) {
+    TrackingMode.OUTDOOR -> TrackMode.OUTDOOR
+    TrackingMode.INDOOR -> TrackMode.INDOOR
+}
+
+/** An interrupted session found on launch (process died mid-run), offered for save/discard. */
+data class RecoverableSession(
+    val mode: TrackMode,
+    val distanceMeters: Double,
+    val durationSeconds: Int,
+    val movingSeconds: Int,
+)
 
 data class TrackUiState(
     val mode: TrackMode? = null,
@@ -25,6 +46,9 @@ data class TrackUiState(
     val indoorElapsedSeconds: Int = 0,
     val indoorDistanceKm: String = "",
     val result: DebriefResult? = null,
+    /** Shown on the Ready screen after a stop that couldn't be saved (too short, etc.). */
+    val stopMessage: String? = null,
+    val recoverable: RecoverableSession? = null,
 )
 
 /** Below this, GPS jitter alone can look like "a session" and produce a nonsense pace. */
@@ -36,46 +60,134 @@ class TrackViewModel(
 ) : ViewModel() {
 
     private val finalizer = SessionFinalizer(repository, appContext)
+    private val store = ActiveSessionStore(appContext)
 
     val trackingSnapshot = TrackingSessionState.snapshot
 
     private val _uiState = MutableStateFlow(TrackUiState())
     val uiState: StateFlow<TrackUiState> = _uiState.asStateFlow()
 
+    init {
+        // If we're already tracking (user came back to this screen mid-run), pick the mode up
+        // from the live snapshot so the screen renders the right layout immediately.
+        trackingSnapshot.value.mode?.let { live ->
+            if (trackingSnapshot.value.isTracking) {
+                _uiState.value = _uiState.value.copy(mode = live.toUi())
+            }
+        }
+        checkForInterruptedSession()
+    }
+
+    /**
+     * A persisted record with nothing actually tracking means the process died mid-session
+     * and the system didn't restart the service. Offer what was captured rather than losing it.
+     */
+    private fun checkForInterruptedSession() {
+        if (trackingSnapshot.value.isTracking) return
+        val saved = store.read() ?: return
+        _uiState.value = _uiState.value.copy(
+            recoverable = RecoverableSession(
+                mode = saved.mode.toUi(),
+                distanceMeters = saved.distanceMeters,
+                durationSeconds = saved.elapsedSeconds,
+                movingSeconds = saved.movingSeconds,
+            )
+        )
+    }
+
+    fun saveRecovered() {
+        val r = _uiState.value.recoverable ?: return
+        store.clear()
+        when (r.mode) {
+            TrackMode.OUTDOOR -> {
+                if (r.distanceMeters < MIN_DISTANCE_TO_SAVE_METERS || r.movingSeconds <= 0) {
+                    _uiState.value = _uiState.value.copy(
+                        recoverable = null,
+                        stopMessage = "Interrupted session was too short to save (${r.distanceMeters.toInt()} m).",
+                    )
+                    return
+                }
+                _uiState.value = _uiState.value.copy(recoverable = null, finishing = true)
+                viewModelScope.launch {
+                    val result = finalizer.finalize(r.distanceMeters, r.movingSeconds, dataSource = SessionSource.GPS)
+                    _uiState.value = _uiState.value.copy(finishing = false, result = result)
+                }
+            }
+            TrackMode.INDOOR -> {
+                // No GPS distance to recover -- hand off to the normal indoor distance prompt.
+                _uiState.value = _uiState.value.copy(
+                    recoverable = null,
+                    mode = TrackMode.INDOOR,
+                    awaitingIndoorDistance = true,
+                    indoorElapsedSeconds = r.durationSeconds,
+                )
+            }
+        }
+    }
+
+    fun discardRecovered() {
+        store.clear()
+        _uiState.value = _uiState.value.copy(recoverable = null)
+    }
+
     fun chooseMode(mode: TrackMode) {
-        _uiState.value = _uiState.value.copy(mode = mode)
+        _uiState.value = _uiState.value.copy(mode = mode, stopMessage = null)
     }
 
     fun start() {
-        val action = when (_uiState.value.mode) {
-            TrackMode.INDOOR -> LocationTrackingService.ACTION_START_INDOOR
-            else -> LocationTrackingService.ACTION_START_OUTDOOR
+        val mode = _uiState.value.mode ?: return
+        _uiState.value = _uiState.value.copy(stopMessage = null)
+        TrackingSessionState.update { it.copy(error = null) }
+        val action = when (mode.toTracking()) {
+            TrackingMode.INDOOR -> LocationTrackingService.ACTION_START_INDOOR
+            TrackingMode.OUTDOOR -> LocationTrackingService.ACTION_START_OUTDOOR
         }
-        val intent = Intent(appContext, LocationTrackingService::class.java).setAction(action)
-        appContext.startForegroundService(intent)
+        appContext.startForegroundService(Intent(appContext, LocationTrackingService::class.java).setAction(action))
     }
 
     fun stop() {
         val snapshot = trackingSnapshot.value
-        val durationSeconds = snapshot.elapsedSeconds
+        val elapsedSeconds = snapshot.elapsedSeconds
+        val movingSeconds = snapshot.movingSeconds
 
         appContext.startService(
             Intent(appContext, LocationTrackingService::class.java).setAction(LocationTrackingService.ACTION_STOP)
         )
 
         if (_uiState.value.mode == TrackMode.INDOOR) {
-            if (durationSeconds <= 0) return
+            if (elapsedSeconds <= 0) {
+                _uiState.value = _uiState.value.copy(stopMessage = "Nothing to save — the timer never started.")
+                return
+            }
             // No GPS distance to fall back on -- ask for what the machine showed.
-            _uiState.value = _uiState.value.copy(awaitingIndoorDistance = true, indoorElapsedSeconds = durationSeconds)
+            _uiState.value = _uiState.value.copy(awaitingIndoorDistance = true, indoorElapsedSeconds = elapsedSeconds)
             return
         }
 
         val distanceMeters = snapshot.distanceMeters
-        if (distanceMeters < MIN_DISTANCE_TO_SAVE_METERS || durationSeconds <= 0) return
+        when {
+            snapshot.gpsFixCount == 0 -> {
+                _uiState.value = _uiState.value.copy(
+                    stopMessage = "Not saved — no GPS fix came in. Try again outside, or log it manually.",
+                )
+                return
+            }
+            distanceMeters < MIN_DISTANCE_TO_SAVE_METERS -> {
+                _uiState.value = _uiState.value.copy(
+                    stopMessage = "Not saved — only ${distanceMeters.toInt()} m recorded, under the ${MIN_DISTANCE_TO_SAVE_METERS.toInt()} m minimum.",
+                )
+                return
+            }
+            movingSeconds <= 0 -> {
+                _uiState.value = _uiState.value.copy(stopMessage = "Not saved — no moving time was recorded.")
+                return
+            }
+        }
 
         _uiState.value = _uiState.value.copy(finishing = true)
         viewModelScope.launch {
-            val result = finalizer.finalize(distanceMeters, durationSeconds, dataSource = SessionSource.GPS)
+            // Pace and the session's duration are based on moving time, not wall time.
+            val result = finalizer.finalize(distanceMeters, movingSeconds, dataSource = SessionSource.GPS)
             _uiState.value = _uiState.value.copy(finishing = false, result = result)
         }
     }
@@ -97,6 +209,10 @@ class TrackViewModel(
             )
             _uiState.value = _uiState.value.copy(finishing = false, awaitingIndoorDistance = false, result = result)
         }
+    }
+
+    fun discardIndoor() {
+        _uiState.value = _uiState.value.copy(awaitingIndoorDistance = false, indoorDistanceKm = "", indoorElapsedSeconds = 0)
     }
 
     fun reset() {

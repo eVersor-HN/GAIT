@@ -4,9 +4,9 @@ package dev.eversorhn.gait.domain.persona
  * A selectable Twin voice. v1 ships 5 of the 17 designed in docs/twin-personas.md;
  * the rest move to v1.1 per docs/scope-and-stack.md.
  *
- * cowedLines / predatoryLines are a small curated starting bank, not the full
- * variation system from docs/composure-system.md — real production content
- * should grow these substantially and eventually move to grounded generation.
+ * The line banks are a small curated start, not the full variation system from
+ * docs/composure-system.md -- real production content should grow these substantially
+ * and eventually move to grounded generation.
  */
 data class Persona(
     val key: String,
@@ -14,10 +14,25 @@ data class Persona(
     val defaultName: String,
     val forecastLine: (basedOnSessions: Int, paceLabel: String, finishLabel: String) -> String,
     val cowedLines: List<String>,
+    /**
+     * Neutral, observational -- used while Composure is Watchful (incl. the first few
+     * sessions before there's enough history to judge), so the Twin is never *silent*.
+     */
+    val watchfulLines: List<String>,
     val predatoryLines: List<String>,
     /** Ambient, not tied to any specific session — see docs/notifications.md "Idle taunts". */
     val idleLines: List<String>,
 )
+
+/** Grammar helpers for the forecast templates: "1 session" vs "12 sessions", "once" vs "12 times". */
+private fun sessions(n: Int, adjective: String = ""): String =
+    if (n == 1) "1 ${adjective}session" else "$n ${adjective}sessions"
+
+private fun times(n: Int): String = when (n) {
+    1 -> "Once"
+    2 -> "Twice"
+    else -> "$n times"
+}
 
 object Personas {
 
@@ -26,12 +41,17 @@ object Personas {
         label = "Hated Person",
         defaultName = "Markus K.",
         forecastLine = { n, pace, finish ->
-            "Based on $n sessions like this one: pace $pace, finish around $finish. Go on, prove me wrong."
+            "Based on ${sessions(n)} like this one: pace $pace, finish around $finish. Go on, prove me wrong."
         },
         cowedLines = listOf(
             "...Okay. That was fast. I don't have anything for that.",
             "Fine. You win this one.",
             "...I'll need a minute.",
+        ),
+        watchfulLines = listOf(
+            "Noted. Still watching.",
+            "About what I expected. We'll see.",
+            "Nothing to say yet. Don't mistake that for approval.",
         ),
         predatoryLines = listOf(
             "There it is. Every time things get hard, you fold. At least you're consistent about something.",
@@ -49,11 +69,15 @@ object Personas {
         label = "Better Self",
         defaultName = "Better Self",
         forecastLine = { n, pace, finish ->
-            "Based on $n sessions: pace $pace, finish around $finish. You've done this before. Do it again."
+            "Based on ${sessions(n)}: pace $pace, finish around $finish. You've done this before. Do it again."
         },
         cowedLines = listOf(
             "This is who I always thought you could be.",
             "Good. Keep going, not for me — for the next one.",
+        ),
+        watchfulLines = listOf(
+            "Steady. That counts for more than you think.",
+            "Logged. Tomorrow decides what this meant.",
         ),
         predatoryLines = listOf(
             "You know exactly why this happened. Stop pretending you don't.",
@@ -70,11 +94,15 @@ object Personas {
         label = "Just Twin-7",
         defaultName = "Twin-7",
         forecastLine = { n, pace, finish ->
-            "Forecast based on $n sessions: pace $pace, finish approx. $finish."
+            "Forecast based on ${sessions(n)}: pace $pace, finish approx. $finish."
         },
         cowedLines = listOf(
             "Actual exceeded forecast. Model updated.",
             "No strong prediction available today.",
+        ),
+        watchfulLines = listOf(
+            "Session within expected variance.",
+            "Recorded. Insufficient deviation to reclassify.",
         ),
         predatoryLines = listOf(
             "Actual fell short of forecast for the fourth consecutive session.",
@@ -91,11 +119,15 @@ object Personas {
         label = "The Ex",
         defaultName = "The Ex",
         forecastLine = { n, pace, finish ->
-            "I remember this one. $n times, give or take. Pace $pace, finish around $finish. Surprise me."
+            "I remember this one. ${times(n)}, give or take. Pace $pace, finish around $finish. Surprise me."
         },
         cowedLines = listOf(
             "...Okay. I don't have anything for that.",
             "You didn't need me to say anything, did you.",
+        ),
+        watchfulLines = listOf(
+            "Mm. That's very you.",
+            "Same as always. I'd know.",
         ),
         predatoryLines = listOf(
             "You always did this the night before you'd quit on things.",
@@ -112,11 +144,15 @@ object Personas {
         label = "The Auditor",
         defaultName = "The Auditor",
         forecastLine = { n, pace, finish ->
-            "Projection from $n prior sessions: pace $pace, completion approx. $finish. Variance pending."
+            "Projection from ${sessions(n, "prior ")}: pace $pace, completion approx. $finish. Variance pending."
         },
         cowedLines = listOf(
             "Asset exceeding projected parameters. Recalibration pending.",
             "Performance nominal. No further comment logged.",
+        ),
+        watchfulLines = listOf(
+            "Asset performance within tolerance. Filed.",
+            "No variance flags raised this cycle.",
         ),
         predatoryLines = listOf(
             "Asset underperforming for the fourth consecutive cycle. Recommend reclassification: hobbyist.",
@@ -130,5 +166,5 @@ object Personas {
 
     val mvpRoster: List<Persona> = listOf(hatedPerson, betterSelf, justTwin7, theEx, theAuditor)
 
-    fun byKey(key: String): Persona = mvpRoster.first { it.key == key }
+    fun byKey(key: String?): Persona = mvpRoster.firstOrNull { it.key == key } ?: hatedPerson
 }

@@ -11,7 +11,7 @@ import dev.eversorhn.gait.data.db.entity.TwinProfileEntity
 
 @Database(
     entities = [SessionEntity::class, TwinProfileEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class GaitDatabase : RoomDatabase() {
@@ -30,6 +30,7 @@ abstract class GaitDatabase : RoomDatabase() {
                 )
                     // Pre-release: no installed base to migrate yet, so destructive
                     // migration beats hand-writing Migration objects for every schema tweak.
+                    // Must switch to real Migrations before the first public release.
                     .fallbackToDestructiveMigration()
                     .build().also { instance = it }
             }

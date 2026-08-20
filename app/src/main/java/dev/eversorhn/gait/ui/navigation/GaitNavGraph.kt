@@ -19,6 +19,7 @@ import dev.eversorhn.gait.GaitApplication
 import dev.eversorhn.gait.ui.forecast.ForecastScreen
 import dev.eversorhn.gait.ui.logsession.LogSessionScreen
 import dev.eversorhn.gait.ui.restdays.RestDaysScreen
+import dev.eversorhn.gait.ui.settings.SettingsScreen
 import dev.eversorhn.gait.ui.setup.HordeSetupScreen
 import dev.eversorhn.gait.ui.setup.NamingScreen
 import dev.eversorhn.gait.ui.setup.OpponentTypeScreen
@@ -37,6 +38,7 @@ private object Routes {
     const val LOG_SESSION = "log_session"
     const val REST_DAYS = "rest_days"
     const val STATS = "stats"
+    const val SETTINGS = "settings"
 }
 
 private val routeLabels = mapOf(
@@ -49,6 +51,7 @@ private val routeLabels = mapOf(
     Routes.LOG_SESSION to "LOG SESSION",
     Routes.REST_DAYS to "REST & VACATION",
     Routes.STATS to "STATISTICS",
+    Routes.SETTINGS to "SETTINGS",
 )
 
 @Composable
@@ -65,8 +68,8 @@ fun GaitNavGraph() {
                 composable(Routes.LOADING) {
                     val app = LocalContext.current.applicationContext as GaitApplication
                     LaunchedEffect(Unit) {
-                        val hasTwin = app.repository.getTwinProfile() != null
-                        val destination = if (hasTwin) Routes.FORECAST else Routes.OPPONENT_TYPE
+                        val hasOpponent = app.repository.getTwinProfile() != null
+                        val destination = if (hasOpponent) Routes.FORECAST else Routes.OPPONENT_TYPE
                         navController.navigate(destination) {
                             popUpTo(Routes.LOADING) { inclusive = true }
                         }
@@ -105,6 +108,7 @@ fun GaitNavGraph() {
                         onLogSession = { navController.navigate(Routes.LOG_SESSION) },
                         onRestDays = { navController.navigate(Routes.REST_DAYS) },
                         onStats = { navController.navigate(Routes.STATS) },
+                        onSettings = { navController.navigate(Routes.SETTINGS) },
                     )
                 }
 
@@ -122,6 +126,18 @@ fun GaitNavGraph() {
 
                 composable(Routes.STATS) {
                     StatsScreen(onDone = { navController.popBackStack() })
+                }
+
+                composable(Routes.SETTINGS) {
+                    SettingsScreen(
+                        onDone = { navController.popBackStack() },
+                        onWiped = {
+                            // Everything's gone: drop the whole back stack and restart at setup.
+                            navController.navigate(Routes.OPPONENT_TYPE) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        },
+                    )
                 }
             }
         }

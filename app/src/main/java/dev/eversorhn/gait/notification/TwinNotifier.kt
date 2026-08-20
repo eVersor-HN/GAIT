@@ -3,17 +3,22 @@ package dev.eversorhn.gait.notification
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import dev.eversorhn.gait.MainActivity
 
 /**
- * Posts Twin messages that break out of the app. Two callers, per the design docs:
- * - the same-day Predatory exception in docs/composure-system.md (a specific weak session),
- * - the periodic, sparse "idle taunt" in docs/notifications.md (no session needed at all).
- * Both go through one channel so the user has a single place to mute this if they want to.
+ * Posts opponent messages that break out of the app. Callers, per the design docs:
+ * - the same-day Predatory/Swarming exception in docs/composure-system.md,
+ * - the gap-predatory and idle-taunt pings in docs/notifications.md.
+ * All go through one channel so the user has a single place to mute this if they want to.
+ * Every notification opens the app on tap.
  */
 object TwinNotifier {
 
@@ -27,8 +32,8 @@ object TwinNotifier {
 
         if (manager.getNotificationChannel(CHANNEL_ID) == null) {
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Twin messages", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                    description = "Messages from your Twin — same-day reactions and the occasional unprompted jab."
+                NotificationChannel(CHANNEL_ID, "Opponent messages", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                    description = "Messages from your Twin or Horde — same-day reactions and the occasional unprompted jab."
                 }
             )
         }
@@ -48,6 +53,19 @@ object TwinNotifier {
         return TRACKING_CHANNEL_ID
     }
 
+    /** Tap target for every notification: bring the app to the front (or launch it). */
+    fun openAppIntent(context: Context): PendingIntent {
+        val launch = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        return PendingIntent.getActivity(
+            context,
+            0,
+            launch,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     fun postTwinMessage(context: Context, twinName: String, body: String) {
         ensureChannel(context)
 
@@ -65,10 +83,10 @@ object TwinNotifier {
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(openAppIntent(context))
             .setAutoCancel(true)
             .build()
 
-        androidx.core.app.NotificationManagerCompat.from(context)
-            .notify(notificationId++, notification)
+        NotificationManagerCompat.from(context).notify(notificationId++, notification)
     }
 }
