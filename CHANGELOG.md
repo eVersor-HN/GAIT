@@ -26,6 +26,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Rest day handling specified in `docs/telemetry-and-forecasting.md`: declared rest days, inferred rest days via the cold-start forecast behavior, anti-gaming commentary past ~2–3 declared rest days/week, and a 24–48h post-Trial calibration window for new Twin generations.
 - Live audio callouts designed (`docs/live-audio.md`): event-triggered (gap-threshold crossings, route events, session phase, Composure state) rather than timer-based, with a hard cooldown and per-session cap, reusing the existing persona/Composure content system as a new delivery channel.
 - Platform, stack, and MVP scope decided (`docs/scope-and-stack.md`): native Android (Kotlin + Jetpack Compose), fully on-device architecture with no backend, free-with-donations monetization, and a phased scope (v1: single activity + 5 personas + Composure + rest days; v1.1: live audio, notifications, remaining personas; v1.2+: additional activities, Overseer Twin).
+- Android app scaffolded and running on a real device: Room database (`SessionEntity`, `TwinProfileEntity`), the k-nearest-analog `ForecastEngine`, the z-score-based `ComposureEngine`, 5 MVP personas with forecast/cowed/predatory/idle line banks, and Setup/Naming → Forecast → manual session logging → Debrief working end to end.
+- True fullscreen immersive UI (system bars hidden, swipe to reveal).
+- Notifications implemented (`docs/notifications.md`): a shared "Twin messages" channel, the same-day Predatory exception wired into the Debrief flow, and `IdleTauntWorker` — a WorkManager job posting sparse, randomized (2–4 day jitter) idle taunts instead of a fixed timer.
 
 ## [0.1.0] - 2026-08-20
 ### Added

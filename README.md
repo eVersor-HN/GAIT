@@ -1,6 +1,6 @@
 # GAIT
 
-**Status:** Early concept — no code yet, product design and interactive mockups only. Target: native Android, free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope.
+**Status:** Early build — the Android app has started. Setup/Naming → Forecast → manual session logging → Debrief is working end to end on a real device (live GPS tracking isn't wired up yet). Free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope, and `app/` for the source.
 
 GAIT is a concept for a GPS movement app (running, walking, cycling, e-scooter, ...) that deliberately avoids generic missions, achievements, or leaderboards against strangers. Everything is cyberpunk-corpo themed at its core: your movement data is a commodity that fictional corporations compete over.
 
@@ -43,6 +43,10 @@ How the Forecast, Fidelity, and Composure numbers actually get computed — sens
 
 Spoken lines from the Twin mid-activity, for when the phone is in a pocket — triggered by live gap-threshold crossings and route events rather than a timer, with a hard cooldown and per-session cap so it never turns into constant chatter. Reuses the persona/Composure system as a new delivery channel. Details: [`docs/live-audio.md`](docs/live-audio.md).
 
+## Notifications
+
+The same-day Predatory exception from Composure, plus sparse, randomized "idle taunt" pings every 2–4 days so the Twin has a presence outside of active sessions without becoming annoying. Details: [`docs/notifications.md`](docs/notifications.md).
+
 ## Interactive demo
 
 `demo/asset-twin-demo.html` — phone mockups of all six phases, cyberpunk-corpo styled. Open locally in a browser (no dependencies, no external requests beyond Google Fonts).
@@ -69,7 +73,9 @@ docs/composure-system.md              — dominance-reactive tone system
 docs/telemetry-and-forecasting.md     — sensor inputs, forecasting/fidelity algorithms, rest days
 docs/live-audio.md                    — real-time spoken callouts during an activity
 docs/scope-and-stack.md               — Android tech stack, on-device architecture, MVP scope
+docs/notifications.md                 — same-day Predatory pings and idle taunts
 demo/asset-twin-demo.html             — interactive HTML mockups of the Asset Twin loop
+app/                                   — the Android app itself (Kotlin + Jetpack Compose)
 ```
 
 ## Support
