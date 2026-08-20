@@ -1,32 +1,32 @@
-# Ideensammlung
+# Idea collection
 
-Ausgangspunkt: eine GPS-Bewegungs-App (Gehen, Laufen, Radfahren, E-Scooter, ...), die interaktiv mit der Aufzeichnung umgeht, um zu motivieren — ohne generische Missionen oder Achievements. Alles im Kern Cyberpunk-Corpo-thematisiert.
+Starting point: a GPS movement app (walking, running, cycling, e-scooter, ...) that interacts with the tracking itself to motivate — without generic missions or achievements. Everything cyberpunk-corpo themed at its core.
 
-Fünf unabhängige Kernmechaniken wurden entworfen. **Asset Twin** wurde als Fokus für die Weiterentwicklung ausgewählt (siehe [README](../README.md)); die übrigen vier sind hier als zurückgestellte Erweiterungsideen dokumentiert.
+Five independent core mechanics were designed. **Asset Twin** was selected as the focus for further development (see the [README](../README.md)); the other four are documented here as parked expansion ideas.
 
-## 1. Der Datenbroker-Kreislauf
+## 1. The Data Broker Loop
 
-Bewegungsdaten sind keine Punkte, sondern eine Ware. Rivalisierende Fiktiv-Konzerne kaufen dir nach jeder Session Daten ab — jeder Konzern will etwas anderes (Tempo-Konstanz, Frühaufsteher-Daten, Streckenvielfalt, Recovery-Muster). Angebote werden dynamisch aus echtem Verhalten generiert. Ein Wechsel der Patron-Fraktion kostet dort aufgebaute Loyalität/Reputation.
+Movement data isn't points, it's a commodity. Rival fictional corporations buy your data after every session — each corporation wants something different (pace consistency, early-riser data, route variety, recovery patterns). Offers are generated dynamically from real behavior. Switching patron factions costs the loyalty/reputation built up there.
 
-## 2. Asset Twin *(ausgewählter Fokus)*
+## 2. Asset Twin *(selected focus)*
 
-Eine KI baut kontinuierlich eine digitale Kopie des Nutzers aus dessen Vergangenheitsdaten und lässt sie live neben der aktuellen Aktivität „mitlaufen" — ein Konzern-Experiment, das prüft, ob man den Nutzer durch eine Simulation ersetzen kann. Ausgebaut zu einem sechsteiligen Loop (Setup/Naming, Forecast, Live-Divergenz, Fidelity-Bilanz, Decommission Trial, Generationswechsel) — Details im [README](../README.md).
+An AI continuously builds a digital copy of the user from their own history and runs it live alongside the current activity — a corporate experiment testing whether the user could be replaced by a simulation. Expanded into a six-phase loop (Setup/Naming, Forecast, Live Divergence, Fidelity Debrief, Decommission Trial, Generational Handoff) — details in the [README](../README.md).
 
 ## 3. Overwatch Zones
 
-Aus GPS-Historie, Tageszeiten und Wetterdaten erzeugt die App prozedural „Zonen erhöhter Konzernüberwachung" auf der Route. Entscheidung live: umgehen (Stealth-Bonus, sicher) oder durchqueren (höherer Datenwert, aber Risiko, dass eine Rivalen-Fraktion Daten „abfängt"). Keine vorgefertigten Missionsziele — die Entscheidung entsteht live aus echten Daten.
+From GPS history, time of day, and weather data, the app procedurally generates "zones of increased corporate surveillance" on the route. Live decision: go around (stealth bonus, safe) or cross through (higher data value, but risk that a rival faction "intercepts" the data). No pre-built mission objectives — the decision emerges live from real data.
 
-## 4. Cyberware-Profil
+## 4. Cyberware Profile
 
-Fortschritt zeigt sich nicht als XP-Balken, sondern als wachsendes Implantat-HUD. Jedes Implantat ist an eine konkrete physiologische Verbesserung gekoppelt (z. B. 4 Wochen stabiles Pacing → „Nerve Accelerator Mk1", verbesserte Recovery → „Thermal Regulator"). Ästhetischer Fortschritt = echter Trainingsfortschritt.
+Progress isn't an XP bar but a growing implant HUD. Each implant is tied to a concrete physiological improvement (e.g. 4 weeks of stable pacing → "Nerve Accelerator Mk1," improved recovery → "Thermal Regulator"). Aesthetic progress equals real training progress.
 
-## 5. Feindliche Übernahmeangebote
+## 5. Hostile Takeover Offers
 
-Rivalisierende Fraktionen werben aktiv um den Nutzer ab, mit personalisierten Gegenangeboten, die exakt auf erkannte Muster und Schwächen zielen (z. B. „3 Regen-Absagen erkannt — Bonus für eine Nass-Session vor Freitag"). Angebote werden aus echtem Verhalten generiert, nicht zufällig.
+Rival factions actively try to poach the user, with personalized counter-offers targeting recognized patterns and weaknesses (e.g. "3 rain cancellations detected — bonus for a wet-weather session before Friday"). Offers are generated from real behavior, not randomly.
 
 ---
 
-## Weltbausteine (übergreifend)
+## World building (cross-cutting)
 
-- **GAIT** — die App/Plattform selbst, liest Gangbild und Bewegungsdaten.
-- **Meridian Group** (Ausdauer & Konstanz), **Helix Systems** (Tempo & Intervalle), **Obsidian Dynamics** (Erholung & Muster) — drei rivalisierende Konzerne, die um Nutzerdaten konkurrieren. Aktuell primär im Datenbroker-Modul relevant, potenziell auch als Auftraggeber hinter einem Asset Twin denkbar.
+- **GAIT** — the app/platform itself, reads gait and movement data.
+- **Meridian Group** (endurance & consistency), **Helix Systems** (pace & intervals), **Obsidian Dynamics** (recovery & patterns) — three rival corporations competing for user data. Currently primarily relevant to the Data Broker module, potentially also conceivable as the client behind an Asset Twin.

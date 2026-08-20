@@ -1,23 +1,26 @@
 # Changelog
 
-Alle nennenswerten Änderungen an diesem Konzeptprojekt werden hier festgehalten.
+All notable changes to this concept project are tracked here.
 
-Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
 ### Added
-- App-Name **GAIT** festgelegt.
-- Fokus-Entscheidung: **Asset Twin** wird zur Kernmechanik ausgebaut, da sie Wettbewerb ohne Abhängigkeit von anderen Menschen ermöglicht.
-- Twin-Naming-Feature: Nutzer:innen benennen ihren Zwilling selbst beim Setup (Presets „Gehasste Person", „Besseres Ich", „Nur Twin-7").
-- Sechsteiliger Asset-Twin-Loop ausgearbeitet: Setup → Forecast → Live-Divergenz → Fidelity-Bilanz → Decommission Trial → Generationswechsel.
-- Interaktive HTML-Demo (`demo/asset-twin-demo.html`) mit Handy-Mockups aller sechs Phasen.
-- Erste Ideensammlung mit fünf unabhängigen Kernmechaniken dokumentiert (`docs/concept.md`): Datenbroker-Kreislauf, Asset Twin, Overwatch Zones, Cyberware-Profil, Feindliche Übernahmeangebote.
-- Standard-Content-Sprache der App auf Englisch festgelegt.
-- 14 zusätzliche Twin-Personas entworfen (17 insgesamt) mit eigener Stimme je Archetyp, dokumentiert in `docs/twin-personas.md`.
-- Dialog-Variationssystem spezifiziert: daten-basierte Templates statt Festtext, Zustands-abhängiger Ton, Anti-Repetition mit bewussten Callbacks, empfohlene Umsetzung über daten-gegründete Generierung statt statischer Textbank.
-- Sportarten- und Wettbewerbsdimensions-Konzept dokumentiert (`docs/activities-and-dimensions.md`): Aktivitätstypen (menschbetrieben, motorunterstützt, casual/utility), dazu passende Wettbewerbsdimensionen jenseits von Pace, sowie eigenständige Twin-Profile pro Sportart inkl. optionalem Overseer-Twin für sportartübergreifende Muster.
+- App name **GAIT** decided.
+- Focus decision: **Asset Twin** becomes the core mechanic, since it enables competition without depending on other people's schedules.
+- Twin naming feature: users name their own Twin at setup (presets "Hated Person," "Better Self," "Just Twin-7").
+- Six-phase Asset Twin loop designed: Setup → Forecast → Live Divergence → Fidelity Debrief → Decommission Trial → Generational Handoff.
+- Interactive HTML demo (`demo/asset-twin-demo.html`) with phone mockups of all six phases.
+- Original idea collection with five independent core mechanics documented (`docs/concept.md`): Data Broker Loop, Asset Twin, Overwatch Zones, Cyberware Profile, Hostile Takeover Offers.
+- App's default content language set to English.
+- 14 additional Twin personas designed (17 total), each with its own voice, documented in `docs/twin-personas.md`.
+- Dialogue variation system specified: data-grounded templates instead of fixed text, state-conditioned tone, anti-repetition with deliberate callbacks, recommended implementation via grounded generation instead of a static text bank.
+- Activities and competitive dimensions concept documented (`docs/activities-and-dimensions.md`): activity types (human-powered, motor-assisted, casual/utility), matching competitive dimensions beyond pace, and independent Twin profiles per activity including an optional cross-modal Overseer Twin.
+- Composure system documented (`docs/composure-system.md`): dominance-reactive tone separate from Fidelity — the Twin goes quiet ("Cowed") as you outperform it, and turns immediately hostile ("Predatory") the moment it detects you slipping, including a same-day notification exception, live-ghost and forecast-confidence behavior changes, and a user-facing intensity setting.
+- Telemetry and forecasting design documented (`docs/telemetry-and-forecasting.md`): sensor inputs and their reliability caveats, activity auto-classification, a k-nearest-analog forecasting approach suited to small per-user datasets, an EWMA-based Fidelity formula, route-novelty via polyline similarity, and z-score-based personalized Composure thresholds.
+- All project documentation translated to English (default project language, including on GitHub).
 
 ## [0.1.0] - 2026-08-20
 ### Added
-- Projekt initialisiert. Erste Brainstorming-Runde zu einer Cyberpunk-Corpo-themed GPS-Bewegungs-App ohne generische Missionen/Achievements.
+- Project initialized. First brainstorming round for a cyberpunk-corpo themed GPS movement app without generic missions/achievements.

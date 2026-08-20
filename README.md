@@ -1,61 +1,71 @@
 # GAIT
 
-**Status:** Frühes Konzept — noch kein Code, nur Produktdesign und interaktive Mockups.
+**Status:** Early concept — no code yet, product design and interactive mockups only.
 
-GAIT ist die Konzeptidee für eine GPS-Bewegungs-App (Laufen, Gehen, Radfahren, E-Scooter, ...), die bewusst **keine** generischen Missionen, Achievements oder Leaderboards gegen fremde Menschen nutzt. Stattdessen ist alles im Kern Cyberpunk-Corpo-thematisiert: Deine Bewegungsdaten sind eine Ware, um die fiktive Konzerne konkurrieren.
+GAIT is a concept for a GPS movement app (running, walking, cycling, e-scooter, ...) that deliberately avoids generic missions, achievements, or leaderboards against strangers. Everything is cyberpunk-corpo themed at its core: your movement data is a commodity that fictional corporations compete over.
 
-## Kernmechanik: Asset Twin
+## Core mechanic: Asset Twin
 
-Die aktuelle Fokus-Mechanik von GAIT. Eine KI baut aus deiner eigenen Trainingshistorie einen digitalen Zwilling, der versucht, dich vorherzusagen — ein Konzern-Experiment, das prüft, ob man dich durch eine Simulation ersetzen kann. Kein Wettkampf gegen fremde Menschen (keine Termine, keine Absagen anderer Leute), sondern ausschließlich gegen eine Version von dir selbst.
+GAIT's current focus mechanic. An AI builds a digital twin from your own training history that tries to predict you — a corporate experiment testing whether you could be replaced by a simulation. No competition against strangers (no scheduling, no other people's cancellations) — only ever against a version of yourself.
 
-Den Zwilling benennst du beim Setup selbst — z. B. nach jemandem, den du nie wieder gewinnen sehen willst. Der Name taucht danach in jeder Prognose, jedem Live-Vergleich und jeder Nachricht auf.
+You name the Twin yourself at setup — for example, after someone you never want to see win again. That name then appears in every forecast, every live comparison, and every message it sends.
 
-Der Loop hat sechs Phasen:
+The loop has six phases:
 
-| Phase | Beschreibung |
+| Phase | Description |
 |---|---|
-| 0 · Setup | Du gibst dem Zwilling einen Namen. Presets: „Gehasste Person", „Besseres Ich", „Nur Twin-7". |
-| 1 · Forecast | Vor der Aktivität sagt der Zwilling exakt voraus, was du heute tun wirst (Pace, Route, Zielzeit) — basierend auf echten Mustern. |
-| 2 · Live-Divergenz | Während der Aktivität schwächt alles Unvorhersehbare (neue Route, negativer Split, Training bei Regen) live die Fidelity des Zwillings — nicht reines Schnellerlaufen. |
-| 3 · Fidelity-Bilanz | Nach der Session: Forecast vs. Actual, plus Trend der Gesamt-Fidelity über Wochen. Die Fidelity steigt langfristig fast immer leicht weiter. |
-| 4 · Decommission Trial | Erreicht die Fidelity einen Schwellenwert: ein einzelnes Duell live gegen die stärkste bisherige Session des Zwillings. Bewusst selten. |
-| 5 · Generationswechsel | Der Zwilling meldet sich in persönlichem Ton, zitiert deine eigenen Daten. Bei einem Sieg wird eine neue, präzisere Generation initialisiert. |
+| 0 · Setup | You give the Twin a name. Presets: "Hated Person," "Better Self," "Just Twin-7." |
+| 1 · Forecast | Before the activity, the Twin predicts exactly what you'll do today (pace, route, finish time) — based on real patterns. |
+| 2 · Live Divergence | During the activity, anything unpredictable (a new route, a negative split, training in the rain) weakens the Twin's Fidelity live — not just running faster. |
+| 3 · Fidelity Debrief | After the session: Forecast vs. Actual, plus the overall Fidelity trend over weeks. Fidelity almost always creeps up slightly over the long run. |
+| 4 · Decommission Trial | Once Fidelity crosses a threshold: a single live duel against the Twin's strongest session to date. Deliberately rare. |
+| 5 · Generational Handoff | The Twin messages you in a personal tone, quoting your own data. A win spins up a new, sharper generation. |
 
-Die zentrale Spannung: Du willst explizit **nicht**, dass dein Zwilling besser wird oder gewinnt.
+The central tension: you explicitly do **not** want your Twin to get better or to win.
 
-## Twin-Personas & Dialog-Variation
+## Composure: dominance-reactive tone
 
-17 wählbare Ausgangs-Personas für den Zwilling (3 Basis-Presets + 14 vorgesprochene Archetypen wie „The Auditor", „The Doppelgänger", „Future You"), jede mit eigener Stimme. Alles, was der Zwilling sagt, muss sich wie eine echte, nie repetitive Person/KI anfühlen — dafür ein daten-basiertes Template- statt Festtext-System mit Zustands-abhängigem Ton und bewussten Callbacks. Details: [`docs/twin-personas.md`](docs/twin-personas.md). Standard-Content-Sprache der App ist Englisch.
+The better you are than the Twin, the smaller it gets — quiet, defensive, sometimes visibly losing its nerve. The moment it senses you slipping, it goes for the throat immediately, breaking containment with a same-day notification. Dark, blunt, and openly demeaning at its harshest — with a user-facing intensity setting (Off / Rival / Brutal) since this only works for people it clicks with. Details: [`docs/composure-system.md`](docs/composure-system.md).
 
-## Sportarten & Wettbewerbsdimensionen
+## Twin personas & dialogue variation
 
-GPS liefert von Natur aus Pace/Route/Distanz — passt gut zu Ausdauersportarten, aber nicht zu motorunterstützter Fortbewegung (E-Scooter, E-Bike), wo nicht Tempo, sondern Konsistenz, Routen-Neuheit und Zuverlässigkeit die faire Wettbewerbsdimension sind. Jede Aktivität bekommt ein eigenständiges Twin-Profil (eigene Fidelity, eigene Generation, eigene Persona). Details: [`docs/activities-and-dimensions.md`](docs/activities-and-dimensions.md).
+17 selectable starting personas for the Twin (3 base presets + 14 pre-voiced archetypes like "The Auditor," "The Doppelgänger," "Future You"), each with its own voice. Everything the Twin says has to feel like a real, never-repetitive person/AI — driven by data-grounded templates instead of fixed text, state-conditioned tone, and deliberate callbacks. Details: [`docs/twin-personas.md`](docs/twin-personas.md). Default content language for the app is English.
 
-## Interaktive Demo
+## Activities & competitive dimensions
 
-`demo/asset-twin-demo.html` — Handy-Mockups aller sechs Phasen, cyberpunk-corpo gestaltet. Einfach lokal im Browser öffnen (keine Abhängigkeiten, keine externen Requests außer Google Fonts).
+GPS naturally captures pace/route/distance — a good fit for endurance sports, but not for motor-assisted movement (e-scooter, e-bike), where consistency, route novelty, and reliability are the fair competitive dimension instead of speed. Every activity gets an independent Twin profile (own Fidelity, own Generation, own persona). Details: [`docs/activities-and-dimensions.md`](docs/activities-and-dimensions.md).
 
-## Weitere, aktuell zurückgestellte Modul-Ideen
+## Telemetry & forecasting
 
-Aus der ursprünglichen Ideenrunde, dokumentiert in [`docs/concept.md`](docs/concept.md), aber nicht mehr im Fokus:
+How the Forecast, Fidelity, and Composure numbers actually get computed — sensor inputs, activity auto-classification, a small-data-appropriate forecasting approach, and the training-load concepts (EWMA, ACWR-style load, route-similarity metrics) behind them. Details: [`docs/telemetry-and-forecasting.md`](docs/telemetry-and-forecasting.md).
 
-- **Datenbroker-Kreislauf** — Sessions werden live an rivalisierende Konzerne versteigert.
-- **Overwatch Zones** — dynamisch generierte Überwachungszonen auf der Route, meiden oder durchqueren.
-- **Cyberware-Profil** — Fortschritt als Implantat-HUD statt XP-Balken.
-- **Feindliche Übernahmeangebote** — rivalisierende Konzerne werben personalisiert um dich ab.
+## Interactive demo
 
-## Projektstruktur
+`demo/asset-twin-demo.html` — phone mockups of all six phases, cyberpunk-corpo styled. Open locally in a browser (no dependencies, no external requests beyond Google Fonts).
+
+## Other, currently parked module ideas
+
+From the original brainstorm, documented in [`docs/concept.md`](docs/concept.md), no longer the active focus:
+
+- **Data Broker Loop** — sessions get live-auctioned to rival corporations.
+- **Overwatch Zones** — dynamically generated surveillance zones on your route, avoid or cross through.
+- **Cyberware Profile** — progress as an implant HUD instead of an XP bar.
+- **Hostile Takeover Offers** — rival corporations personally poach you.
+
+## Project structure
 
 ```
-README.md                      — dieses Dokument
-CHANGELOG.md                    — Verlauf der Konzeptentscheidungen
-LICENSE                         — MIT
-docs/concept.md                  — vollständige Ideensammlung (alle 5 ursprünglichen Mechaniken)
-docs/twin-personas.md             — 17 Twin-Personas + Dialog-Variationssystem
-docs/activities-and-dimensions.md — Sportarten, Wettbewerbsdimensionen, Profil-Architektur
-demo/asset-twin-demo.html         — interaktive HTML-Mockups des Asset-Twin-Loops
+README.md                          — this document
+CHANGELOG.md                        — history of concept decisions
+LICENSE                             — MIT
+docs/concept.md                      — full idea collection (all 5 original mechanics)
+docs/twin-personas.md                 — 17 Twin personas + dialogue variation system
+docs/activities-and-dimensions.md     — activities, competitive dimensions, profile architecture
+docs/composure-system.md              — dominance-reactive tone system
+docs/telemetry-and-forecasting.md     — sensor inputs and the forecasting/fidelity algorithms
+demo/asset-twin-demo.html             — interactive HTML mockups of the Asset Twin loop
 ```
 
-## Lizenz
+## License
 
-MIT — siehe [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
