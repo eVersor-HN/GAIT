@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -18,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ForecastScreen(onLogSession: () -> Unit) {
+fun ForecastScreen(onStartActivity: () -> Unit, onLogSession: () -> Unit) {
     val viewModel: ForecastViewModel = dev.eversorhn.gait.ui.gaitViewModel()
     val state by viewModel.uiState.collectAsState()
 
@@ -61,8 +62,11 @@ fun ForecastScreen(onLogSession: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                Button(onClick = onLogSession, modifier = Modifier.fillMaxWidth()) {
-                    Text("LOG A SESSION")
+                Button(onClick = onStartActivity, modifier = Modifier.fillMaxWidth()) {
+                    Text("START ACTIVITY")
+                }
+                TextButton(onClick = onLogSession, modifier = Modifier.fillMaxWidth()) {
+                    Text("Log manually instead")
                 }
             }
         }

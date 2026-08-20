@@ -33,15 +33,19 @@ Everything designed so far is the full vision, not the first release.
 
 ### Ships in v1
 - One activity: **Running** only. No activity picker, no per-activity dimension logic yet — real complexity worth deferring.
-- The full six-phase loop: Setup/Naming → Forecast → Live Divergence → Fidelity Debrief → Decommission Trial → Generational Handoff.
-- A curated starting set of **5 personas** rather than all 17 — Hated Person, Better Self, Just Twin-7, The Ex, The Auditor — enough range to see what resonates before writing templates for the rest.
-- Composure (Cowed/Predatory tone shift) — core to the hook, not optional.
+- GPS tracking via a foreground service — live distance/pace/elapsed time, manual entry kept as a fallback. *(built)*
+- Forecast → session logged (tracked or manual) → Fidelity/Composure update → Debrief, in one loop. *(built)*
+- A curated starting set of **5 personas** rather than all 17 — Hated Person, Better Self, Just Twin-7, The Ex, The Auditor — enough range to see what resonates before writing templates for the rest. *(built)*
+- Composure (Cowed/Predatory tone shift) — core to the hook, not optional. *(built)*
+- Same-day Predatory notifications and sparse, randomized idle taunts. *(built — see `docs/notifications.md`)*
+- A confirmation dialog when leaving mid-recording, so the back gesture can't silently interrupt a live session. *(built)*
 - Rest days (declared + inferred) — cheap to implement, meaningfully improves fairness from day one.
+- Live Divergence and Decommission Trial screens (currently only in the HTML concept demo, not yet wired into the app).
 
 ### v1.1
 - Live audio callouts — the most exciting differentiator, but a real chunk of Android complexity (foreground audio, TTS, audio focus) better added once the core loop is validated with real use.
-- Same-day Predatory push notifications — needs careful battery-optimization handling to be reliable; not required to prove the loop works.
 - Remaining 12 personas.
+- Route storage and route-novelty scoring (currently only distance/pace/duration are recorded, not the GPS polyline itself).
 
 ### v1.2+
 - Additional activities (Cycling, E-Scooter, Hiking, Hand-Cycle, ...) and their activity-aware dimension defaults.
@@ -52,6 +56,6 @@ Everything designed so far is the full vision, not the first release.
 
 ## Play Store compliance notes
 
-- Background location requires Google's mandatory in-app disclosure screen before the permission prompt — budget UI time for this, it isn't optional.
+- Tracking runs inside a foreground service with an ongoing notification, which Android exempts from the `ACCESS_BACKGROUND_LOCATION` requirement — so the mandatory prominent-disclosure screen for that permission is avoided entirely, not just deferred. Only foreground `ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION` are requested, at the point tracking is first started.
 - Health & Fitness category apps get extra Play Console review scrutiny; expect a slower first review than a typical app.
 - A privacy policy is mandatory for the location + Health Connect permissions regardless of the on-device-only architecture — required even when the honest answer is "we don't collect anything."

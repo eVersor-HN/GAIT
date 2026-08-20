@@ -18,22 +18,34 @@ import androidx.core.app.NotificationCompat
 object TwinNotifier {
 
     private const val CHANNEL_ID = "twin_messages"
+    private const val TRACKING_CHANNEL_ID = "tracking_status"
     private var notificationId = 1000
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java)
-        val existing = manager.getNotificationChannel(CHANNEL_ID)
-        if (existing != null) return
 
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Twin messages",
-            NotificationManager.IMPORTANCE_DEFAULT,
-        ).apply {
-            description = "Messages from your Twin — same-day reactions and the occasional unprompted jab."
+        if (manager.getNotificationChannel(CHANNEL_ID) == null) {
+            manager.createNotificationChannel(
+                NotificationChannel(CHANNEL_ID, "Twin messages", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                    description = "Messages from your Twin — same-day reactions and the occasional unprompted jab."
+                }
+            )
         }
-        manager.createNotificationChannel(channel)
+
+        if (manager.getNotificationChannel(TRACKING_CHANNEL_ID) == null) {
+            manager.createNotificationChannel(
+                NotificationChannel(TRACKING_CHANNEL_ID, "Tracking status", NotificationManager.IMPORTANCE_LOW).apply {
+                    description = "The ongoing notification shown while GAIT is recording a session."
+                }
+            )
+        }
+    }
+
+    /** The foreground service's persistent notification lives on its own low-importance channel. */
+    fun trackingChannelId(context: Context): String {
+        ensureChannel(context)
+        return TRACKING_CHANNEL_ID
     }
 
     fun postTwinMessage(context: Context, twinName: String, body: String) {

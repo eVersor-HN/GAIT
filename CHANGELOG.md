@@ -29,6 +29,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Android app scaffolded and running on a real device: Room database (`SessionEntity`, `TwinProfileEntity`), the k-nearest-analog `ForecastEngine`, the z-score-based `ComposureEngine`, 5 MVP personas with forecast/cowed/predatory/idle line banks, and Setup/Naming → Forecast → manual session logging → Debrief working end to end.
 - True fullscreen immersive UI (system bars hidden, swipe to reveal).
 - Notifications implemented (`docs/notifications.md`): a shared "Twin messages" channel, the same-day Predatory exception wired into the Debrief flow, and `IdleTauntWorker` — a WorkManager job posting sparse, randomized (2–4 day jitter) idle taunts instead of a fixed timer.
+- Real GPS tracking: `LocationTrackingService`, a foreground service (type `location`) that records live distance/pace/elapsed time via FusedLocationProvider, filtering fixes worse than 25m accuracy. Runs without `ACCESS_BACKGROUND_LOCATION` — Android exempts foreground services with a visible notification from that requirement, which also skips the Play Store prominent-disclosure flow entirely.
+- `SessionFinalizer` extracted so GPS-tracked and manually-logged sessions share one path into Forecast/Fidelity/Composure/notifications instead of duplicating the logic.
+- A confirmation dialog intercepts the back gesture while a session is actively recording ("Stop tracking" vs. "Keep tracking"), so it can't be lost by an accidental back-press.
+- Manual session entry kept as a fallback, secondary to "Start Activity" on the Forecast screen.
 
 ## [0.1.0] - 2026-08-20
 ### Added

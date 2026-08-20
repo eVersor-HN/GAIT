@@ -16,11 +16,13 @@ import dev.eversorhn.gait.GaitApplication
 import dev.eversorhn.gait.ui.forecast.ForecastScreen
 import dev.eversorhn.gait.ui.logsession.LogSessionScreen
 import dev.eversorhn.gait.ui.setup.NamingScreen
+import dev.eversorhn.gait.ui.track.TrackScreen
 
 private object Routes {
     const val LOADING = "loading"
     const val NAMING = "naming"
     const val FORECAST = "forecast"
+    const val TRACK = "track"
     const val LOG_SESSION = "log_session"
 }
 
@@ -52,7 +54,14 @@ fun GaitNavGraph() {
         }
 
         composable(Routes.FORECAST) {
-            ForecastScreen(onLogSession = { navController.navigate(Routes.LOG_SESSION) })
+            ForecastScreen(
+                onStartActivity = { navController.navigate(Routes.TRACK) },
+                onLogSession = { navController.navigate(Routes.LOG_SESSION) },
+            )
+        }
+
+        composable(Routes.TRACK) {
+            TrackScreen(onDone = { navController.popBackStack() })
         }
 
         composable(Routes.LOG_SESSION) {
