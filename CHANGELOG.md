@@ -4,6 +4,22 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.3.0] - 2026-08-20
+
+Zombie Horde as a full alternate opponent mode, Simulation moved out into its own standalone APK, and a reduced-motion fix.
+
+### Added
+- **Zombie Horde opponent mode**: a new Setup Step 1 (Opponent Type: Rival Twin vs. Zombie Horde). Horde path skips naming entirely — a lore screen (decommissioned Twins get recycled into the horde) plus an intensity picker (Calm/Standard/Relentless), no name given. See `docs/zombie-mode.md`.
+- `HordeSoundCues`: bracketed, non-verbal captions (`[snarling, just behind you]`) for Fallen Back / Tracking / Swarming states plus ambient/idle captions — never comprehensible words, per the brief. Intensity only varies the Swarming bank.
+- `TwinProfileEntity` gains `opponentType` (`"twin"` | `"horde"`) rather than a parallel table; `fidelity`/`generation`/`personaKey` are reinterpreted as Proximity/Wave/intensity-key for a Horde profile. DB bumped to version 4.
+- `SessionFinalizer`, `ForecastViewModel`, and `DebriefContent` all branch on `opponentType` to relabel Fidelity→Proximity, Generation→Wave, Composure→Aggression (Cowed/Watchful/Predatory → Fallen Back/Tracking/Swarming), and swap persona lines for Horde captions — same math, same notification pipeline, different fiction.
+- Fixed two latent crash bugs found while wiring this up: `IdleTauntWorker` and Simulation mode both called `Personas.byKey()` unconditionally, which would throw for a Horde profile. Both now branch correctly.
+- Verified live on device end to end: Opponent Type → Horde setup (Relentless) → Forecast (`Relentless · Wave 1 · Proximity 50%`, `[no signal yet]` cold-start caption) → a logged session producing `Proximity now 50% · Aggression: TRACKING` and a real bracketed caption in the Debrief. No crashes.
+- **Simulation mode moved out of the main app** into a new standalone Gradle module, `:simdemo` (applicationId `dev.eversorhn.gait.simdemo`) — the real app now has zero demo/dummy content by design, not just a warning label. See `docs/simulation-mode.md`.
+- `:simdemo` is a single self-contained screen: no Room, no navigation graph, no permissions, a fixed demo session (5 km / 25:00 vs. a fixed "Markus K." opponent), duplicated (not shared) theme/chrome for full independence, installs side by side with the main app.
+- Fixed a reduced-motion bug found via user testing: Android's animator-duration-scale=0 setting (common in Developer Options) collapses Compose's `animateTo` to instant, which broke Simulation's entire premise. Added `withFullMotion` (`MotionDurationScale` override) scoped only to Simulation's ramp — every other animation in both apps continues to correctly respect the system's reduced-motion setting, since that's the right default for decorative motion.
+- Verified `:simdemo` live on device: installs alongside the main app, the animated ramp progresses in real time with correct distance/gap math, immersive fullscreen matches the main app, no crashes.
+
 ## [0.2.0] - 2026-08-20
 
 The first real build: a working Android app, not just design docs. Setup → Forecast → GPS or indoor tracking → Debrief runs end to end on a physical device, with Composure, Rest Days/Vacation, Statistics, a Simulation mode, and full cyberpunk-corpo visual chrome.

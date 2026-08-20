@@ -1,6 +1,6 @@
 # GAIT
 
-**Status:** v0.2.0 — a real Android app, verified on a physical device. Setup/Naming → Forecast → GPS or indoor tracking → Debrief works end to end, with Composure, Rest Days/Vacation, a Simulation mode, Statistics, and full cyberpunk-corpo visual chrome. Free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope, [`CHANGELOG.md`](CHANGELOG.md) for the detailed history, and `app/` for the source.
+**Status:** v0.3.0 — a real Android app, verified on a physical device. Setup → Forecast → GPS or indoor tracking → Debrief works end to end, against either a Rival Twin or a Zombie Horde, with Composure, Rest Days/Vacation, Statistics, and full cyberpunk-corpo visual chrome. A separate small `:simdemo` APK is a shareable teaser with no real data. Free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope, [`CHANGELOG.md`](CHANGELOG.md) for the detailed history, and `app/` for the source.
 
 GAIT is a concept for a GPS movement app (running, walking, cycling, e-scooter, ...) that deliberately avoids generic missions, achievements, or leaderboards against strangers. Everything is cyberpunk-corpo themed at its core: your movement data is a commodity that fictional corporations compete over.
 
@@ -26,6 +26,14 @@ The central tension: you explicitly do **not** want your Twin to get better or t
 ## Composure: dominance-reactive tone
 
 The better you are than the Twin, the smaller it gets — quiet, defensive, sometimes visibly losing its nerve. The moment it senses you slipping, it goes for the throat immediately, breaking containment with a same-day notification. Dark, blunt, and openly demeaning at its harshest — with a user-facing intensity setting (Off / Rival / Brutal) since this only works for people it clicks with. Details: [`docs/composure-system.md`](docs/composure-system.md).
+
+## Zombie Horde: the alternate opponent
+
+Chosen instead of a Rival Twin at setup. No name, no persona voice — three tiers (Shamblers, Stalkers, Screamers) and non-verbal bracketed captions (`[snarling, just behind you]`) instead of dialogue. Same Fidelity/Composure math underneath, relabeled as Proximity/Wave/Aggression. In-fiction, the horde is literally built from decommissioned Twins that lost their Decommission Trial — the two opponent types share one world, not two disconnected features. Details: [`docs/zombie-mode.md`](docs/zombie-mode.md).
+
+## Simulation: a separate demo APK
+
+Not part of the main app — a small, standalone `:simdemo` module (different `applicationId`, no database, no permissions) that animates a fixed demo session for showing GAIT off without installing the real thing or touching real data. Details: [`docs/simulation-mode.md`](docs/simulation-mode.md).
 
 ## Twin personas & dialogue variation
 
@@ -74,8 +82,11 @@ docs/telemetry-and-forecasting.md     — sensor inputs, forecasting/fidelity al
 docs/live-audio.md                    — real-time spoken callouts during an activity
 docs/scope-and-stack.md               — Android tech stack, on-device architecture, MVP scope
 docs/notifications.md                 — same-day Predatory pings and idle taunts
+docs/zombie-mode.md                   — the Zombie Horde alternate opponent
+docs/simulation-mode.md               — why the demo is a separate APK
 demo/asset-twin-demo.html             — interactive HTML mockups of the Asset Twin loop
-app/                                   — the Android app itself (Kotlin + Jetpack Compose)
+app/                                   — the main Android app (Kotlin + Jetpack Compose)
+simdemo/                               — standalone demo APK, no real data
 ```
 
 ## Support

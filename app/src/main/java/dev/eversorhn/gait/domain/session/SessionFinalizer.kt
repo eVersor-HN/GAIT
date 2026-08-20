@@ -1,6 +1,7 @@
 package dev.eversorhn.gait.domain.session
 
 import android.content.Context
+import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.db.entity.SessionEntity
 import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.data.repository.ACTIVITY_RUNNING
@@ -8,6 +9,7 @@ import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.composure.ComposureEngine
 import dev.eversorhn.gait.domain.composure.ComposureState
 import dev.eversorhn.gait.domain.forecast.ForecastEngine
+import dev.eversorhn.gait.domain.horde.HordeSoundCues
 import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.notification.TwinNotifier
 import dev.eversorhn.gait.ui.forecast.formatPace
@@ -24,13 +26,17 @@ data class DebriefResult(
     val twinLine: String?,
     val newFidelityPercent: Int,
     val dataSource: String,
+    val opponentType: String = OpponentType.TWIN,
+    /** "Fidelity" for a Twin, "Proximity" for a Horde. */
+    val metricLabel: String = "Fidelity",
 )
 
 /**
  * The one place a completed session (manually logged or GPS-tracked) turns into a saved
- * SessionEntity, an updated Fidelity, a Composure verdict, and — for Predatory — a
- * same-day notification. Shared by LogSessionViewModel and TrackViewModel so both entry
- * points behave identically.
+ * SessionEntity, an updated Fidelity/Proximity, a Composure verdict, and — for
+ * Predatory/Swarming — a same-day notification. Shared by LogSessionViewModel and
+ * TrackViewModel so both entry points behave identically, and shared across opponent types
+ * (Twin or Horde) so neither duplicates this pipeline. See docs/zombie-mode.md.
  */
 class SessionFinalizer(
     private val repository: GaitRepository,
@@ -67,7 +73,8 @@ class SessionFinalizer(
         )
 
         val profile = repository.getTwinProfile()
-        val persona = profile?.let { Personas.byKey(it.personaKey) }
+        val isHorde = profile?.opponentType == OpponentType.HORDE
+        val persona = if (profile != null && !isHorde) Personas.byKey(profile.personaKey) else null
 
         val recentWithForecast = repository.getRecentSessions(limit = 10)
         val composureState = composureEngine.evaluate(recentWithForecast)
@@ -82,16 +89,18 @@ class SessionFinalizer(
             newFidelityPercent = (updatedFidelity * 100).toInt()
         }
 
-        val twinLine = if (persona != null) {
-            when (composureState) {
+        val opponentLine = when {
+            isHorde -> HordeSoundCues.captionFor(composureState, profile?.personaKey ?: "")
+            persona != null -> when (composureState) {
                 ComposureState.COWED -> persona.cowedLines.random(Random)
                 ComposureState.PREDATORY -> persona.predatoryLines.random(Random)
                 ComposureState.WATCHFUL -> null
             }
-        } else null
+            else -> null
+        }
 
-        if (composureState == ComposureState.PREDATORY && profile != null && twinLine != null) {
-            TwinNotifier.postTwinMessage(appContext, profile.twinName, twinLine)
+        if (composureState == ComposureState.PREDATORY && profile != null && opponentLine != null) {
+            TwinNotifier.postTwinMessage(appContext, profile.twinName, opponentLine)
         }
 
         return DebriefResult(
@@ -99,9 +108,11 @@ class SessionFinalizer(
             forecastPaceLabel = forecast?.let { formatPace(it.forecastPaceSecPerKm) } ?: "—",
             actualPaceLabel = formatPace(avgPace),
             composureState = composureState,
-            twinLine = twinLine,
+            twinLine = opponentLine,
             newFidelityPercent = newFidelityPercent,
             dataSource = dataSource,
+            opponentType = profile?.opponentType ?: OpponentType.TWIN,
+            metricLabel = if (isHorde) "Proximity" else "Fidelity",
         )
     }
 }

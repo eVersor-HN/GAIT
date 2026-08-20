@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import dev.eversorhn.gait.GaitApplication
+import dev.eversorhn.gait.data.db.entity.OpponentType
+import dev.eversorhn.gait.domain.horde.HordeSoundCues
 import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.notification.TwinNotifier
 import java.util.concurrent.TimeUnit
@@ -44,11 +46,15 @@ class IdleTauntWorker(
 
         val profile = app.repository.getTwinProfile()
         if (profile != null) {
-            val persona = Personas.byKey(profile.personaKey)
+            val body = if (profile.opponentType == OpponentType.HORDE) {
+                HordeSoundCues.idleCaption()
+            } else {
+                Personas.byKey(profile.personaKey).idleLines.random(Random)
+            }
             TwinNotifier.postTwinMessage(
                 context = applicationContext,
                 twinName = profile.twinName,
-                body = persona.idleLines.random(Random),
+                body = body,
             )
         }
 

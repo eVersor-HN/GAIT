@@ -2,19 +2,20 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
 }
 
 android {
-    namespace = "dev.eversorhn.gait"
+    namespace = "dev.eversorhn.gait.simdemo"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.eversorhn.gait"
+        // Deliberately a different applicationId from :app -- this installs side by side
+        // with the real app rather than colliding with it. See docs/simulation-mode.md.
+        applicationId = "dev.eversorhn.gait.simdemo"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 1
+        versionName = "1.0.0"
     }
 
     buildTypes {
@@ -38,9 +39,9 @@ android {
 }
 
 dependencies {
+    // Deliberately minimal: no Room, no WorkManager, no location/health-connect --
+    // this app has no real data to track. Just enough to render Compose UI.
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
 
     implementation(platform(libs.androidx.compose.bom))
@@ -49,14 +50,4 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     debugImplementation(libs.androidx.ui.tooling)
-
-    implementation(libs.androidx.navigation.compose)
-
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
-
-    implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.play.services.location)
-    implementation(libs.androidx.health.connect.client)
 }

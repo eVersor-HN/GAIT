@@ -19,8 +19,9 @@ import dev.eversorhn.gait.GaitApplication
 import dev.eversorhn.gait.ui.forecast.ForecastScreen
 import dev.eversorhn.gait.ui.logsession.LogSessionScreen
 import dev.eversorhn.gait.ui.restdays.RestDaysScreen
+import dev.eversorhn.gait.ui.setup.HordeSetupScreen
 import dev.eversorhn.gait.ui.setup.NamingScreen
-import dev.eversorhn.gait.ui.simulation.SimulationScreen
+import dev.eversorhn.gait.ui.setup.OpponentTypeScreen
 import dev.eversorhn.gait.ui.stats.StatsScreen
 import dev.eversorhn.gait.ui.theme.CorpoBackground
 import dev.eversorhn.gait.ui.theme.CorpoStatusBar
@@ -28,23 +29,25 @@ import dev.eversorhn.gait.ui.track.TrackScreen
 
 private object Routes {
     const val LOADING = "loading"
+    const val OPPONENT_TYPE = "opponent_type"
     const val NAMING = "naming"
+    const val HORDE_SETUP = "horde_setup"
     const val FORECAST = "forecast"
     const val TRACK = "track"
     const val LOG_SESSION = "log_session"
     const val REST_DAYS = "rest_days"
-    const val SIMULATION = "simulation"
     const val STATS = "stats"
 }
 
 private val routeLabels = mapOf(
     Routes.LOADING to "GAIT",
+    Routes.OPPONENT_TYPE to "SETUP",
     Routes.NAMING to "SETUP",
+    Routes.HORDE_SETUP to "SETUP",
     Routes.FORECAST to "FORECAST",
     Routes.TRACK to "TRACK",
     Routes.LOG_SESSION to "LOG SESSION",
     Routes.REST_DAYS to "REST & VACATION",
-    Routes.SIMULATION to "SIMULATION",
     Routes.STATS to "STATISTICS",
 )
 
@@ -63,7 +66,7 @@ fun GaitNavGraph() {
                     val app = LocalContext.current.applicationContext as GaitApplication
                     LaunchedEffect(Unit) {
                         val hasTwin = app.repository.getTwinProfile() != null
-                        val destination = if (hasTwin) Routes.FORECAST else Routes.NAMING
+                        val destination = if (hasTwin) Routes.FORECAST else Routes.OPPONENT_TYPE
                         navController.navigate(destination) {
                             popUpTo(Routes.LOADING) { inclusive = true }
                         }
@@ -73,10 +76,25 @@ fun GaitNavGraph() {
                     }
                 }
 
+                composable(Routes.OPPONENT_TYPE) {
+                    OpponentTypeScreen(
+                        onTwin = { navController.navigate(Routes.NAMING) },
+                        onHorde = { navController.navigate(Routes.HORDE_SETUP) },
+                    )
+                }
+
                 composable(Routes.NAMING) {
                     NamingScreen(onConfirmed = {
                         navController.navigate(Routes.FORECAST) {
-                            popUpTo(Routes.NAMING) { inclusive = true }
+                            popUpTo(Routes.OPPONENT_TYPE) { inclusive = true }
+                        }
+                    })
+                }
+
+                composable(Routes.HORDE_SETUP) {
+                    HordeSetupScreen(onConfirmed = {
+                        navController.navigate(Routes.FORECAST) {
+                            popUpTo(Routes.OPPONENT_TYPE) { inclusive = true }
                         }
                     })
                 }
@@ -86,7 +104,6 @@ fun GaitNavGraph() {
                         onStartActivity = { navController.navigate(Routes.TRACK) },
                         onLogSession = { navController.navigate(Routes.LOG_SESSION) },
                         onRestDays = { navController.navigate(Routes.REST_DAYS) },
-                        onSimulate = { navController.navigate(Routes.SIMULATION) },
                         onStats = { navController.navigate(Routes.STATS) },
                     )
                 }
@@ -101,10 +118,6 @@ fun GaitNavGraph() {
 
                 composable(Routes.REST_DAYS) {
                     RestDaysScreen(onDone = { navController.popBackStack() })
-                }
-
-                composable(Routes.SIMULATION) {
-                    SimulationScreen(onDone = { navController.popBackStack() })
                 }
 
                 composable(Routes.STATS) {

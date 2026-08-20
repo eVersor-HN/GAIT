@@ -2,8 +2,11 @@ package dev.eversorhn.gait.ui.forecast
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.forecast.ForecastEngine
+import dev.eversorhn.gait.domain.horde.HordeIntensity
+import dev.eversorhn.gait.domain.horde.HordeSoundCues
 import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.domain.restdays.RestDayPolicy
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,9 +20,11 @@ sealed interface ForecastUiState {
     data object Loading : ForecastUiState
     data object NoTwin : ForecastUiState
     data class Ready(
-        val twinName: String,
-        val personaLabel: String,
-        val fidelityPercent: Int,
+        val opponentName: String,
+        val opponentLabel: String,
+        val metricLabel: String,
+        val metricPercent: Int,
+        val generationLabel: String,
         val generation: Int,
         val coldStart: Boolean,
         val forecastLine: String,
@@ -47,7 +52,7 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                 _uiState.value = ForecastUiState.NoTwin
                 return@launch
             }
-            val persona = Personas.byKey(profile.personaKey)
+            val isHorde = profile.opponentType == OpponentType.HORDE
             val sessions = repository.getSessions()
             val now = Instant.now()
             val todayIso = now.atZone(ZoneId.systemDefault()).dayOfWeek.value // 1..7
@@ -61,14 +66,20 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                 else -> null
             }
 
+            val opponentLabel = if (isHorde) HordeIntensity.label(profile.personaKey) else Personas.byKey(profile.personaKey).label
+            val metricLabel = if (isHorde) "Proximity" else "Fidelity"
+            val generationLabel = if (isHorde) "Wave" else "Generation"
+
             _uiState.value = if (forecast == null) {
                 ForecastUiState.Ready(
-                    twinName = profile.twinName,
-                    personaLabel = persona.label,
-                    fidelityPercent = (profile.fidelity * 100).toInt(),
+                    opponentName = profile.twinName,
+                    opponentLabel = opponentLabel,
+                    metricLabel = metricLabel,
+                    metricPercent = (profile.fidelity * 100).toInt(),
+                    generationLabel = generationLabel,
                     generation = profile.generation,
                     coldStart = true,
-                    forecastLine = "No baseline on you yet. Log a session first.",
+                    forecastLine = if (isHorde) HordeSoundCues.forecastCaption(0) else "No baseline on you yet. Log a session first.",
                     basedOnSessions = 0,
                     confidencePercent = 0,
                     restStateLabel = restLabel,
@@ -76,13 +87,20 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
             } else {
                 val paceLabel = formatPace(forecast.forecastPaceSecPerKm)
                 val finishLabel = formatDuration(forecast.forecastFinishSeconds)
+                val line = if (isHorde) {
+                    HordeSoundCues.forecastCaption(forecast.basedOnSessions)
+                } else {
+                    Personas.byKey(profile.personaKey).forecastLine(forecast.basedOnSessions, paceLabel, finishLabel)
+                }
                 ForecastUiState.Ready(
-                    twinName = profile.twinName,
-                    personaLabel = persona.label,
-                    fidelityPercent = (profile.fidelity * 100).toInt(),
+                    opponentName = profile.twinName,
+                    opponentLabel = opponentLabel,
+                    metricLabel = metricLabel,
+                    metricPercent = (profile.fidelity * 100).toInt(),
+                    generationLabel = generationLabel,
                     generation = profile.generation,
                     coldStart = false,
-                    forecastLine = persona.forecastLine(forecast.basedOnSessions, paceLabel, finishLabel),
+                    forecastLine = line,
                     basedOnSessions = forecast.basedOnSessions,
                     confidencePercent = forecast.confidencePercent,
                     restStateLabel = restLabel,

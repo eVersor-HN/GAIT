@@ -1,6 +1,7 @@
 package dev.eversorhn.gait.data.repository
 
 import dev.eversorhn.gait.data.db.GaitDatabase
+import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.db.entity.SessionEntity
 import dev.eversorhn.gait.data.db.entity.TwinProfileEntity
 import kotlinx.coroutines.flow.Flow
@@ -15,7 +16,12 @@ class GaitRepository(private val db: GaitDatabase) {
     suspend fun getTwinProfile(activityType: String = ACTIVITY_RUNNING): TwinProfileEntity? =
         db.twinProfileDao().getProfile(activityType)
 
-    suspend fun createTwinProfile(personaKey: String, twinName: String, activityType: String = ACTIVITY_RUNNING) {
+    suspend fun createTwinProfile(
+        personaKey: String,
+        twinName: String,
+        opponentType: String = OpponentType.TWIN,
+        activityType: String = ACTIVITY_RUNNING,
+    ) {
         db.twinProfileDao().insert(
             TwinProfileEntity(
                 activityType = activityType,
@@ -24,6 +30,7 @@ class GaitRepository(private val db: GaitDatabase) {
                 fidelity = 0.5f,
                 generation = 1,
                 createdAtEpochMillis = System.currentTimeMillis(),
+                opponentType = opponentType,
             )
         )
     }

@@ -8,6 +8,8 @@
 
 These three compound: Android-only removes the cross-platform tax, donation-only removes payment infra, and together they point at a fully **on-device architecture with no backend server** — the single biggest scope-reducing decision available here, and the one everything below follows from.
 
+**Modules:** `:app` is the real product. `:simdemo` is a separate, standalone demo APK (different `applicationId`, no shared data, no dependency on `:app`) — see [`simulation-mode.md`](simulation-mode.md) for why it's a second app rather than a mode inside the first.
+
 ## Tech stack
 
 | Layer | Choice | Why |
@@ -40,7 +42,11 @@ Everything designed so far is the full vision, not the first release.
 - Composure (Cowed/Predatory tone shift) — core to the hook, not optional. *(built)*
 - Same-day Predatory notifications and sparse, randomized idle taunts. *(built — see `docs/notifications.md`)*
 - A confirmation dialog when leaving mid-recording, so the back gesture can't silently interrupt a live session. *(built)*
-- Rest days (declared + inferred) — cheap to implement, meaningfully improves fairness from day one.
+- Rest days (declared + inferred) — cheap to implement, meaningfully improves fairness from day one. *(built)*
+- Vacation bank (30 days/year) on top of declared rest days. *(built)*
+- Statistics screen — period summary plus per-session history. *(built)*
+- Zombie Horde as a selectable alternate opponent at setup, alongside the Rival Twin — see `docs/zombie-mode.md`. *(built)*
+- Simulation as a separate, standalone `:simdemo` APK rather than a mode inside the real app — see `docs/simulation-mode.md`. *(built)*
 - Live Divergence and Decommission Trial screens (currently only in the HTML concept demo, not yet wired into the app).
 
 ### v1.1

@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.domain.composure.ComposureState
 import dev.eversorhn.gait.domain.session.DebriefResult
@@ -33,7 +34,7 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
                 )
             }
             Text(
-                "Fidelity now ${result.newFidelityPercent}% · Composure: ${result.composureState.name}",
+                "${result.metricLabel} now ${result.newFidelityPercent}% · ${composureStateLabel(result)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -59,4 +60,18 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
             Text("BACK TO FORECAST")
         }
     }
+}
+
+private fun composureStateLabel(result: DebriefResult): String {
+    val prefix = if (result.opponentType == OpponentType.HORDE) "Aggression" else "Composure"
+    val value = if (result.opponentType == OpponentType.HORDE) {
+        when (result.composureState) {
+            ComposureState.COWED -> "FALLEN BACK"
+            ComposureState.WATCHFUL -> "TRACKING"
+            ComposureState.PREDATORY -> "SWARMING"
+        }
+    } else {
+        result.composureState.name
+    }
+    return "$prefix: $value"
 }

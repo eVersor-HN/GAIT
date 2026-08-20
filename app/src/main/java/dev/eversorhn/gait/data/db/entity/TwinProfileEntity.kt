@@ -10,6 +10,18 @@ import androidx.room.PrimaryKey
 /** Yearly PTO-style allowance -- see "Vacation days" in docs/telemetry-and-forecasting.md. */
 const val VACATION_DAYS_PER_YEAR = 30
 
+object OpponentType {
+    const val TWIN = "twin"
+    const val HORDE = "horde"
+}
+
+/**
+ * One opponent per activity type (see docs/activities-and-dimensions.md). Doubles as either
+ * a Rival Twin or a Zombie Horde profile -- see docs/zombie-mode.md for why they share a
+ * table: `fidelity` reads as Horde Proximity and `generation` as Wave number when
+ * [opponentType] is [OpponentType.HORDE], and `personaKey` holds the horde intensity key
+ * instead of a persona key. v1 only ever creates a single row, for RUNNING.
+ */
 @Entity(tableName = "twin_profiles")
 data class TwinProfileEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -26,4 +38,5 @@ data class TwinProfileEntity(
     val vacationYear: Int = 0,
     /** Set and in the future while an active vacation period is running. */
     val vacationEndEpochMillis: Long? = null,
+    val opponentType: String = OpponentType.TWIN,
 )

@@ -22,7 +22,6 @@ fun ForecastScreen(
     onStartActivity: () -> Unit,
     onLogSession: () -> Unit,
     onRestDays: () -> Unit,
-    onSimulate: () -> Unit,
     onStats: () -> Unit,
 ) {
     val viewModel: ForecastViewModel = dev.eversorhn.gait.ui.gaitViewModel()
@@ -42,7 +41,7 @@ fun ForecastScreen(
             }
             is ForecastUiState.Ready -> {
                 Text("PRE-SESSION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                Text("What ${s.twinName} expects today", style = MaterialTheme.typography.headlineLarge)
+                Text("What ${s.opponentName} expects today", style = MaterialTheme.typography.headlineLarge)
 
                 if (s.restStateLabel != null) {
                     Text(
@@ -64,7 +63,7 @@ fun ForecastScreen(
                 }
 
                 Text(
-                    "${s.personaLabel} · Generation ${s.generation} · Fidelity ${s.fidelityPercent}%",
+                    "${s.opponentLabel} · ${s.generationLabel} ${s.generation} · ${s.metricLabel} ${s.metricPercent}%",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -77,9 +76,6 @@ fun ForecastScreen(
                 }
                 TextButton(onClick = onRestDays, modifier = Modifier.fillMaxWidth()) {
                     Text("Rest days & vacation")
-                }
-                TextButton(onClick = onSimulate, modifier = Modifier.fillMaxWidth()) {
-                    Text("Watch a simulation")
                 }
                 TextButton(onClick = onStats, modifier = Modifier.fillMaxWidth()) {
                     Text("Statistics")

@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "GAIT"
 include(":app")
+include(":simdemo")
