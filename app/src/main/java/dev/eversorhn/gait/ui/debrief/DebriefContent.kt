@@ -1,11 +1,9 @@
 package dev.eversorhn.gait.ui.debrief
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -15,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.domain.composure.ComposureState
 import dev.eversorhn.gait.domain.session.DebriefResult
+import dev.eversorhn.gait.ui.theme.CorpoPanel
 
 /** Shared by both entry points into a finished session: manual logging and GPS tracking. */
 @Composable
@@ -23,13 +22,7 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
         Text("DEBRIEF", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
         Text("Forecast vs. Actual", style = MaterialTheme.typography.headlineLarge)
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
+        CorpoPanel {
             if (result.hadForecast) {
                 Text("Forecast: ${result.forecastPaceLabel}", style = MaterialTheme.typography.bodyLarge)
                 Text("Actual: ${result.actualPaceLabel}", style = MaterialTheme.typography.bodyLarge)

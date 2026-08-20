@@ -1,12 +1,10 @@
 package dev.eversorhn.gait.ui.forecast
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,6 +15,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.eversorhn.gait.ui.theme.CorpoPanel
 
 @Composable
 fun ForecastScreen(onStartActivity: () -> Unit, onLogSession: () -> Unit) {
@@ -39,13 +38,7 @@ fun ForecastScreen(onStartActivity: () -> Unit, onLogSession: () -> Unit) {
                 Text("PRE-SESSION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 Text("What ${s.twinName} expects today", style = MaterialTheme.typography.headlineLarge)
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
+                CorpoPanel {
                     Text(s.forecastLine, style = MaterialTheme.typography.bodyLarge)
                     if (!s.coldStart) {
                         Text(
