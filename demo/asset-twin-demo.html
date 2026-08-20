@@ -1,0 +1,451 @@
+<title>Gait</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root{
+    --ink:#0B0E11;
+    --ink-2:#12171C;
+    --ink-3:#181F26;
+    --line:#2A333B;
+    --line-soft:#1E262D;
+    --text:#E9E4D8;
+    --text-dim:#909AA4;
+    --text-faint:#5B6570;
+    --brass:#C9A227;
+    --brass-dim:#8A7028;
+    --cyan:#49C9C2;
+    --good:#6FBE6A;
+    --alert:#E1473A;
+
+    --f-display:'Big Shoulders Display', 'Arial Narrow', sans-serif;
+    --f-mono:'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    --f-sans:'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--text);
+    font-family:var(--f-sans);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important; transition:none !important;}
+  }
+
+  .wrap{max-width:74rem; margin:0 auto; padding:0 clamp(1.25rem,4vw,2.5rem);}
+  a{color:inherit;}
+
+  .eyebrow{
+    font-family:var(--f-mono);
+    font-size:0.72rem;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--brass);
+    margin:0 0 0.9rem;
+  }
+
+  /* ---------- background texture ---------- */
+  .grid-bg{
+    position:fixed; inset:0; z-index:-1;
+    background-image:
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:64px 64px;
+    background-position:center top;
+    opacity:0.35;
+    -webkit-mask-image:linear-gradient(to bottom, black, transparent 85%);
+            mask-image:linear-gradient(to bottom, black, transparent 85%);
+  }
+
+  /* ---------- hero ---------- */
+  .hero{padding:clamp(3.5rem,10vw,6rem) 0 clamp(2.5rem,6vw,4rem); border-bottom:1px solid var(--line);}
+  .hero h1{
+    font-family:var(--f-display);
+    font-weight:800;
+    text-transform:uppercase;
+    font-size:clamp(2.9rem,9vw,6rem);
+    letter-spacing:-0.01em;
+    line-height:0.92;
+    margin:0 0 1.1rem;
+    text-wrap:balance;
+  }
+  .hero h1 span{color:var(--brass); font-size:0.32em; vertical-align:0.65em; letter-spacing:0;}
+  .hero .lede{max-width:38rem; font-size:clamp(1.05rem,1.6vw,1.2rem); color:var(--text-dim); margin:0 0 2.2rem;}
+  .hero .intro{max-width:42rem; font-size:0.98rem; color:var(--text-dim); margin:0;}
+  .hero .intro strong{color:var(--text); font-weight:500;}
+
+  .legend{display:flex; flex-wrap:wrap; gap:0.6rem 1.6rem; margin-top:2.4rem; padding-top:2rem; border-top:1px solid var(--line-soft);}
+  .legend-chip{display:flex; align-items:center; gap:0.55rem; font-family:var(--f-mono); font-size:0.76rem; letter-spacing:0.04em; color:var(--text-dim);}
+  .legend-dot{width:0.55rem; height:0.55rem; border-radius:50%; flex:none;}
+  .legend-chip b{color:var(--text); font-weight:500;}
+
+  /* ---------- pitch sections ---------- */
+  .pitch{
+    display:grid;
+    grid-template-columns:minmax(0,1.05fr) minmax(280px,0.95fr);
+    gap:clamp(2.5rem,6vw,4.5rem);
+    align-items:center;
+    padding:clamp(3rem,7vw,5.5rem) 0;
+    border-bottom:1px solid var(--line);
+  }
+  .pitch:nth-of-type(even) .pitch-device{order:-1;}
+
+  .phase-track{display:flex; gap:0.32rem; margin-bottom:0.8rem;}
+  .phase-track i{width:1.5rem; height:0.15rem; border-radius:0.1rem; background:var(--line-soft); font-style:normal;}
+  .phase-track i.on{background:var(--brass);}
+
+  .pitch-copy h2{
+    font-family:var(--f-display);
+    font-weight:700;
+    text-transform:uppercase;
+    font-size:clamp(1.7rem,3.4vw,2.5rem);
+    margin:0 0 0.9rem;
+    text-wrap:balance;
+  }
+  .pitch-copy .lede{font-size:1.05rem; color:var(--text-dim); margin:0 0 1.4rem; max-width:34rem;}
+  .specs{list-style:none; margin:0; padding:0; display:grid; gap:0.6rem; max-width:34rem;}
+  .specs li{display:grid; grid-template-columns:1.1rem 1fr; gap:0.6rem; font-size:0.92rem; color:var(--text-dim);}
+  .specs li::before{content:"›"; color:var(--brass); font-family:var(--f-mono);}
+
+  /* ---------- device mockup ---------- */
+  .pitch-device{display:flex; justify-content:center;}
+  .device{
+    position:relative;
+    width:100%; max-width:19rem; aspect-ratio:9/19.2;
+    background:linear-gradient(155deg, var(--ink-3), var(--ink-2));
+    border:1px solid var(--line);
+    border-radius:1.9rem;
+    padding:0.5rem;
+    box-shadow:0 30px 70px -30px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  .device.alert{box-shadow:0 30px 70px -30px rgba(225,71,58,0.4), inset 0 0 0 1px rgba(225,71,58,0.18);}
+  .screen{
+    position:relative; width:100%; height:100%;
+    background:var(--ink); border-radius:1.4rem; overflow:hidden;
+    display:flex; flex-direction:column; font-family:var(--f-mono);
+  }
+  .screen.alert{box-shadow:inset 0 0 50px rgba(225,71,58,0.14);}
+  .screen::after{
+    content:""; position:absolute; inset:0;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; animation:scan 9s linear infinite;
+  }
+  @keyframes scan{ from{background-position-y:0;} to{background-position-y:240px;} }
+
+  .statusbar{display:flex; align-items:center; justify-content:space-between; padding:0.7rem 0.95rem 0.4rem; font-size:0.62rem; letter-spacing:0.06em; color:var(--text-faint);}
+  .statusbar .rec{color:var(--alert); display:flex; align-items:center; gap:0.3rem;}
+  .rec-dot{width:0.4rem; height:0.4rem; border-radius:50%; background:var(--alert); animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.25;} }
+
+  .sc-body{flex:1; padding:0.2rem 0.95rem 0.95rem; display:flex; flex-direction:column; gap:0.65rem; min-height:0;}
+  .sc-title{font-size:0.66rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); margin:0;}
+  .sc-headline{font-family:var(--f-sans); font-size:0.98rem; font-weight:600; color:var(--text); margin:0; line-height:1.3;}
+  .sc-headline.alert{color:var(--alert); font-size:1.05rem;}
+
+  .card{background:var(--ink-2); border:1px solid var(--line-soft); border-radius:0.55rem; padding:0.6rem 0.7rem;}
+  .warn{border-color:rgba(225,71,58,0.4); background:rgba(225,71,58,0.09);}
+  .divergence{border-color:rgba(73,201,194,0.35); background:rgba(73,201,194,0.08);}
+
+  .quote{border-left:2px solid var(--brass-dim); padding-left:0.65rem; margin:0; font-size:0.74rem; color:var(--text-dim); line-height:1.55;}
+  .quote b{color:var(--text); font-weight:500;}
+
+  .foot-note{font-size:0.6rem; color:var(--text-faint);}
+  .good{color:var(--good) !important;}
+
+  .meter{height:0.32rem; border-radius:0.2rem; background:var(--ink-2); overflow:hidden; border:1px solid var(--line-soft);}
+  .meter i{display:block; height:100%; background:var(--brass);}
+  .meter-row{display:flex; justify-content:space-between; font-size:0.6rem; color:var(--text-faint); margin-top:0.3rem;}
+
+  .btnrow{display:flex; gap:0.5rem;}
+  .btn{flex:1; text-align:center; font-size:0.66rem; letter-spacing:0.03em; padding:0.55rem 0.4rem; border-radius:0.4rem; border:1px solid var(--line-soft); color:var(--text-dim);}
+  .btn.safe{color:var(--text); border-color:var(--brass-dim);}
+  .btn.risk{border-color:rgba(225,71,58,0.5); color:var(--alert);}
+
+  /* live track */
+  .track{position:relative; height:5.4rem; margin:0.1rem 0;}
+  .track svg{width:100%; height:100%; overflow:visible;}
+  .stat-row{display:flex; gap:0.5rem;}
+  .stat{flex:1; background:var(--ink-2); border:1px solid var(--line-soft); border-radius:0.5rem; padding:0.5rem 0.6rem;}
+  .stat .k{font-size:0.56rem; color:var(--text-faint); letter-spacing:0.04em;}
+  .stat .v{font-size:0.9rem; color:var(--text); font-weight:600;}
+  .stat.you .v{color:var(--brass);}
+  .stat.twin .v{color:var(--cyan);}
+
+  /* compare table */
+  .compare{display:grid; grid-template-columns:1fr auto auto; gap:0.4rem 0.7rem; font-size:0.7rem; align-items:center;}
+  .compare .h{font-size:0.54rem; color:var(--text-faint); letter-spacing:0.05em; text-transform:uppercase;}
+  .compare .lbl{color:var(--text-dim);}
+  .compare .val{color:var(--text); text-align:right; font-family:var(--f-mono); font-size:0.72rem;}
+
+  .spark{height:2.4rem; margin-top:0.2rem;}
+  .spark svg{width:100%; height:100%;}
+
+  /* twin message */
+  .twin-msg{border-color:rgba(73,201,194,0.35); background:rgba(73,201,194,0.07);}
+  .msg-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.4rem;}
+  .msg-from{font-size:0.62rem; letter-spacing:0.05em; color:var(--cyan);}
+  .msg-body{font-size:0.74rem; color:var(--text-dim); line-height:1.55; margin:0;}
+  .result-row{display:flex; flex-direction:column; gap:0.22rem; margin-top:0.65rem; font-size:0.62rem; color:var(--text-faint);}
+  .result-row .win{color:var(--good); font-weight:600; letter-spacing:0.03em;}
+
+  /* setup / naming */
+  .setup-input{
+    background:var(--ink-2); border:1px solid var(--brass-dim); border-radius:0.5rem;
+    padding:0.6rem 0.75rem; display:flex; flex-direction:column; gap:0.15rem;
+  }
+  .setup-input .k{font-size:0.55rem; color:var(--text-faint); letter-spacing:0.06em;}
+  .setup-input .v{font-size:0.92rem; color:var(--text); font-family:var(--f-sans); font-weight:600; display:flex; align-items:center; gap:0.15rem;}
+  .caret{width:0.09rem; height:1em; background:var(--brass); display:inline-block; animation:pulse 1s steps(2) infinite;}
+  .preset-row{display:flex; flex-wrap:wrap; gap:0.4rem;}
+  .preset{font-size:0.58rem; letter-spacing:0.03em; padding:0.32rem 0.6rem; border-radius:0.3rem; border:1px solid var(--line-soft); color:var(--text-faint);}
+  .preset.active{border-color:var(--brass-dim); color:var(--brass); background:rgba(201,162,39,0.1);}
+
+  /* ---------- footer ---------- */
+  .footer{padding:clamp(3rem,8vw,5rem) 0 clamp(4rem,10vw,6rem); display:flex; justify-content:space-between; align-items:flex-end; gap:2rem; flex-wrap:wrap;}
+  .footer .colophon{font-size:0.82rem; color:var(--text-faint); max-width:28rem;}
+  .stamp{font-family:var(--f-mono); font-size:0.68rem; letter-spacing:0.12em; color:var(--brass); border:1px solid var(--brass-dim); padding:0.5rem 0.9rem; border-radius:0.3rem; transform:rotate(-3deg); white-space:nowrap;}
+
+  @media (max-width:760px){
+    .pitch{grid-template-columns:1fr;}
+    .pitch:nth-of-type(even) .pitch-device{order:0;}
+  }
+</style>
+
+<div class="grid-bg"></div>
+
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">Internes Konzeptpapier &middot; Fokus: Asset Twin</p>
+    <h1>Gait<span>&trade;</span></h1>
+    <p class="lede">Der Kernloop von GAIT: ein KI-Zwilling, der aus deinen eigenen Bewegungsdaten lernt, dich vorherzusagen &ndash; und den du nie besser werden lassen willst.</p>
+    <p class="intro">Kein Wettkampf gegen fremde Menschen, keine Termine, keine Ausreden der anderen. Du aktivierst GAIT, bewegst dich real &ndash; die App baut daraus einen Zwilling, dem <strong>du selbst einen Namen gibst</strong>. Unten der komplette Loop, Phase für Phase, als Bildschirm-Mockup.</p>
+    <div class="legend">
+      <span class="legend-chip"><span class="legend-dot" style="background:var(--brass)"></span><b>Fidelity</b>&nbsp;&mdash; wie gut dich der Zwilling vorhersagt</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:var(--cyan)"></span><b>Divergenz</b>&nbsp;&mdash; wie sehr du live abweichst</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:var(--text-faint)"></span><b>Generation</b>&nbsp;&mdash; welche Zwilling-Version aktiv ist</span>
+    </div>
+  </header>
+
+  <!-- 0 — SETUP: NAMING -->
+  <article class="pitch">
+    <div class="pitch-copy">
+      <p class="eyebrow">Setup &middot; Einmalig</p>
+      <h2>Der Zwilling bekommt deinen Namen für ihn</h2>
+      <p class="lede">Bevor der Loop beginnt, benennst du den Zwilling selbst. Ein neutraler Code motiviert die wenigsten am meisten &ndash; ein Name, der etwas auslöst, treibt an.</p>
+      <ul class="specs">
+        <li>Nennst du ihn wie jemanden, den du nie wieder gewinnen sehen willst, wird jede Session persönlich.</li>
+        <li>Wer lieber gegen eine bessere Version von sich selbst antritt, nennt ihn entsprechend.</li>
+        <li>Der Name taucht überall auf &ndash; in Prognosen, Live-Vergleichen und Nachrichten.</li>
+      </ul>
+    </div>
+    <div class="pitch-device">
+      <div class="device"><div class="screen">
+        <div class="statusbar"><span>SETUP</span><span>SCHRITT 2/2</span><span>&middot;</span></div>
+        <div class="sc-body">
+          <p class="sc-title">Twin Identity Assignment</p>
+          <p class="sc-headline">Wer soll dich schlagen wollen?</p>
+          <div class="setup-input">
+            <span class="k">TWIN NAME</span>
+            <span class="v">MARKUS K.<span class="caret"></span></span>
+          </div>
+          <div class="preset-row">
+            <span class="preset active">GEHASSTE PERSON</span>
+            <span class="preset">BESSERES ICH</span>
+            <span class="preset">NUR TWIN-7</span>
+          </div>
+          <p class="foot-note">Der Name erscheint in jeder Nachricht, jedem Vergleich, jedem Duell. Jederzeit änderbar.</p>
+          <div class="btnrow"><span class="btn safe">BESTÄTIGEN</span></div>
+        </div>
+      </div></div>
+    </div>
+  </article>
+
+  <!-- 1 — FORECAST -->
+  <article class="pitch">
+    <div class="pitch-copy">
+      <p class="eyebrow">Phase 01 / 05</p>
+      <div class="phase-track"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      <h2>Die Prognose</h2>
+      <p class="lede">Bevor du losläufst, sagt dir der Zwilling exakt voraus, was du heute tun wirst &ndash; basierend auf echten Mustern aus deinen bisherigen Sessions. Die Prognose ist die Provokation.</p>
+      <ul class="specs">
+        <li>Kein fremder Gegner, kein Termin abstimmen &ndash; der Gegner ist jederzeit verfügbar.</li>
+        <li>Die Prognose entsteht aus echten Daten, nicht aus einem generischen Ziel.</li>
+        <li>Genau der Name, den du gewählt hast, sagt dir, was du tun wirst. Das allein motiviert.</li>
+      </ul>
+    </div>
+    <div class="pitch-device">
+      <div class="device"><div class="screen">
+        <div class="statusbar"><span>06:58</span><span>PRE-SESSION</span><span>97%</span></div>
+        <div class="sc-body">
+          <p class="sc-title">Pre-Session Forecast</p>
+          <p class="sc-headline">Was Markus K. heute von dir erwartet</p>
+          <div class="card">
+            <p class="quote">Basierend auf 41 Dienstags-Sessions: <b>Pace 5:24/km</b> &middot; Gehpause bei km 3.2 (40s) &middot; Zielzeit <b>31:10</b>.</p>
+            <p class="foot-note" style="margin-top:0.5rem">FORECAST CONFIDENCE: 91%</p>
+          </div>
+          <p class="foot-note">GENERATION 7 &middot; BASIS: 41 SESSIONS</p>
+          <div class="btnrow"><span class="btn safe">STRECKE STARTEN &mdash; WIDERLEGEN</span></div>
+        </div>
+      </div></div>
+    </div>
+  </article>
+
+  <!-- 2 — LIVE DIVERGENCE -->
+  <article class="pitch">
+    <div class="pitch-copy">
+      <p class="eyebrow">Phase 02 / 05</p>
+      <div class="phase-track"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+      <h2>Live-Divergenz</h2>
+      <p class="lede">Während der Aktivität läuft der Zwilling live mit. Aber nicht nur Tempo zählt: Alles Unvorhersehbare &ndash; eine neue Route, ein negativer Split, Training bei Regen &ndash; schwächt live seine Prognosefähigkeit.</p>
+      <ul class="specs">
+        <li>Fidelity sinkt nicht durch reines Schnellerlaufen, sondern durch Unvorhersehbarkeit.</li>
+        <li>Belohnt echte Vielseitigkeit statt stumpfes Volumentraining.</li>
+        <li>Live-Feedback direkt während der Bewegung, kein nachträglicher Score.</li>
+      </ul>
+    </div>
+    <div class="pitch-device">
+      <div class="device"><div class="screen">
+        <div class="statusbar"><span class="rec"><span class="rec-dot"></span>REC</span><span>LIVE</span><span>00:18:32</span></div>
+        <div class="sc-body">
+          <p class="sc-title">Live Comparison</p>
+          <div class="track">
+            <svg viewBox="0 0 260 90" preserveAspectRatio="none">
+              <polyline points="6,78 50,52 92,60 140,28 190,38 250,10" fill="none" stroke="var(--line)" stroke-width="2"/>
+              <circle cx="140" cy="28" r="5" fill="var(--brass)"/>
+              <circle cx="100" cy="47" r="5" fill="var(--cyan)"/>
+              <text x="146" y="24" fill="var(--brass)" font-size="9" font-family="IBM Plex Mono, monospace">YOU</text>
+              <text x="34" y="42" fill="var(--cyan)" font-size="9" font-family="IBM Plex Mono, monospace">MARKUS K.</text>
+            </svg>
+          </div>
+          <div class="stat-row">
+            <div class="stat you"><div class="k">YOUR PACE</div><div class="v">5:11/km</div></div>
+            <div class="stat twin"><div class="k">MARKUS K.</div><div class="v">5:24/km</div></div>
+          </div>
+          <div class="card divergence">
+            <p class="sc-title" style="margin:0">Divergence Detected</p>
+            <p class="foot-note">Route-Variante: Flussweg (bisher 0&times; gelaufen)</p>
+            <p class="foot-note good">FIDELITY IMPACT: &minus;1.4% LIVE</p>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </article>
+
+  <!-- 3 — FIDELITY BILANZ -->
+  <article class="pitch">
+    <div class="pitch-copy">
+      <p class="eyebrow">Phase 03 / 05</p>
+      <div class="phase-track"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+      <h2>Fidelity-Bilanz</h2>
+      <p class="lede">Nach der Session zeigt sich, wie sehr du die Prognose widerlegt hast &ndash; und wie sich die Fidelity insgesamt entwickelt. Langfristig steigt sie fast immer leicht weiter: Der Zwilling lernt, ob du willst oder nicht.</p>
+      <ul class="specs">
+        <li>Erzeugt garantiert wiederkehrende Spannung, unabhängig vom eigenen Fortschritt.</li>
+        <li>Ein Rückgang durch eine gute Session fühlt sich wie ein echter Sieg an.</li>
+        <li>Trend über Wochen sichtbar statt einzelner Punktestände.</li>
+      </ul>
+    </div>
+    <div class="pitch-device">
+      <div class="device"><div class="screen">
+        <div class="statusbar"><span>07:34</span><span>DEBRIEF</span><span>82%</span></div>
+        <div class="sc-body">
+          <p class="sc-title">Forecast vs. Actual</p>
+          <div class="compare">
+            <span></span><span class="h">FORECAST</span><span class="h">ACTUAL</span>
+            <span class="lbl">Pace</span><span class="val">5:24</span><span class="val good">5:11</span>
+            <span class="lbl">Route</span><span class="val">Standard</span><span class="val good">Flussweg</span>
+            <span class="lbl">Zielzeit</span><span class="val">31:10</span><span class="val good">29:47</span>
+          </div>
+          <div class="card">
+            <p class="sc-title" style="margin:0">Gesamt-Fidelity</p>
+            <p class="sc-headline">93.4% <span class="good" style="font-size:0.7rem">&minus;2.1% diese Session</span></p>
+            <div class="spark">
+              <svg viewBox="0 0 260 40" preserveAspectRatio="none">
+                <polyline points="0,30 30,26 60,22 90,24 120,16 150,18 180,10 210,14 240,6 260,9" fill="none" stroke="var(--brass)" stroke-width="2"/>
+              </svg>
+            </div>
+            <p class="foot-note">GENERATION 7 &middot; NÄCHSTE PRÜFUNG BEI 95%</p>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </article>
+
+  <!-- 4 — DECOMMISSION TRIAL -->
+  <article class="pitch">
+    <div class="pitch-copy">
+      <p class="eyebrow">Phase 04 / 05</p>
+      <div class="phase-track"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+      <h2>Der Decommission Trial</h2>
+      <p class="lede">Erreicht die Fidelity einen Schwellenwert, reicht Ausweichen nicht mehr. Ein einzelner Lauf, live gegen die stärkste bisherige Leistung des Zwillings &ndash; wer verliert, verliert den Status als primäres Asset.</p>
+      <ul class="specs">
+        <li>Der einzige Moment mit echtem, unausweichlichem Wettkampfdruck.</li>
+        <li>Kein Termin mit anderen Menschen nötig &ndash; der Gegner wartet bereits.</li>
+        <li>Bewusst selten, damit er nicht zur Routine verkommt.</li>
+      </ul>
+    </div>
+    <div class="pitch-device">
+      <div class="device alert"><div class="screen alert">
+        <div class="statusbar"><span>14:02</span><span>ASSET REVIEW</span><span>58%</span></div>
+        <div class="sc-body">
+          <p class="sc-title">Substitution Eligible</p>
+          <p class="sc-headline alert">Markus K. &mdash; Fidelity 96.2%</p>
+          <div class="meter"><i style="width:96%; background:var(--alert)"></i></div>
+          <div class="card warn">
+            <p class="foot-note">AUTO-REVIEW IN</p>
+            <p class="sc-headline" style="color:var(--alert)">2T 14Std</p>
+            <p class="foot-note">Gewinne ein Duell gegen Markus K.s stärkste Session, um zurückgesetzt zu werden.</p>
+          </div>
+          <div class="btnrow">
+            <span class="btn risk">DUELL STARTEN</span>
+            <span class="btn">SPÄTER PRÜFEN</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </article>
+
+  <!-- 5 — GENERATIONSWECHSEL -->
+  <article class="pitch">
+    <div class="pitch-copy">
+      <p class="eyebrow">Phase 05 / 05</p>
+      <div class="phase-track"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      <h2>Generationswechsel</h2>
+      <p class="lede">Nach dem Duell meldet sich der Zwilling in seiner eigenen, unangenehm persönlichen Stimme &ndash; zusammengesetzt aus deinen eigenen Daten. Gewinnst du, wird eine neue, noch genauere Generation initialisiert.</p>
+      <ul class="specs">
+        <li>Der Zwilling zitiert deine eigenen Muster zurück &ndash; erzeugt echten Nervenkitzel.</li>
+        <li>Jeder Sieg ist nur vorübergehend: Die nächste Generation lernt bereits dazu.</li>
+        <li>Ein endloser, aber immer persönlicher Kreislauf statt eines Abschlusses.</li>
+      </ul>
+    </div>
+    <div class="pitch-device">
+      <div class="device"><div class="screen">
+        <div class="statusbar"><span>18:47</span><span>INTERCEPTED</span><span>71%</span></div>
+        <div class="sc-body">
+          <p class="sc-title">Direktkanal</p>
+          <div class="card twin-msg">
+            <div class="msg-head">
+              <span class="msg-from">MARKUS K. (TWIN-7)</span>
+              <span class="foot-note">ENCRYPTED</span>
+            </div>
+            <p class="msg-body">Du warst neun Mal diesen Monat 0:13 schneller als meine Prognose. Ich habe angepasst. Mach es ein zehntes Mal.</p>
+            <div class="result-row">
+              <span class="win">DUELL: GEWONNEN</span>
+              <span>FIDELITY ZURÜCKGESETZT &rarr; 61%</span>
+              <span>GENERATION 8 WIRD INITIALISIERT&hellip;</span>
+            </div>
+          </div>
+          <p class="foot-note">GENERATION 8 MODELLIERT NEU: WETTERBEDINGTE ANSTRENGUNG</p>
+        </div>
+      </div></div>
+    </div>
+  </article>
+
+  <footer class="footer">
+    <p class="colophon">Konzeptdemo für interne Diskussion. Vertieft den Asset-Twin-Loop als Kernmechanik von GAIT &ndash; die anderen vier Modul-Ideen (Datenbroker, Overwatch Zones, Cyberware, Übernahmeangebote) bleiben als spätere Erweiterungen zurückgestellt.</p>
+    <span class="stamp">GAIT SYSTEMS &middot; R&amp;D INTERNAL</span>
+  </footer>
+</div>
