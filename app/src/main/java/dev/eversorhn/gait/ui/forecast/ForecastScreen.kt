@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.ui.theme.CorpoPanel
 
 @Composable
-fun ForecastScreen(onStartActivity: () -> Unit, onLogSession: () -> Unit) {
+fun ForecastScreen(onStartActivity: () -> Unit, onLogSession: () -> Unit, onRestDays: () -> Unit) {
     val viewModel: ForecastViewModel = dev.eversorhn.gait.ui.gaitViewModel()
     val state by viewModel.uiState.collectAsState()
 
@@ -37,6 +37,14 @@ fun ForecastScreen(onStartActivity: () -> Unit, onLogSession: () -> Unit) {
             is ForecastUiState.Ready -> {
                 Text("PRE-SESSION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 Text("What ${s.twinName} expects today", style = MaterialTheme.typography.headlineLarge)
+
+                if (s.restStateLabel != null) {
+                    Text(
+                        s.restStateLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
 
                 CorpoPanel {
                     Text(s.forecastLine, style = MaterialTheme.typography.bodyLarge)
@@ -60,6 +68,9 @@ fun ForecastScreen(onStartActivity: () -> Unit, onLogSession: () -> Unit) {
                 }
                 TextButton(onClick = onLogSession, modifier = Modifier.fillMaxWidth()) {
                     Text("Log manually instead")
+                }
+                TextButton(onClick = onRestDays, modifier = Modifier.fillMaxWidth()) {
+                    Text("Rest days & vacation")
                 }
             }
         }

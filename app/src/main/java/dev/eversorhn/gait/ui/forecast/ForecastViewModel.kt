@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.forecast.ForecastEngine
 import dev.eversorhn.gait.domain.persona.Personas
+import dev.eversorhn.gait.domain.restdays.RestDayPolicy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +25,7 @@ sealed interface ForecastUiState {
         val forecastLine: String,
         val basedOnSessions: Int,
         val confidencePercent: Int,
+        val restStateLabel: String?,
     ) : ForecastUiState
 }
 
@@ -51,6 +53,14 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
             val todayIso = now.atZone(ZoneId.systemDefault()).dayOfWeek.value // 1..7
             val forecast = engine.forecast(sessions, todayIso, now.toEpochMilli())
 
+            val restLabel = when {
+                RestDayPolicy.isOnVacation(profile, now.toEpochMilli()) ->
+                    "On vacation. No forecast, no fidelity change while you're away."
+                RestDayPolicy.isRestDay(profile, todayIso) ->
+                    "Declared rest day. No forecast today — train anyway if you want to."
+                else -> null
+            }
+
             _uiState.value = if (forecast == null) {
                 ForecastUiState.Ready(
                     twinName = profile.twinName,
@@ -61,6 +71,7 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                     forecastLine = "No baseline on you yet. Log a session first.",
                     basedOnSessions = 0,
                     confidencePercent = 0,
+                    restStateLabel = restLabel,
                 )
             } else {
                 val paceLabel = formatPace(forecast.forecastPaceSecPerKm)
@@ -74,6 +85,7 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                     forecastLine = persona.forecastLine(forecast.basedOnSessions, paceLabel, finishLabel),
                     basedOnSessions = forecast.basedOnSessions,
                     confidencePercent = forecast.confidencePercent,
+                    restStateLabel = restLabel,
                 )
             }
         }

@@ -11,7 +11,7 @@ import dev.eversorhn.gait.data.db.entity.TwinProfileEntity
 
 @Database(
     entities = [SessionEntity::class, TwinProfileEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class GaitDatabase : RoomDatabase() {

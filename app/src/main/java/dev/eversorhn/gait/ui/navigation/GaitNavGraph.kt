@@ -18,6 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import dev.eversorhn.gait.GaitApplication
 import dev.eversorhn.gait.ui.forecast.ForecastScreen
 import dev.eversorhn.gait.ui.logsession.LogSessionScreen
+import dev.eversorhn.gait.ui.restdays.RestDaysScreen
 import dev.eversorhn.gait.ui.setup.NamingScreen
 import dev.eversorhn.gait.ui.theme.CorpoBackground
 import dev.eversorhn.gait.ui.theme.CorpoStatusBar
@@ -29,6 +30,7 @@ private object Routes {
     const val FORECAST = "forecast"
     const val TRACK = "track"
     const val LOG_SESSION = "log_session"
+    const val REST_DAYS = "rest_days"
 }
 
 private val routeLabels = mapOf(
@@ -37,6 +39,7 @@ private val routeLabels = mapOf(
     Routes.FORECAST to "FORECAST",
     Routes.TRACK to "TRACK",
     Routes.LOG_SESSION to "LOG SESSION",
+    Routes.REST_DAYS to "REST & VACATION",
 )
 
 @Composable
@@ -76,6 +79,7 @@ fun GaitNavGraph() {
                     ForecastScreen(
                         onStartActivity = { navController.navigate(Routes.TRACK) },
                         onLogSession = { navController.navigate(Routes.LOG_SESSION) },
+                        onRestDays = { navController.navigate(Routes.REST_DAYS) },
                     )
                 }
 
@@ -85,6 +89,10 @@ fun GaitNavGraph() {
 
                 composable(Routes.LOG_SESSION) {
                     LogSessionScreen(onDone = { navController.popBackStack() })
+                }
+
+                composable(Routes.REST_DAYS) {
+                    RestDaysScreen(onDone = { navController.popBackStack() })
                 }
             }
         }
