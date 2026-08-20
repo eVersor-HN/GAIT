@@ -34,6 +34,9 @@ class LocationTrackingService : Service() {
 
         /** Fixes worse than this are dropped rather than folded into the distance total. */
         private const val MAX_ACCEPTABLE_ACCURACY_METERS = 25f
+
+        /** Below this, live pace is hidden rather than showing a jitter-driven number. */
+        private const val MIN_DISTANCE_FOR_PACE_METERS = 30.0
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
@@ -103,7 +106,13 @@ class LocationTrackingService : Service() {
 
         TrackingSessionState.update { snapshot ->
             val newDistance = snapshot.distanceMeters + addedMeters
-            val pace = if (newDistance > 0) snapshot.elapsedSeconds / (newDistance / 1000.0) else null
+            // Below this, GPS jitter alone (stationary drift between "accepted" fixes) can
+            // produce a distance so small the pace math blows up into a meaningless number.
+            val pace = if (newDistance >= MIN_DISTANCE_FOR_PACE_METERS) {
+                snapshot.elapsedSeconds / (newDistance / 1000.0)
+            } else {
+                null
+            }
             snapshot.copy(
                 distanceMeters = newDistance,
                 currentPaceSecPerKm = pace,

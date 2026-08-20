@@ -19,6 +19,9 @@ data class TrackUiState(
     val result: DebriefResult? = null,
 )
 
+/** Below this, GPS jitter alone can look like "a session" and produce a nonsense pace. */
+private const val MIN_DISTANCE_TO_SAVE_METERS = 20.0
+
 class TrackViewModel(
     private val repository: GaitRepository,
     private val appContext: Context,
@@ -45,7 +48,7 @@ class TrackViewModel(
             Intent(appContext, LocationTrackingService::class.java).setAction(LocationTrackingService.ACTION_STOP)
         )
 
-        if (distanceMeters <= 0.0 || durationSeconds <= 0) return
+        if (distanceMeters < MIN_DISTANCE_TO_SAVE_METERS || durationSeconds <= 0) return
 
         _uiState.value = _uiState.value.copy(finishing = true)
         viewModelScope.launch {
