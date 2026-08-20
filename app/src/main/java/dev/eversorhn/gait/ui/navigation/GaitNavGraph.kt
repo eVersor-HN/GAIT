@@ -21,6 +21,7 @@ import dev.eversorhn.gait.ui.logsession.LogSessionScreen
 import dev.eversorhn.gait.ui.restdays.RestDaysScreen
 import dev.eversorhn.gait.ui.setup.NamingScreen
 import dev.eversorhn.gait.ui.simulation.SimulationScreen
+import dev.eversorhn.gait.ui.stats.StatsScreen
 import dev.eversorhn.gait.ui.theme.CorpoBackground
 import dev.eversorhn.gait.ui.theme.CorpoStatusBar
 import dev.eversorhn.gait.ui.track.TrackScreen
@@ -33,6 +34,7 @@ private object Routes {
     const val LOG_SESSION = "log_session"
     const val REST_DAYS = "rest_days"
     const val SIMULATION = "simulation"
+    const val STATS = "stats"
 }
 
 private val routeLabels = mapOf(
@@ -43,6 +45,7 @@ private val routeLabels = mapOf(
     Routes.LOG_SESSION to "LOG SESSION",
     Routes.REST_DAYS to "REST & VACATION",
     Routes.SIMULATION to "SIMULATION",
+    Routes.STATS to "STATISTICS",
 )
 
 @Composable
@@ -84,6 +87,7 @@ fun GaitNavGraph() {
                         onLogSession = { navController.navigate(Routes.LOG_SESSION) },
                         onRestDays = { navController.navigate(Routes.REST_DAYS) },
                         onSimulate = { navController.navigate(Routes.SIMULATION) },
+                        onStats = { navController.navigate(Routes.STATS) },
                     )
                 }
 
@@ -101,6 +105,10 @@ fun GaitNavGraph() {
 
                 composable(Routes.SIMULATION) {
                     SimulationScreen(onDone = { navController.popBackStack() })
+                }
+
+                composable(Routes.STATS) {
+                    StatsScreen(onDone = { navController.popBackStack() })
                 }
             }
         }

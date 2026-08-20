@@ -23,6 +23,7 @@ fun ForecastScreen(
     onLogSession: () -> Unit,
     onRestDays: () -> Unit,
     onSimulate: () -> Unit,
+    onStats: () -> Unit,
 ) {
     val viewModel: ForecastViewModel = dev.eversorhn.gait.ui.gaitViewModel()
     val state by viewModel.uiState.collectAsState()
@@ -79,6 +80,9 @@ fun ForecastScreen(
                 }
                 TextButton(onClick = onSimulate, modifier = Modifier.fillMaxWidth()) {
                     Text("Watch a simulation")
+                }
+                TextButton(onClick = onStats, modifier = Modifier.fillMaxWidth()) {
+                    Text("Statistics")
                 }
             }
         }
