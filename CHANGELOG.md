@@ -4,7 +4,9 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.2.0] - 2026-08-20
+
+The first real build: a working Android app, not just design docs. Setup → Forecast → GPS or indoor tracking → Debrief runs end to end on a physical device, with Composure, Rest Days/Vacation, Statistics, a Simulation mode, and full cyberpunk-corpo visual chrome.
 
 ### Added
 - App name **GAIT** decided.
@@ -38,6 +40,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Indoor tracking added: a mode chooser (Outdoor/Indoor) on the Track screen, an indoor path that skips the location permission entirely and times the session without GPS, and a distance-entry prompt on stop for what the machine's console showed.
 - `SessionEntity.dataSource` (`gps` | `manual`) added — every session is now tagged verified or self-reported, surfaced on the Debrief screen ("Self-reported · Not GPS-verified"). Room DB bumped to version 2 with destructive migration (pre-release, no installed base to preserve).
 - Verified the indoor flow live on device end to end: mode chooser → permission-free timer → stop → distance entry → Debrief showing the unverified tag → session persisted correctly.
+- Real cyberpunk-corpo visual chrome, not just a dark palette: a condensed display face for headlines and monospace for every label/data readout, small technical shape rounding app-wide, a static grid+scanline background texture, a persistent HUD statusbar (live clock, screen label, actual device battery %), and a bordered `CorpoPanel` replacing flat filled cards. Verified on device: real battery level renders correctly.
+- Rest Days & Vacation: declared weekly rest days (toggle any of the 7 ISO days) plus a 30-day/year vacation bank spent as a contiguous block, with an anti-gaming line past 3 declared rest days/week. Forecast shows a calmer rest-day/vacation message without blocking training if the user goes anyway. Verified live on device including the anti-gaming trigger and a 7-day vacation period.
+- Simulation mode: an animated, clearly-labeled demo session ("SIMULATION — NOTHING IS SAVED") that never touches SessionDao or TwinProfileDao, reusing the real Twin's name/persona/cowed-lines for flavor. Verified correct math and no DB writes on device.
+- Statistics screen: 7D/30D/ALL period filter, an aggregate summary (session count, distance, avg pace, Fidelity, a simple trend line), and a per-session history list with forecast deltas and a MANUAL tag for self-reported entries. Verified live on device with real logged data.
+- Incident note: a stray blind UI-test tap briefly navigated out of the app into another app's private conversation. No action was taken there; recovered immediately; logged here as a reminder to always screenshot-verify before chaining taps.
 
 ## [0.1.0] - 2026-08-20
 ### Added

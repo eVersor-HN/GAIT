@@ -1,6 +1,6 @@
 # GAIT
 
-**Status:** Early build — the Android app has started. Setup/Naming → Forecast → GPS-tracked or manually-logged session → Debrief is working end to end, verified on a real device. Free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope, and `app/` for the source.
+**Status:** v0.2.0 — a real Android app, verified on a physical device. Setup/Naming → Forecast → GPS or indoor tracking → Debrief works end to end, with Composure, Rest Days/Vacation, a Simulation mode, Statistics, and full cyberpunk-corpo visual chrome. Free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope, [`CHANGELOG.md`](CHANGELOG.md) for the detailed history, and `app/` for the source.
 
 GAIT is a concept for a GPS movement app (running, walking, cycling, e-scooter, ...) that deliberately avoids generic missions, achievements, or leaderboards against strangers. Everything is cyberpunk-corpo themed at its core: your movement data is a commodity that fictional corporations compete over.
 
