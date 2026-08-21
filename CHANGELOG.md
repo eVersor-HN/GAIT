@@ -4,6 +4,13 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.8.2] - 2026-08-21
+
+### Changed
+- **Live pace is a rolling 200 m window** (falls back to the session average until there's that much ground), so the divergence card and the opponent's callouts react to what you're doing now; the tile shows "last 200 m · avg X" underneath. The Debrief still judges the whole-session moving pace.
+- **Tenure / founding day** come from the earliest profile across activities, not the active one — switching activity no longer resets "company days".
+- **Forecast is shorter by default**: Asset File and Asset Status fold behind their headers (one-line summary shown; tap to open; Status opens itself when a Trial is due). Message cards with a long sender no longer collide with their tag.
+
 ## [0.8.1] - 2026-08-21
 
 ### Added

@@ -361,7 +361,7 @@ private fun LiveSession(
 
     if (mode == TrackMode.OUTDOOR) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatTile("Your pace", snapshot.currentPaceSecPerKm?.let { formatPace(it) } ?: "—", accent = Brass)
+            StatTile("Your pace", snapshot.currentPaceSecPerKm?.let { formatPace(it) } ?: "—", accent = Brass, sub = snapshot.avgPaceSecPerKm?.let { "last 200 m · avg ${formatPace(it)}" })
             StatTile(
                 if (isDuel) "Target pace" else "$name pace",
                 referencePace?.let { formatPace(it) } ?: "—",

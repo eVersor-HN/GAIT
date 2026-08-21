@@ -21,7 +21,13 @@ data class TrackingSnapshot(
      * from [elapsedSeconds], so idle time doesn't quietly inflate it.
      */
     val movingSeconds: Int = 0,
+    /**
+     * Outdoor only: pace over roughly the last 200 m of moving (rolling), so the live comparison
+     * and the opponent's callouts react to what you're doing *now*. Null until enough ground.
+     */
     val currentPaceSecPerKm: Double? = null,
+    /** Outdoor only: whole-session moving pace — what the Debrief will judge. */
+    val avgPaceSecPerKm: Double? = null,
     val gpsFixCount: Int = 0,
     /** Outdoor only: the last GPS interval showed effectively no movement. */
     val autoPaused: Boolean = false,

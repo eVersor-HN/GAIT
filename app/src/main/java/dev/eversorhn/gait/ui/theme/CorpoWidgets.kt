@@ -259,9 +259,9 @@ fun MessageCard(
         MessageTone.WATCHFUL -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     CorpoPanel(tone = panelTone) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(from.uppercase(), style = MaterialTheme.typography.labelSmall, color = fromColor)
-            Text(tag.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Text(from.uppercase(), style = MaterialTheme.typography.labelSmall, color = fromColor, modifier = Modifier.weight(1f, fill = false))
+            Text(tag.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, textAlign = TextAlign.End, modifier = Modifier.padding(start = 10.dp))
         }
         Text(
             body,
@@ -587,5 +587,43 @@ fun TickerStrip(items: List<TickerItem>, modifier: Modifier = Modifier) {
                 }
             }
         }
+    }
+}
+
+/**
+ * A panel whose body folds away behind its header — for the detail the user only sometimes
+ * wants (the asset file, the status curve). Header shows a one-line summary when collapsed.
+ * State survives recomposition and rotation; keyed by [title].
+ */
+@Composable
+fun CollapsiblePanel(
+    title: String,
+    summary: String? = null,
+    initiallyExpanded: Boolean = false,
+    tone: PanelTone = PanelTone.NEUTRAL,
+    trailing: String? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable(title) { androidx.compose.runtime.mutableStateOf(initiallyExpanded) }
+    CorpoPanel(tone = tone) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { expanded = !expanded },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                SectionLabel(title)
+                if (!expanded && summary != null) {
+                    Text(summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (trailing != null) FootNote(trailing)
+                Text(if (expanded) "–" else "+", style = MaterialTheme.typography.labelLarge, color = TextFaint)
+            }
+        }
+        if (expanded) content()
     }
 }

@@ -93,7 +93,7 @@ class BoardViewModel(private val repository: GaitRepository) : ViewModel() {
             val zoned = now.atZone(ZoneId.systemDefault())
             val offset = zoned.offset.totalSeconds * 1000L
             val today = RosterEngine.epochDay(now.toEpochMilli(), offset)
-            val enrolled = RosterEngine.epochDay(profile.createdAtEpochMillis, offset)
+            val enrolled = RosterEngine.epochDay(repository.earliestEnrolmentEpochMillis() ?: profile.createdAtEpochMillis, offset)
             val startOfToday = (today * 86_400_000L) - offset
             val ledger = Ledger.from(sessions)
             val ledgerYesterday = Ledger.from(sessions.filter { it.startTimeEpochMillis < startOfToday })

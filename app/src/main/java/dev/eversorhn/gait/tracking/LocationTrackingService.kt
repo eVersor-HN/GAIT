@@ -71,6 +71,9 @@ class LocationTrackingService : Service() {
     private lateinit var store: ActiveSessionStore
     private var lastAcceptedLocation: Location? = null
     private var lastAcceptedRealtime: Long = 0L
+    /** (cumulative distance m, cumulative moving s) after each moving fix — the rolling-pace window. */
+    private val paceSamples = ArrayDeque<Pair<Double, Int>>()
+    private val rollingWindowMeters = 200.0
     private var locationUpdatesActive = false
 
     private val locationCallback = object : LocationCallback() {
@@ -104,6 +107,7 @@ class LocationTrackingService : Service() {
 
         lastAcceptedLocation = null
         lastAcceptedRealtime = 0L
+        paceSamples.clear()
         val nowReal = SystemClock.elapsedRealtime()
         val nowEpoch = System.currentTimeMillis()
 
@@ -255,15 +259,26 @@ class LocationTrackingService : Service() {
             val newMoving = if (moved) s.movingSeconds + intervalSeconds.toInt() else s.movingSeconds
             // Below this, GPS jitter alone (stationary drift between "accepted" fixes) can
             // produce a distance so small the pace math blows up into a meaningless number.
-            val pace = if (newDistance >= MIN_DISTANCE_FOR_PACE_METERS && newMoving > 0) {
+            val avgPace = if (newDistance >= MIN_DISTANCE_FOR_PACE_METERS && newMoving > 0) {
                 newMoving / (newDistance / 1000.0)
             } else {
                 null
             }
+            // Rolling pace: over the oldest sample that is still >= rollingWindowMeters back.
+            // Falls back to the session average until there's that much ground behind you.
+            if (moved) {
+                paceSamples.addLast(newDistance to newMoving)
+                while (paceSamples.size > 2 && newDistance - paceSamples[1].first >= rollingWindowMeters) paceSamples.removeFirst()
+            }
+            val oldest = paceSamples.firstOrNull()
+            val rolling = if (oldest != null && newDistance - oldest.first >= rollingWindowMeters && newMoving - oldest.second > 0) {
+                (newMoving - oldest.second) / ((newDistance - oldest.first) / 1000.0)
+            } else avgPace
             s.copy(
                 distanceMeters = newDistance,
                 movingSeconds = newMoving,
-                currentPaceSecPerKm = pace,
+                currentPaceSecPerKm = rolling,
+                avgPaceSecPerKm = avgPace,
                 gpsFixCount = s.gpsFixCount + 1,
                 autoPaused = previous != null && !moved,
             )

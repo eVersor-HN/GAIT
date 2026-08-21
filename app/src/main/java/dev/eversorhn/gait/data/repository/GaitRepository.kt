@@ -25,6 +25,9 @@ class GaitRepository(private val db: GaitDatabase, private val appContext: Conte
             prefs?.edit()?.putString("active_activity", value)?.apply()
         }
 
+    /** When the asset first enrolled — the oldest profile across activities. Tenure and the roster's founding day hang off this. */
+    suspend fun earliestEnrolmentEpochMillis(): Long? = db.twinProfileDao().earliestCreatedAt()
+
     /** Activities that already have an opponent profile. */
     suspend fun activitiesWithProfile(): List<String> = db.twinProfileDao().getAllActivityTypes()
 

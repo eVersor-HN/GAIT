@@ -123,7 +123,7 @@ fun GaitNavGraph() {
                             val zoned = now.atZone(ZoneId.systemDefault())
                             val offset = zoned.offset.totalSeconds * 1000L
                             val today = RosterEngine.epochDay(now.toEpochMilli(), offset)
-                            val enrolled = RosterEngine.epochDay(profile.createdAtEpochMillis, offset)
+                            val enrolled = RosterEngine.epochDay(app.repository.earliestEnrolmentEpochMillis() ?: profile.createdAtEpochMillis, offset)
                             val snap = RosterEngine.snapshot(enrolled, today, zoned.hour * 60 + zoned.minute, ledger, (profile.fidelity * 100).toInt(), ledger, includeTwin = !profile.isHorde)
                             listOf(TickerItem("You #${snap.user.rank}", snap.user.delta, isUser = true)) +
                                 listOfNotNull(snap.twin?.let { TickerItem("${profile.twinName} #${it.rank}", it.delta) }) +

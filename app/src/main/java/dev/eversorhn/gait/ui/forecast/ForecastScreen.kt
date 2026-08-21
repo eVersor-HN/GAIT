@@ -32,6 +32,7 @@ import dev.eversorhn.gait.ui.theme.Brass
 import dev.eversorhn.gait.ui.theme.ButtonKind
 import dev.eversorhn.gait.ui.theme.CorpoButton
 import dev.eversorhn.gait.ui.theme.CorpoPanel
+import dev.eversorhn.gait.ui.theme.CollapsiblePanel
 import dev.eversorhn.gait.ui.theme.Cyan
 import dev.eversorhn.gait.ui.theme.FootNote
 import dev.eversorhn.gait.ui.theme.FormDots
@@ -230,20 +231,19 @@ fun ForecastScreen(
                     )
                 }
 
-                // --- The file the opponent keeps on you ---
+                // --- The file the opponent keeps on you (folded; the line is the summary) ---
                 s.intel?.let { i ->
-                    CorpoPanel {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            SectionLabel("Asset file")
-                            FootNote(i.tag)
-                        }
+                    CollapsiblePanel(title = "Asset file", summary = i.line, trailing = i.tag, initiallyExpanded = false) {
                         Text(i.line, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
 
-                // --- Asset status: the number the whole loop is about ---
-                CorpoPanel {
-                    SectionLabel("Asset status")
+                // --- Asset status: the number the whole loop is about (folded; summary in the header) ---
+                CollapsiblePanel(
+                    title = "Asset status",
+                    summary = "${s.metricPercent}% ${s.metricLabel.lowercase()} · ${s.generationLabel.lowercase()} ${s.generation} · review at ${s.trialThresholdPercent}%",
+                    initiallyExpanded = s.trialEligible,
+                ) {
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
                             "${s.metricPercent}%",

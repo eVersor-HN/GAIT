@@ -21,6 +21,9 @@ interface TwinProfileDao {
     @Query("SELECT * FROM twin_profiles WHERE activityType = :activityType LIMIT 1")
     suspend fun getProfile(activityType: String): TwinProfileEntity?
 
+    @Query("SELECT MIN(createdAtEpochMillis) FROM twin_profiles")
+    suspend fun earliestCreatedAt(): Long?
+
     @Query("SELECT activityType FROM twin_profiles")
     suspend fun getAllActivityTypes(): List<String>
 
