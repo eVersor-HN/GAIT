@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.layout.onSizeChanged
@@ -480,36 +481,36 @@ fun LedgerStrip(
     twinColor: Color = Cyan,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    // One row: YOU n ── bar ── n TWIN, then the standing as a short tag — no second line.
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .padding(bottom = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(top = 3.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("YOU $userPoints", style = MaterialTheme.typography.labelLarge, color = Brass, maxLines = 1)
-            Canvas(modifier = Modifier.weight(1f).height(10.dp)) {
-                val r = 2.dp.toPx()
-                val midY = size.height / 2
-                // Track, split at the centre: left half brass-tinted (retain), right half twin-tinted (replace).
-                drawLine(Brass.copy(alpha = 0.25f), Offset(0f, midY), Offset(size.width / 2, midY), strokeWidth = 3f)
-                drawLine(twinColor.copy(alpha = 0.25f), Offset(size.width / 2, midY), Offset(size.width, midY), strokeWidth = 3f)
-                drawLine(LineSoft, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), strokeWidth = 1f)
-                // Marker: user share → left is "you lead"; invert so a bigger user share pulls left.
-                val x = size.width * (1f - userShare.coerceIn(0f, 1f))
-                val markerColor = when {
-                    userShare > 0.5f -> Brass
-                    userShare < 0.5f -> twinColor
-                    else -> TextDim
-                }
-                drawCircle(markerColor.copy(alpha = 0.3f), radius = 7.dp.toPx(), center = Offset(x, midY))
-                drawCircle(markerColor, radius = 4.dp.toPx(), center = Offset(x, midY))
-                drawRoundRect(Color.Transparent, cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r))
+        Text("YOU $userPoints", style = MaterialTheme.typography.labelLarge, color = Brass, maxLines = 1)
+        Canvas(modifier = Modifier.weight(1f).height(10.dp)) {
+            val midY = size.height / 2
+            drawLine(Brass.copy(alpha = 0.25f), Offset(0f, midY), Offset(size.width / 2, midY), strokeWidth = 3f)
+            drawLine(twinColor.copy(alpha = 0.25f), Offset(size.width / 2, midY), Offset(size.width, midY), strokeWidth = 3f)
+            drawLine(LineSoft, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), strokeWidth = 1f)
+            val x = size.width * (1f - userShare.coerceIn(0f, 1f))
+            val markerColor = when {
+                userShare > 0.5f -> Brass
+                userShare < 0.5f -> twinColor
+                else -> TextDim
             }
-            Text("$twinPoints ${opponentLabel.uppercase()}", style = MaterialTheme.typography.labelLarge, color = twinColor, maxLines = 1)
+            drawCircle(markerColor.copy(alpha = 0.3f), radius = 7.dp.toPx(), center = Offset(x, midY))
+            drawCircle(markerColor, radius = 4.dp.toPx(), center = Offset(x, midY))
         }
-        Text(standing.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1)
+        Text("$twinPoints ${opponentLabel.uppercase()}", style = MaterialTheme.typography.labelLarge, color = twinColor, maxLines = 1)
+        Text(
+            "· " + standing.uppercase().replace(" · STREAK ", " · S"),
+            style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1,
+            modifier = Modifier.widthIn(max = 120.dp),
+        )
     }
 }
 
@@ -548,7 +549,7 @@ fun TickerStrip(items: List<TickerItem>, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(26.dp)
+            .height(22.dp)
             .background(Ink2)
             .border(BorderStroke(1.dp, LineSoft))
             .clipToBounds(),
@@ -619,7 +620,7 @@ fun CollapsiblePanel(
                     Text(summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 8.dp)) {
                 if (trailing != null) FootNote(trailing)
                 Text(if (expanded) "–" else "+", style = MaterialTheme.typography.labelLarge, color = TextFaint)
             }

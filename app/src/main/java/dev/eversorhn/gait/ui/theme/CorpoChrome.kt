@@ -89,7 +89,7 @@ fun CorpoStatusBar(label: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 10.dp),
+            .padding(horizontal = 24.dp, vertical = 5.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(clock, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

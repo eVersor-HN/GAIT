@@ -4,6 +4,11 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.12.1] - 2026-08-21
+
+### Changed
+- **Less scrolling, less squeeze.** The header is three tight rows (HUD · ticker · ledger with the standing inline) plus the page indicator; the ticker is 22 dp. The **board shows the top 5** — tap the table header or its foot to unfold to 15, tap again to fold; career numbers are one footnote line; Movers and Decommissioned fold behind a one-line summary. The **Forecast** folds the division memo to its first sentence, the ledger panel is one row, and the secondary buttons are one row (Log · Rest days · Settings) — Board, Channel and Stats are a swipe away, so their buttons went.
+
 ## [0.12.0] - 2026-08-21
 
 ### Added

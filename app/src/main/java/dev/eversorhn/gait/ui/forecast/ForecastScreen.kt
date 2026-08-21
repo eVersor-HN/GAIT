@@ -96,12 +96,12 @@ fun ForecastScreen(
                     headline = if (s.isHorde) "What the horde expects of you" else "What ${s.opponentName} expects today",
                 )
 
-                // --- The division's memo: the company forcing the comparison ---
-                CorpoPanel {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        SectionLabel("Memo · Asset Performance Division", color = Brass)
-                        FootNote(s.memo.ref)
-                    }
+                // --- The division's memo (folded to its first sentence; tap for the rest) ---
+                CollapsiblePanel(
+                    title = "Division memo",
+                    summary = s.memo.body.substringBefore(". ") + ".",
+                    trailing = s.memo.ref,
+                ) {
                     Text(s.memo.body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                 }
 
@@ -204,21 +204,12 @@ fun ForecastScreen(
                         SectionLabel("Asset ledger")
                         FootNote("${s.ledger.roundsPlayed} rounds")
                     }
-                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Column {
-                            FootNote("You")
-                            Text("${s.ledger.userPoints}", style = MaterialTheme.typography.headlineLarge, color = Brass)
-                        }
-                        Text("—", style = MaterialTheme.typography.headlineLarge, color = TextFaint)
-                        Column {
-                            FootNote(them)
-                            Text("${s.ledger.twinPoints}", style = MaterialTheme.typography.headlineLarge, color = twinColor)
-                        }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("${s.ledger.userPoints}", style = MaterialTheme.typography.headlineLarge, color = Brass)
+                        Text("—", style = MaterialTheme.typography.titleLarge, color = TextFaint)
+                        Text("${s.ledger.twinPoints}", style = MaterialTheme.typography.headlineLarge, color = twinColor)
                         Spacer(Modifier.weight(1f))
-                        Column(horizontalAlignment = Alignment.End) {
-                            FootNote("Last ${s.ledger.form().size.coerceAtLeast(1)}")
-                            FormDots(form = s.ledger.form().map { it == Side.USER }, twinColor = twinColor)
-                        }
+                        FormDots(form = s.ledger.form().map { it == Side.USER }, twinColor = twinColor)
                     }
                     Text(
                         s.standing.uppercase(),
@@ -291,20 +282,11 @@ fun ForecastScreen(
                     )
                 }
 
-                // --- Secondary navigation: ghost row, not a stack of text buttons ---
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CorpoButton("Log manually", onClick = onLogSession, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
-                        CorpoButton("Direct channel", onClick = onMessages, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CorpoButton("Statistics", onClick = onStats, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
-                        CorpoButton("Rest & vacation", onClick = onRestDays, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CorpoButton(if (s.isHorde) "Containment map" else "Asset board", onClick = onBoard, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
-                        CorpoButton("Settings", onClick = onSettings, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
-                    }
+                // --- Secondary navigation: one ghost row. Board, Channel and Stats are a swipe away. ---
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CorpoButton("Log manually", onClick = onLogSession, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
+                    CorpoButton("Rest days", onClick = onRestDays, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
+                    CorpoButton("Settings", onClick = onSettings, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(8.dp))
             }

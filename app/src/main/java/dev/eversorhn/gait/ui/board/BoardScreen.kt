@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -135,12 +136,7 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
             color = if (safe || protectedDaysLeft > 0) TextFaint else Alert,
         )
         career?.let { c ->
-            Spacer(Modifier.height(2.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatTile("Tenure", "${c.tenureDays} d", sub = "company days")
-                StatTile("Survived", "${c.cullsSurvived}", sub = if (c.cullsSurvived == 1) "cull" else "culls")
-                StatTile("Best streak", "${c.bestStreak}", sub = "${c.roundsPlayed} rounds")
-            }
+            FootNote("Tenure ${c.tenureDays} d · survived ${c.cullsSurvived} ${if (c.cullsSurvived == 1) "cull" else "culls"} · best streak ${c.bestStreak} · ${c.roundsPlayed} rounds")
         }
     }
 
@@ -167,21 +163,27 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
         }
     }
 
-    // --- Top 15 ---
+    // --- The table: top 5 by default; tap the header or the foot to unfold to 15, tap again to fold ---
+    var tableOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    val tableRows = if (tableOpen) 15 else 5
     CorpoPanel {
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { tableOpen = !tableOpen },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             SectionLabel("#", color = TextFaint); Spacer(Modifier.width(40.dp))
-            SectionLabel("Asset · tap for file", color = TextFaint)
+            SectionLabel("Asset · tap row for file", color = TextFaint)
             Spacer(Modifier.weight(1f))
             SectionLabel("Index · Δ", color = TextFaint)
+            Text(if (tableOpen) "  –" else "  +", style = MaterialTheme.typography.labelLarge, color = TextFaint)
         }
-        // Merge the sim rows with the user's (and the opponent's) by rank, show the first 15.
+        // Merge the sim rows with the user's (and the opponent's) by rank, show the first [tableRows].
         val twinRow = snap.twin
         var placed = 0
         var i = 0
         var userPlaced = false
         var twinPlaced = false
-        while (placed < 15) {
+        while (placed < tableRows) {
             val next = snap.standings.getOrNull(i)
             val nextRank = next?.rank ?: Int.MAX_VALUE
             when {
@@ -192,13 +194,22 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
             }
             placed++
         }
-        FootNote("${if (snap.nextReviewInDays == 0) "Review today" else "Next review in ${snap.nextReviewInDays} d"} · ${snap.onLeave} on leave · ${snap.decommissioned30d} decommissioned (30 d)")
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { tableOpen = !tableOpen },
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            FootNote("${if (snap.nextReviewInDays == 0) "Review today" else "Next review in ${snap.nextReviewInDays} d"} · ${snap.onLeave} on leave")
+            FootNote(if (tableOpen) "show top 5" else "show top 15", color = Brass)
+        }
     }
 
-    // --- Movers ---
+    // --- Movers (folded; the biggest one is the summary) ---
     if (snap.movers.isNotEmpty()) {
-        CorpoPanel {
-            SectionLabel("Movers today")
+        val top = snap.movers.first()
+        dev.eversorhn.gait.ui.theme.CollapsiblePanel(
+            title = "Movers today",
+            summary = "${if (top.delta > 0) "▲" else "▼"} ${top.asset.name} ${signed(top.delta)} · and ${snap.movers.size - 1} more",
+        ) {
             snap.movers.take(5).forEach { m ->
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onRow(m.asset.slot) },
@@ -213,10 +224,13 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
         }
     }
 
-    // --- Decommissioned ---
+    // --- Decommissioned (folded) ---
     if (snap.decommissioned.isNotEmpty()) {
-        CorpoPanel(tone = PanelTone.WARN) {
-            SectionLabel("Decommissioned · recent", color = Alert)
+        dev.eversorhn.gait.ui.theme.CollapsiblePanel(
+            title = "Decommissioned · recent",
+            summary = "${snap.decommissioned30d} this month · last: ${snap.decommissioned.first().asset.name}",
+            tone = PanelTone.WARN,
+        ) {
             snap.decommissioned.take(3).forEach { d ->
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text("${d.asset.id} · ${d.asset.name}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
