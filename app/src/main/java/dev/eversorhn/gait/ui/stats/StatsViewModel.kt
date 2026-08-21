@@ -129,7 +129,7 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
             period = period,
             totalSessions = filtered.size,
             totalDistanceLabel = "%.1f km".format(totalDistanceKm),
-            avgPaceLabel = avgPace?.let { formatMinSec(it) + "/km" } ?: "—",
+            avgPaceLabel = avgPace?.let { dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(it, repository.activeActivityType) } ?: "—",
             metricLabel = metricLabel,
             metricPercent = (currentFidelity * 100).toInt(),
             accuracyTrend = trend,
@@ -144,7 +144,7 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
             id = id,
             dateLabel = formatDate(startTimeEpochMillis),
             distanceLabel = "%.2f km".format(distanceMeters / 1000.0),
-            paceLabel = "${formatMinSec(avgPaceSecPerKm)}/km",
+            paceLabel = dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(avgPaceSecPerKm, repository.activeActivityType),
             deltaLabel = delta?.let { d ->
                 val sign = if (d >= 0) "-" else "+"
                 "$sign${formatMinSec(abs(d))} vs forecast"

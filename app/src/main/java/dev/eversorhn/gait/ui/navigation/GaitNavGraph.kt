@@ -103,7 +103,8 @@ fun GaitNavGraph() {
     // The Asset Ledger rides under the HUD on every screen once there's an opponent —
     // the score is never more than a glance away.
     val app = LocalContext.current.applicationContext as GaitApplication
-    val ledgerFlow = remember {
+    val activeActivity = app.repository.activeActivityType
+    val ledgerFlow = remember(activeActivity, route) {
         combine(app.repository.observeTwinProfile(), app.repository.observeSessions()) { profile, sessions ->
             profile?.let { Triple(it, Ledger.from(sessions), Directive.standing(Ledger.from(sessions), it.twinName, it.isHorde)) }
         }

@@ -71,6 +71,7 @@ sealed interface ForecastUiState {
         val intel: Intel.Observation?,
         val stake: OpenStake?,
         val activityLabel: String,
+        val paceWord: String,
     ) : ForecastUiState
 }
 
@@ -133,7 +134,8 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
             val persona = if (isHorde) null else Personas.byKey(profile.personaKey)
             val opponentLabel = if (isHorde) HordeIntensity.label(profile.hordeIntensity ?: HordeIntensity.STANDARD) else persona!!.label
             val generationLabel = if (isHorde) "Wave" else "Generation"
-            val paceLabel = forecast?.let { formatPace(it.forecastPaceSecPerKm) } ?: "—"
+            val activityKey = repository.activeActivityType
+            val paceLabel = forecast?.let { dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(it.forecastPaceSecPerKm, activityKey) } ?: "—"
             val finishLabel = forecast?.let { formatDuration(it.forecastFinishSeconds) } ?: "—"
 
             // --- The opponent commits to today's forecast (once per local day) ---
@@ -193,12 +195,13 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                 isHorde = isHorde,
                 generation = profile.generation,
             )
-            val intel = Intel.observe(sessions, ledger, now.toEpochMilli(), todayIso, if (isHorde) "the horde" else profile.twinName) { formatPace(it) }
+            val intel = Intel.observe(sessions, ledger, now.toEpochMilli(), todayIso, if (isHorde) "the horde" else profile.twinName) { dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(it, activityKey) }
 
             val line = when {
                 forecast == null -> "No baseline on you yet. Log a session first."
                 isHorde -> "Projected: pace $paceLabel, finish around $finishLabel."
                 else -> persona!!.forecastLine(forecast.basedOnSessions, paceLabel, finishLabel)
+                    .let { if (dev.eversorhn.gait.domain.activity.Activities.byKey(activityKey).usesSpeed) it.replace("pace ", "speed ").replace("Pace ", "Speed ") else it }
             }
 
             _uiState.value = ForecastUiState.Ready(
@@ -231,6 +234,7 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                 intel = intel,
                 stake = openStake,
                 activityLabel = dev.eversorhn.gait.domain.activity.Activities.byKey(repository.activeActivityType).label,
+                paceWord = dev.eversorhn.gait.domain.activity.Activities.paceWord(repository.activeActivityType),
             )
         }
     }

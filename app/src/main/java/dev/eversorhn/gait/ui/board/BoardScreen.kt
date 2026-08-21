@@ -111,55 +111,47 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
         StatTile("Next cull", if (snap.nextCullInDays == 0) "today" else "${snap.nextCullInDays} d", accent = Alert, sub = "bottom ${RosterEngine.CULL_COUNT} go")
     }
 
-    // --- Your row, always visible ---
+    // --- You and the opponent: two rows, same structure, one line of context each ---
     val u = snap.user
     val safe = u.rank <= snap.cullLine
-    CorpoPanel(tone = if (safe) PanelTone.TWIN else PanelTone.WARN) {
+    val protectedDaysLeft = career?.let { (RosterEngine.CULL_GRACE_DAYS - it.tenureDays).coerceAtLeast(0) } ?: 0
+    CorpoPanel(tone = if (safe || protectedDaysLeft > 0) PanelTone.TWIN else PanelTone.WARN) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("#${u.rank}", style = MaterialTheme.typography.titleLarge, color = Brass, modifier = Modifier.width(64.dp))
+            Text("#${u.rank}", style = MaterialTheme.typography.titleLarge, color = Brass, modifier = Modifier.width(72.dp))
             Arrow(u.prevRank?.let { it - u.rank } ?: 0)
             Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
                 Text("YOU", style = MaterialTheme.typography.titleMedium, color = Brass)
-                FootNote("Asset · vs. $opponentName · of ${"%,d".format(snap.enrolled)}")
+                FootNote(
+                    when {
+                        u.rank <= 15 -> "On the board"
+                        !safe && protectedDaysLeft > 0 -> "New hire · protected $protectedDaysLeft d · cull line #${snap.cullLine}"
+                        !safe -> "Below the cull line #${snap.cullLine} · ${snap.nextCullInDays} d"
+                        else -> "${snap.cullLine - u.rank} above the cull line"
+                    },
+                    color = if (safe || protectedDaysLeft > 0) TextFaint else Alert,
+                )
             }
             IndexCell(u.index, u.delta)
         }
-        val protectedDaysLeft = career?.let { (RosterEngine.CULL_GRACE_DAYS - it.tenureDays).coerceAtLeast(0) } ?: 0
-        FootNote(
-            when {
-                u.rank <= 15 -> "On the board. Stay there."
-                !safe && protectedDaysLeft > 0 -> "New hire: protected from the cull for $protectedDaysLeft more days. Everyone starts last. Climb ${u.rank - snap.cullLine} places to be safe."
-                !safe -> "Below the cull line (#${snap.cullLine}). ${if (snap.nextCullInDays == 0) "Today." else "${snap.nextCullInDays} days to climb ${u.rank - snap.cullLine}."}"
-                u.rank <= 100 -> "${u.rank - 15} places off the board · ${u.rank - 15 + (snap.cullLine - u.rank)} above the cull line"
-                else -> "Top 15 is ${u.rank - 15} places away · cull line #${snap.cullLine}, ${snap.cullLine - u.rank} below you"
-            },
-            color = if (safe || protectedDaysLeft > 0) TextFaint else Alert,
-        )
-        career?.let { c ->
-            FootNote("Tenure ${c.tenureDays} d · survived ${c.cullsSurvived} ${if (c.cullsSurvived == 1) "cull" else "culls"} · best streak ${c.bestStreak} · ${c.roundsPlayed} rounds")
-        }
     }
-
-    // --- The opponent's own row: where the rounds put it, not where the story wants it ---
     snap.twin?.let { t ->
         CorpoPanel {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("#${t.rank}", style = MaterialTheme.typography.titleLarge, color = Cyan, modifier = Modifier.width(64.dp))
+                Text("#${t.rank}", style = MaterialTheme.typography.titleLarge, color = Cyan, modifier = Modifier.width(72.dp))
                 Arrow(t.prevRank?.let { it - t.rank } ?: 0)
                 Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
                     Text(opponentName.uppercase(), style = MaterialTheme.typography.titleMedium, color = Cyan)
-                    FootNote("Model · your replacement candidate")
+                    FootNote(
+                        when {
+                            t.rank < u.rank -> "Model · ahead of you by ${u.rank - t.rank}"
+                            t.rank > u.rank -> "Model · ${t.rank - u.rank} behind you"
+                            else -> "Model · level with you"
+                        },
+                        color = if (t.rank < u.rank) Alert else TextFaint,
+                    )
                 }
                 IndexCell(t.index, t.delta)
             }
-            FootNote(
-                when {
-                    t.rank < u.rank -> "${t.rank - 0} — it is ahead of you by ${u.rank - t.rank} places. It earned that on the ledger."
-                    t.rank > u.rank -> "${u.rank - 0} — you are ahead of it by ${t.rank - u.rank} places. Keep it there."
-                    else -> "Level with you."
-                }.substringAfter("— "),
-                color = if (t.rank < u.rank) Alert else TextFaint,
-            )
         }
     }
 

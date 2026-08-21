@@ -82,6 +82,8 @@ data class DebriefResult(
     val ledgerBefore: LedgerState = LedgerState(0, 0, emptyList()),
     /** A division commendation earned by this round, if any. */
     val commendation: String? = null,
+    /** "Pace" or "Speed", per the active activity. */
+    val paceWord: String = "Pace",
 )
 
 /**
@@ -262,8 +264,9 @@ class SessionFinalizer(
 
         return DebriefResult(
             hadForecast = forecast != null,
-            forecastPaceLabel = forecast?.let { formatPace(it.forecastPaceSecPerKm) } ?: "—",
-            actualPaceLabel = formatPace(avgPace),
+            forecastPaceLabel = forecast?.let { dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(it.forecastPaceSecPerKm, repository.activeActivityType) } ?: "—",
+            actualPaceLabel = dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(avgPace, repository.activeActivityType),
+            paceWord = dev.eversorhn.gait.domain.activity.Activities.paceWord(repository.activeActivityType),
             composureState = composureState,
             twinLine = opponentLine,
             newFidelityPercent = (newFidelity * 100).toInt(),
@@ -284,7 +287,7 @@ class SessionFinalizer(
             duel = verdict?.let {
                 DuelOutcome(
                     verdict = it,
-                    targetPaceLabel = formatPace(duelTarget!!),
+                    targetPaceLabel = dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(duelTarget!!, repository.activeActivityType),
                     newGeneration = if (duelWon) newGeneration else null,
                     handoffLine = handoffLine,
                 )

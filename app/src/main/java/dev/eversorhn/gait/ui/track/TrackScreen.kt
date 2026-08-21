@@ -198,18 +198,32 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
                 if (isDuel) DuelBriefing(opponent) else PhaseTrack(current = 2)
                 ScreenTitle(screenEyebrow, "Indoor or outdoor?")
                 uiState.stopMessage?.let { StopNotice(it) }
+                val act = dev.eversorhn.gait.domain.activity.Activities.byKey(
+                    (LocalContext.current.applicationContext as dev.eversorhn.gait.GaitApplication).repository.activeActivityType
+                )
+                // What you're up against, right here — no need to go back to the Forecast.
+                if (opponent != null && opponent.forecastPaceSecPerKm != null) {
+                    CorpoPanel {
+                        SectionLabel(if (isDuel) "Target" else "${opponentName}'s number for today")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            StatTile(if (act.usesSpeed) "Speed" else "Pace", dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed((if (isDuel) opponent.duelTargetPaceSecPerKm else null) ?: opponent.forecastPaceSecPerKm, act.key), accent = if (opponent.isHorde) Alert else Cyan)
+                            StatTile("Distance", opponent.forecastDistanceMeters?.let { "%.2f km".format(it / 1000.0) } ?: "—")
+                            StatTile("Riding", "${opponent.stake} pt${if (opponent.stake == 1) "" else "s"}", accent = if (opponent.stake > 1) Alert else MaterialTheme.colorScheme.onSurface, sub = if (opponent.stakeCalled) "called" else if (opponent.stake > 1) "staked" else "base round")
+                        }
+                    }
+                }
                 SelectCard(
-                    title = "Outdoor — GPS",
-                    description = "Pace, distance and route verified by the device. The live comparison runs on real data.",
+                    title = "Outdoor · GPS",
+                    description = "${if (act.usesSpeed) "Speed" else "Pace"}, distance and route verified by the device. Live comparison, splits, commentary. Tap to start.",
                     selected = false,
-                    onClick = { viewModel.chooseMode(TrackMode.OUTDOOR) },
+                    onClick = { viewModel.chooseMode(TrackMode.OUTDOOR); if (hasLocationPermission) viewModel.start() },
                     badge = "verified",
                 )
                 SelectCard(
-                    title = "Indoor — treadmill",
-                    description = "Timed only. You enter the distance the machine shows when you stop — tagged as self-reported.",
+                    title = "Indoor · ${act.indoorLabel}",
+                    description = "Timed only. You enter the distance the ${if (act.indoorLabel == "timed only") "trip" else "machine"} shows when you stop — tagged as self-reported. Tap to start.",
                     selected = false,
-                    onClick = { viewModel.chooseMode(TrackMode.INDOOR) },
+                    onClick = { viewModel.chooseMode(TrackMode.INDOOR); viewModel.start() },
                     badge = "self-reported",
                 )
                 CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
@@ -319,8 +333,8 @@ private fun LiveSession(
         (LocalContext.current.applicationContext as dev.eversorhn.gait.GaitApplication).repository.activeActivityType
     )
     // Motor-assisted / wheeled activities read better in km/h than min/km.
-    val showSpeed = !activity.paceMeaningful || activity.key == "CYCLING" || activity.key == "E_BIKE"
-    fun paceOrSpeed(secPerKm: Double): String = if (showSpeed) "%.1f km/h".format(3600.0 / secPerKm) else formatPace(secPerKm)
+    val showSpeed = activity.usesSpeed
+    fun paceOrSpeed(secPerKm: Double): String = dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(secPerKm, activity.key)
     val twinColor = if (opponent?.isHorde == true) Alert else Cyan
     val referencePace = if (isDuel) opponent?.duelTargetPaceSecPerKm ?: opponent?.forecastPaceSecPerKm else opponent?.forecastPaceSecPerKm
     val referenceDistance = opponent?.forecastDistanceMeters

@@ -64,16 +64,6 @@ fun ForecastScreen(
 
     LaunchedEffect(Unit) { viewModel.refresh() }
 
-    // Notification permission is asked for here -- after setup, once the user has an opponent
-    // that could actually message them -- rather than as the very first thing on launch.
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* denial just means opponent pings stay silent */ }
-    LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -118,7 +108,7 @@ fun ForecastScreen(
                     if (!s.coldStart) {
                         Spacer(Modifier.height(4.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            StatTile("Pace", s.forecastPaceLabel, accent = twinColor)
+                            StatTile(s.paceWord, s.forecastPaceLabel, accent = twinColor)
                             StatTile("Distance", s.forecastDistanceLabel, accent = twinColor)
                             StatTile("Finish", s.forecastFinishLabel, accent = twinColor)
                         }

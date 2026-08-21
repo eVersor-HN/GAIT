@@ -62,6 +62,17 @@ fun HomeScreen(
 
     ExitGuard(opponentName = if (isHorde) "The horde" else opponentName.ifBlank { "The model" })
 
+    // Notification permission: asked once there's an opponent that could message you — i.e. here,
+    // on the first screen after setup — not as the very first thing on launch.
+    val notificationPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { /* denial just means opponent pings stay silent */ }
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     LaunchedEffect(pager) {
         snapshotFlow { pager.currentPage }.collect { onPageChanged(HomePage.entries[it]) }
     }

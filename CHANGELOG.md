@@ -4,6 +4,16 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.13.0] - 2026-08-21
+
+Speedrun pass through every activity, as a multi-sport user would: what's harmonious, what's reachable fast, what can't be chosen, where space is wasted, does the loop (before / during / after) hold.
+
+### Changed
+- **Board fits one screen.** YOU and the opponent are now two rows of identical structure — rank · arrow · name + one line of context · index/Δ — no extra career block on YOU (tenure / culls survived / best streak remain on the termination notice and the horde map). Protected new hires get their context line in neutral, not alarm red.
+- **Activity-aware everywhere.** Cycling, E-Bike, E-Scooter and Hand-cycle read in **km/h** on the Forecast tiles, in the opponent's forecast line ("speed 27.1km/h"), the Debrief compare grid ("Speed"), Statistics, the Asset File and the live screen; pace activities keep min/km. The indoor card names the right thing per activity (treadmill · indoor trainer · treadmill / stairmill · roller / treadmill · timed only for e-scooter).
+- **Pre-session screen does more, costs fewer taps.** "Indoor or outdoor?" now shows the opponent's number for today (speed/pace · distance · points riding) and each card **starts the session on tap** (outdoor asks for location first if needed) — one screen less between Forecast and recording.
+- Ticker and ledger strip appear immediately after a fresh setup (the flows were keyed to the activity chosen before setup); the notification prompt now comes on the first screen (board), not on the Forecast page behind it.
+
 ## [0.12.2] - 2026-08-21
 
 ### Changed

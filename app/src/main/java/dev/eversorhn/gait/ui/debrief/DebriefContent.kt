@@ -139,7 +139,7 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
                     color = if (won) Good else Alert,
                 )
                 CompareGrid(
-                    rows = listOf(CompareRow("Pace", d.targetPaceLabel, result.actualPaceLabel, actualGood = if (d.verdict == DecommissionTrial.Verdict.TOO_SHORT) null else won)),
+                    rows = listOf(CompareRow(result.paceWord, d.targetPaceLabel, result.actualPaceLabel, actualGood = if (d.verdict == DecommissionTrial.Verdict.TOO_SHORT) null else won)),
                     forecastHeader = "Target",
                     actualHeader = "You",
                 )
@@ -157,7 +157,7 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
             CorpoPanel {
                 CompareGrid(
                     rows = listOf(
-                        CompareRow("Pace", result.forecastPaceLabel, result.actualPaceLabel, actualGood = result.beatForecast),
+                        CompareRow(result.paceWord, result.forecastPaceLabel, result.actualPaceLabel, actualGood = result.beatForecast),
                         CompareRow("Distance", result.forecastDistanceLabel, result.actualDistanceLabel),
                         CompareRow("Finish", result.forecastFinishLabel, result.actualFinishLabel),
                     )

@@ -141,7 +141,7 @@ fun StatsScreen(onDone: () -> Unit) {
                 style = MaterialTheme.typography.bodyLarge,
             )
             Text(
-                "Avg pace ${state.avgPaceLabel} · ${state.metricLabel} now ${state.metricPercent}%",
+                "Avg ${dev.eversorhn.gait.domain.activity.Activities.paceWord((androidx.compose.ui.platform.LocalContext.current.applicationContext as dev.eversorhn.gait.GaitApplication).repository.activeActivityType).lowercase()} ${state.avgPaceLabel} · ${state.metricLabel} now ${state.metricPercent}%",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
