@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -49,6 +50,7 @@ import dev.eversorhn.gait.ui.theme.Cyan
 import dev.eversorhn.gait.ui.theme.FootNote
 import dev.eversorhn.gait.ui.theme.Good
 import dev.eversorhn.gait.ui.theme.LiveTrack
+import dev.eversorhn.gait.ui.theme.Meter
 import dev.eversorhn.gait.ui.theme.PanelTone
 import dev.eversorhn.gait.ui.theme.PhaseTrack
 import dev.eversorhn.gait.ui.theme.RecDot
@@ -241,6 +243,7 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
                     opponent = opponent,
                     isDuel = isDuel,
                     callouts = uiState.callouts,
+                    projection = uiState.projection,
                 )
                 CorpoButton(
                     text = if (uiState.finishing) "Saving…" else "Stop",
@@ -309,8 +312,15 @@ private fun LiveSession(
     opponent: LiveOpponent?,
     isDuel: Boolean,
     callouts: List<LiveCallout>,
+    projection: LiveProjection?,
 ) {
     val name = opponent?.name ?: "Twin"
+    val activity = dev.eversorhn.gait.domain.activity.Activities.byKey(
+        (LocalContext.current.applicationContext as dev.eversorhn.gait.GaitApplication).repository.activeActivityType
+    )
+    // Motor-assisted / wheeled activities read better in km/h than min/km.
+    val showSpeed = !activity.paceMeaningful || activity.key == "CYCLING" || activity.key == "E_BIKE"
+    fun paceOrSpeed(secPerKm: Double): String = if (showSpeed) "%.1f km/h".format(3600.0 / secPerKm) else formatPace(secPerKm)
     val twinColor = if (opponent?.isHorde == true) Alert else Cyan
     val referencePace = if (isDuel) opponent?.duelTargetPaceSecPerKm ?: opponent?.forecastPaceSecPerKm else opponent?.forecastPaceSecPerKm
     val referenceDistance = opponent?.forecastDistanceMeters
@@ -329,6 +339,56 @@ private fun LiveSession(
         )
         Spacer(Modifier.weight(1f))
         Text(formatElapsed(snapshot.elapsedSeconds), style = MaterialTheme.typography.headlineLarge)
+    }
+
+    // --- The gap clock: the one number to watch ---
+    if (mode == TrackMode.OUTDOOR && projection != null && opponent != null) {
+        val p = projection
+        val ahead = p.gapSeconds >= 0
+        CorpoPanel(tone = when {
+            opponent.isHorde && (p.separationMeters ?: 0) < 50 -> PanelTone.WARN
+            opponent.isHorde -> PanelTone.NEUTRAL
+            ahead -> PanelTone.GOOD
+            else -> PanelTone.WARN
+        }) {
+            if (opponent.isHorde) {
+                SectionLabel(if ((p.separationMeters ?: 0) >= 0) "Separation" else "Overrun", color = if ((p.separationMeters ?: 0) < 50) Alert else MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("${kotlin.math.abs(p.separationMeters ?: 0)} m", style = MaterialTheme.typography.headlineLarge, color = if ((p.separationMeters ?: 0) < 50) Alert else Brass)
+                    Text(
+                        when {
+                            p.closingPerMinute == null -> ""
+                            p.closingPerMinute > 0 -> "closing ${p.closingPerMinute} m/min"
+                            p.closingPerMinute < 0 -> "falling back ${-p.closingPerMinute} m/min"
+                            else -> "holding"
+                        }.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if ((p.closingPerMinute ?: 0) > 0) Alert else Good,
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
+                }
+                FootNote("They move at your projected pace · ${p.projectedFinishSeconds?.let { "your finish if you hold this: ${formatDuration(it)}" } ?: "finding your pace"}")
+            } else {
+                SectionLabel(if (ahead) "Ahead of $name" else "Behind $name", color = if (ahead) Good else Alert)
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        (if (ahead) "+" else "−") + formatElapsed(kotlin.math.abs(p.gapSeconds)),
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = if (ahead) Good else Alert,
+                    )
+                    Text("at ${"%.2f".format(snapshot.distanceMeters / 1000.0)} km".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, modifier = Modifier.padding(bottom = 6.dp))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile("Finish · hold", p.projectedFinishSeconds?.let { formatDuration(it) } ?: "—", accent = Brass, sub = opponent.forecastFinishSeconds?.let { "vs ${formatDuration(it)}" })
+                    StatTile("Round now", when (p.roundToUser) { true -> "YOU"; false -> name.uppercase(); null -> "—" }, accent = when (p.roundToUser) { true -> Good; false -> Alert; null -> TextFaint }, sub = "${opponent.stake} pt${if (opponent.stake == 1) "" else "s"} riding")
+                    StatTile("Board → ", p.projectedRank?.let { "#$it" } ?: "—", accent = when { (p.rankDelta ?: 0) > 0 -> Good; (p.rankDelta ?: 0) < 0 -> Alert; else -> MaterialTheme.colorScheme.onSurface }, sub = p.rankDelta?.let { d -> if (d > 0) "▲ $d places" else if (d < 0) "▼ ${-d} places" else "holding" } ?: "")
+                }
+                p.modelConfidencePercent?.let { c ->
+                    Meter(fraction = c / 100f, color = if (c < opponent.forecastConfidencePercent / 2) Good else twinColor)
+                    FootNote("$name's confidence: $c% (was ${opponent.forecastConfidencePercent}%) · ${activity.label.lowercase()}")
+                }
+            }
+        }
     }
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -363,11 +423,12 @@ private fun LiveSession(
 
     if (mode == TrackMode.OUTDOOR) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatTile("Your pace", snapshot.currentPaceSecPerKm?.let { formatPace(it) } ?: "—", accent = Brass, sub = snapshot.avgPaceSecPerKm?.let { "last 200 m · avg ${formatPace(it)}" })
+            StatTile(if (showSpeed) "Your speed" else "Your pace", snapshot.currentPaceSecPerKm?.let { paceOrSpeed(it) } ?: "—", accent = Brass, sub = snapshot.avgPaceSecPerKm?.let { "last 200 m · avg ${paceOrSpeed(it)}" })
             StatTile(
-                if (isDuel) "Target pace" else "$name pace",
-                referencePace?.let { formatPace(it) } ?: "—",
+                if (isDuel) "Target" else if (opponent?.isHorde == true) "Horde" else name,
+                referencePace?.let { paceOrSpeed(it) } ?: "—",
                 accent = twinColor,
+                sub = if (showSpeed) "their speed" else "their pace",
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -417,6 +478,23 @@ private fun LiveSession(
         } else if (!isDuel && opponent?.forecastPaceSecPerKm == null) {
             CorpoPanel {
                 Text("No forecast yet — $name is only watching this one.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
+        // --- Split ladder: every completed kilometre against the model ---
+        projection?.splits?.takeIf { it.isNotEmpty() }?.let { splits ->
+            CorpoPanel {
+                SectionLabel("Splits · you vs. ${if (opponent?.isHorde == true) "horde" else name}")
+                splits.asReversed().take(6).forEach { sp ->
+                    val d = sp.modelSeconds - sp.yourSeconds
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("KM ${sp.km}", style = MaterialTheme.typography.labelSmall, color = TextFaint, modifier = Modifier.width(52.dp))
+                        Text(formatElapsed(sp.yourSeconds), style = MaterialTheme.typography.titleMedium, color = Brass, modifier = Modifier.weight(1f))
+                        Text(formatElapsed(sp.modelSeconds), style = MaterialTheme.typography.titleMedium, color = twinColor, modifier = Modifier.weight(1f))
+                        Text((if (d >= 0) "−" else "+") + formatElapsed(kotlin.math.abs(d)), style = MaterialTheme.typography.titleMedium, color = if (d >= 0) Good else Alert)
+                    }
+                }
+                FootNote("Your split · their split · difference")
             }
         }
 

@@ -4,6 +4,12 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.11.0] - 2026-08-21
+
+### Added
+- **Live screen that's worth watching.** A **gap clock** at the top — seconds ahead/behind the model *at your current distance* (`+2:33 at 1.36 km`), green/red — with three projection tiles: finish if you hold this rolling pace vs. the model's; who the round goes to right now and what's riding; and **"Board →"**, your rank on the division board if the round landed now, with ▲/▼ places vs. today. Underneath, the model's **confidence decaying live** as your session average drifts off its number. **Splits** build up per completed kilometre: your split, their split, difference. Speed-based activities (cycling, e-bike, e-scooter) read in km/h. Horde mode replaces the gap clock with **separation in metres** and a closing/falling-back rate per minute (they move at your projected pace); turns red under 50 m.
+- `docs/voice-design.md` — the one GAIT voice (young female AI timbre, 70/30 natural/synthetic, delivery and processing chain) for the upcoming live-audio work.
+
 ## [0.10.0] - 2026-08-21
 
 ### Added

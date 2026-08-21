@@ -58,6 +58,32 @@ data class RecoverableSession(
 /** One mid-session callout, for the Track screen's comms feed. */
 data class LiveCallout(val atSeconds: Int, val text: String, val zone: LiveZone)
 
+/** One completed kilometre: your moving seconds for it against the model's expected seconds. */
+data class Split(val km: Int, val yourSeconds: Int, val modelSeconds: Int)
+
+/**
+ * What the session looks like if you hold this: the numbers that make the live screen worth
+ * watching. Everything derives from the snapshot + the opponent's forecast; nothing is stored.
+ */
+data class LiveProjection(
+    /** Seconds you are ahead (+) / behind (−) of the model *at your current distance*. */
+    val gapSeconds: Int,
+    /** Finish time if you hold the rolling pace over the forecast distance. */
+    val projectedFinishSeconds: Int?,
+    /** Whether the round would go to you on the session average right now. */
+    val roundToUser: Boolean?,
+    /** Board rank if the round landed now, and the change vs. today's rank. */
+    val projectedRank: Int?,
+    val rankDelta: Int?,
+    /** Horde: metres of separation at your current pace vs. theirs (+ = you're ahead). */
+    val separationMeters: Int?,
+    /** Horde: metres per minute they close (+) or fall back (−). */
+    val closingPerMinute: Int?,
+    /** The model's forecast confidence, decayed by how far off its number you are. */
+    val modelConfidencePercent: Int?,
+    val splits: List<Split>,
+)
+
 data class LiveOpponent(
     val name: String,
     val isHorde: Boolean,
@@ -72,6 +98,9 @@ data class LiveOpponent(
     val forecastDistanceMeters: Double?,
     val forecastFinishSeconds: Int?,
     val duelTargetPaceSecPerKm: Double?,
+    val forecastConfidencePercent: Int = 0,
+    val enrolledEpochDay: Long = 0L,
+    val todayRank: Int? = null,
 )
 
 data class TrackUiState(
@@ -81,6 +110,7 @@ data class TrackUiState(
     val opponent: LiveOpponent? = null,
     /** Newest last. The opponent talking mid-session (text channel of docs/live-audio.md). */
     val callouts: List<LiveCallout> = emptyList(),
+    val projection: LiveProjection? = null,
     val finishing: Boolean = false,
     /** Indoor only: timer stopped, waiting for the user to type the distance off the machine. */
     val awaitingIndoorDistance: Boolean = false,
@@ -109,6 +139,10 @@ class TrackViewModel(
     val uiState: StateFlow<TrackUiState> = _uiState.asStateFlow()
 
     private var commentary = LiveCommentary()
+    private var lastKmMarked = 0
+    private var lastKmMovingSeconds = 0
+    private var splits: List<Split> = emptyList()
+    private var lastProjectionAt = -100
 
     init {
         observeLiveSession()
@@ -133,12 +167,29 @@ class TrackViewModel(
             trackingSnapshot.collect { snap ->
                 if (snap.isTracking && !wasTracking) {
                     commentary = LiveCommentary()
-                    _uiState.value = _uiState.value.copy(callouts = emptyList())
+                    lastKmMarked = 0; lastKmMovingSeconds = 0; splits = emptyList(); lastProjectionAt = -100
+                    _uiState.value = _uiState.value.copy(callouts = emptyList(), projection = null)
                 }
                 wasTracking = snap.isTracking
                 if (!snap.isTracking || snap.mode != TrackingMode.OUTDOOR) return@collect
                 val opp = _uiState.value.opponent ?: return@collect
                 val reference = if (_uiState.value.duel) opp.duelTargetPaceSecPerKm ?: opp.forecastPaceSecPerKm else opp.forecastPaceSecPerKm
+
+                // --- Splits: one row per completed kilometre ---
+                val km = (snap.distanceMeters / 1000.0).toInt()
+                if (km > lastKmMarked && reference != null) {
+                    for (k in (lastKmMarked + 1)..km) {
+                        splits = splits + Split(k, snap.movingSeconds - lastKmMovingSeconds, reference.toInt())
+                        lastKmMovingSeconds = snap.movingSeconds
+                    }
+                    lastKmMarked = km
+                }
+                // --- Projection (every 5 s of moving time; the rank part sorts 1,300 rows) ---
+                if (snap.movingSeconds - lastProjectionAt >= 5 && reference != null) {
+                    lastProjectionAt = snap.movingSeconds
+                    _uiState.value = _uiState.value.copy(projection = project(snap, opp, reference))
+                }
+
                 val gap = if (reference != null && snap.currentPaceSecPerKm != null) reference - snap.currentPaceSecPerKm else null
                 val trigger = commentary.onTick(snap.movingSeconds, snap.distanceMeters, gap) ?: return@collect
                 val text = lineFor(opp, trigger)
@@ -152,6 +203,58 @@ class TrackViewModel(
             }
         }
     }
+
+    private fun project(snap: dev.eversorhn.gait.tracking.TrackingSnapshot, opp: LiveOpponent, reference: Double): LiveProjection {
+        val km = snap.distanceMeters / 1000.0
+        val modelSecondsHere = (reference * km).toInt()
+        val gapSeconds = modelSecondsHere - snap.movingSeconds
+        val rolling = snap.currentPaceSecPerKm
+        val projectedFinish = if (rolling != null && opp.forecastDistanceMeters != null && opp.forecastDistanceMeters > 0)
+            (snap.movingSeconds + rolling * ((opp.forecastDistanceMeters - snap.distanceMeters).coerceAtLeast(0.0) / 1000.0)).toInt() else null
+        val avg = snap.avgPaceSecPerKm
+        val roundToUser = avg?.let { it < reference }
+        // Model confidence decays with how far off its number your session average is.
+        val confidence = if (avg != null && opp.forecastConfidencePercent > 0) {
+            val off = kotlin.math.abs(avg - reference) / reference
+            (opp.forecastConfidencePercent * (1.0 - (off * 2.5).coerceIn(0.0, 0.9))).toInt()
+        } else null
+        // Horde: separation in metres at your average pace vs theirs over the moving time so far.
+        val separation = if (opp.isHorde && snap.movingSeconds > 30) {
+            val hordeMeters = snap.movingSeconds / reference * 1000.0
+            (snap.distanceMeters - hordeMeters).toInt()
+        } else null
+        val closing = if (opp.isHorde && rolling != null) {
+            // metres per minute by which they close at your *current* pace: their speed − yours.
+            ((1000.0 / reference - 1000.0 / rolling) * 60).toInt()
+        } else null
+        // Board projection: the ledger with this round added, through the cached daily roster.
+        var projectedRank: Int? = null
+        var rankDelta: Int? = null
+        if (roundToUser != null && !opp.isHorde) {
+            runCatching {
+                val sessions = cachedSessions ?: return@runCatching
+                val ledgerNow = dev.eversorhn.gait.domain.ledger.Ledger.from(sessions)
+                val lead = ledgerNow.lead + (if (roundToUser) opp.stake else -opp.stake)
+                val streak = ledgerNow.streak?.let { (side, n) -> if (side == dev.eversorhn.gait.domain.ledger.Side.USER) n else -n } ?: 0
+                val projectedLedger = dev.eversorhn.gait.domain.ledger.LedgerState(
+                    userPoints = (ledgerNow.userPoints + if (roundToUser) opp.stake else 0),
+                    twinPoints = (ledgerNow.twinPoints + if (!roundToUser) opp.stake else 0),
+                    rounds = ledgerNow.rounds,
+                )
+                val now = Instant.now(); val zoned = now.atZone(ZoneId.systemDefault())
+                val offset = zoned.offset.totalSeconds * 1000L
+                val today = dev.eversorhn.gait.domain.roster.RosterEngine.epochDay(now.toEpochMilli(), offset)
+                val snapRoster = dev.eversorhn.gait.domain.roster.RosterEngine.snapshot(
+                    opp.enrolledEpochDay, today, zoned.hour * 60 + zoned.minute, projectedLedger, (opp.fidelity * 100).toInt(), ledgerNow,
+                )
+                projectedRank = snapRoster.user.rank
+                rankDelta = opp.todayRank?.let { it - snapRoster.user.rank }
+            }
+        }
+        return LiveProjection(gapSeconds, projectedFinish, roundToUser, projectedRank, rankDelta, separation, closing, confidence, splits)
+    }
+
+    private var cachedSessions: List<dev.eversorhn.gait.data.db.entity.SessionEntity>? = null
 
     private fun lineFor(opp: LiveOpponent, trigger: LiveCommentary.Trigger): String {
         fun gapLabel(g: Double): String {
@@ -200,6 +303,15 @@ class TrackViewModel(
                 _uiState.value.duel -> dev.eversorhn.gait.domain.ledger.Ledger.DUEL_STAKE
                 else -> dev.eversorhn.gait.domain.wager.WagerPolicy.roundStake(stakeOpen, profile.wagerCalled, profile.wagerStake)
             }
+            cachedSessions = sessions
+            val offset = zoned.offset.totalSeconds * 1000L
+            val enrolledDay = dev.eversorhn.gait.domain.roster.RosterEngine.epochDay(repository.earliestEnrolmentEpochMillis() ?: profile.createdAtEpochMillis, offset)
+            val todayRank = if (!profile.isHorde) runCatching {
+                dev.eversorhn.gait.domain.roster.RosterEngine.snapshot(
+                    enrolledDay, dev.eversorhn.gait.domain.roster.RosterEngine.epochDay(now.toEpochMilli(), offset), zoned.hour * 60 + zoned.minute,
+                    dev.eversorhn.gait.domain.ledger.Ledger.from(sessions), (profile.fidelity * 100).toInt(), dev.eversorhn.gait.domain.ledger.Ledger.from(sessions),
+                ).user.rank
+            }.getOrNull() else null
             _uiState.value = _uiState.value.copy(
                 opponent = LiveOpponent(
                     name = profile.twinName,
@@ -214,6 +326,9 @@ class TrackViewModel(
                     forecastDistanceMeters = forecast?.forecastDistanceMeters,
                     forecastFinishSeconds = forecast?.forecastFinishSeconds,
                     duelTargetPaceSecPerKm = if (_uiState.value.duel) DecommissionTrial.targetPaceSecPerKm(sessions) else null,
+                    forecastConfidencePercent = forecast?.confidencePercent ?: 0,
+                    enrolledEpochDay = enrolledDay,
+                    todayRank = todayRank,
                 )
             )
         }
