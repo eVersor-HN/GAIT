@@ -139,6 +139,12 @@ class TrackViewModel(
     val uiState: StateFlow<TrackUiState> = _uiState.asStateFlow()
 
     private var commentary = LiveCommentary()
+    /** The spoken commentator (docs/voice-design.md). Created lazily so a TTS engine is only bound once a session runs. */
+    private var commentator: dev.eversorhn.gait.audio.Commentator? = null
+    private var lastSpokenAt = -1000
+    private var lastStatusAt = -1000
+    private var lastAheadSpoken: Boolean? = null
+    private var spokenLines = 0
     private var lastKmMarked = 0
     private var lastKmMovingSeconds = 0
     private var splits: List<Split> = emptyList()
@@ -168,8 +174,13 @@ class TrackViewModel(
                 if (snap.isTracking && !wasTracking) {
                     commentary = LiveCommentary()
                     lastKmMarked = 0; lastKmMovingSeconds = 0; splits = emptyList(); lastProjectionAt = -100
+                    lastSpokenAt = -1000; lastStatusAt = 0; lastAheadSpoken = null; spokenLines = 0; lastSpokenKm = 0
                     _uiState.value = _uiState.value.copy(callouts = emptyList(), projection = null)
+                    _uiState.value.opponent?.let { opp ->
+                        if (snap.mode == TrackingMode.OUTDOOR) speak(dev.eversorhn.gait.domain.live.CommentaryScript.startLine(scriptInput(snap, opp, null)), snap.movingSeconds, force = true)
+                    }
                 }
+                if (!snap.isTracking && wasTracking) commentator?.stop()
                 wasTracking = snap.isTracking
                 if (!snap.isTracking || snap.mode != TrackingMode.OUTDOOR) return@collect
                 val opp = _uiState.value.opponent ?: return@collect
@@ -187,7 +198,21 @@ class TrackViewModel(
                 // --- Projection (every 5 s of moving time; the rank part sorts 1,300 rows) ---
                 if (snap.movingSeconds - lastProjectionAt >= 5 && reference != null) {
                     lastProjectionAt = snap.movingSeconds
-                    _uiState.value = _uiState.value.copy(projection = project(snap, opp, reference))
+                    val proj = project(snap, opp, reference)
+                    _uiState.value = _uiState.value.copy(projection = proj)
+                    // --- Spoken commentary: km marks, lead changes, and a status line every ~2 min ---
+                    val input = scriptInput(snap, opp, proj)
+                    val aheadNow: Boolean? = if (opp.isHorde) proj.separationMeters?.let { it > 0 } else proj.gapSeconds.let { it > 0 }
+                    when {
+                        km > (lastSpokenKm) && km >= 1 -> { lastSpokenKm = km; speak(dev.eversorhn.gait.domain.live.CommentaryScript.kmLine(input), snap.movingSeconds) }
+                        aheadNow != null && lastAheadSpoken != null && aheadNow != lastAheadSpoken && snap.movingSeconds > 60 ->
+                            speak(dev.eversorhn.gait.domain.live.CommentaryScript.leadChangeLine(input, aheadNow), snap.movingSeconds)
+                        snap.movingSeconds - lastStatusAt >= 120 && snap.movingSeconds > 90 -> {
+                            dev.eversorhn.gait.domain.live.CommentaryScript.statusLine(input)?.let { speak(it, snap.movingSeconds) }
+                            lastStatusAt = snap.movingSeconds
+                        }
+                    }
+                    if (aheadNow != null && (lastAheadSpoken == null || snap.movingSeconds > 60)) lastAheadSpoken = aheadNow
                 }
 
                 val gap = if (reference != null && snap.currentPaceSecPerKm != null) reference - snap.currentPaceSecPerKm else null
@@ -202,6 +227,32 @@ class TrackViewModel(
                 )
             }
         }
+    }
+
+    private var lastSpokenKm = 0
+
+    private fun scriptInput(snap: dev.eversorhn.gait.tracking.TrackingSnapshot, opp: LiveOpponent, p: LiveProjection?): dev.eversorhn.gait.domain.live.CommentaryScript.Input {
+        val gapMetres = p?.gapSeconds?.let { g -> snap.currentPaceSecPerKm?.let { pace -> (g * 1000.0 / pace).toInt() } }
+        return dev.eversorhn.gait.domain.live.CommentaryScript.Input(
+            opponentName = opp.name, isHorde = opp.isHorde, km = (snap.distanceMeters / 1000.0).toInt(),
+            gapSeconds = p?.gapSeconds, gapMetres = gapMetres, separationMetres = p?.separationMeters, closingPerMinute = p?.closingPerMinute,
+            roundToUser = p?.roundToUser, stake = opp.stake, modelConfidence = p?.modelConfidencePercent,
+            projectedFinishSeconds = p?.projectedFinishSeconds, modelFinishSeconds = opp.forecastFinishSeconds,
+        )
+    }
+
+    /** Cooldown 40 s, 20 lines per session, respects the Voice setting. [force] for the opening line. */
+    private fun speak(text: String, atSeconds: Int, force: Boolean = false) {
+        if (!dev.eversorhn.gait.audio.VoicePrefs.isEnabled(appContext)) return
+        if (!force && (atSeconds - lastSpokenAt < 40 || spokenLines >= 20)) return
+        val c = commentator ?: dev.eversorhn.gait.audio.Commentator(appContext).also { commentator = it }
+        c.say(text)
+        lastSpokenAt = atSeconds; spokenLines++
+    }
+
+    override fun onCleared() {
+        commentator?.shutdown()
+        super.onCleared()
     }
 
     private fun project(snap: dev.eversorhn.gait.tracking.TrackingSnapshot, opp: LiveOpponent, reference: Double): LiveProjection {

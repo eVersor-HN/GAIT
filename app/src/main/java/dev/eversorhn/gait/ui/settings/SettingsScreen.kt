@@ -237,6 +237,19 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
             }
         }
 
+        // --- Voice: the spoken commentator during a session ---
+        var voiceOn by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.audio.VoicePrefs.isEnabled(appCtx)) }
+        Text("Voice · live commentator", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CorpoChip(label = "On", active = voiceOn, onClick = { dev.eversorhn.gait.audio.VoicePrefs.setEnabled(appCtx, true); voiceOn = true })
+            CorpoChip(label = "Off", active = !voiceOn, onClick = { dev.eversorhn.gait.audio.VoicePrefs.setEnabled(appCtx, false); voiceOn = false })
+        }
+        Text(
+            "One voice, the division's: kilometre marks, lead changes and a status line every couple of minutes — \"Markus K. is 40 metres behind you\", \"the horde is catching up\". Ducks your music. Uses the phone's text-to-speech engine (a female English voice if the device has one).",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
         // --- Notifications: the exit dialog can mute them; this is where they come back ---
         val ctx = androidx.compose.ui.platform.LocalContext.current
         var muted by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.notification.NotificationPrefs.isMuted(ctx)) }

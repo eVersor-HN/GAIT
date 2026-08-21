@@ -4,6 +4,11 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.12.0] - 2026-08-21
+
+### Added
+- **Spoken live commentator** (`audio/Commentator`, `domain/live/CommentaryScript`): one voice, the division's — not the persona. Android text-to-speech with a female English voice where the device has one (pitch 1.08, natural rate), ducking your music for the length of a line. Says what a commentator would: "Recording. Markus K. is running its forecast beside you. 2 points riding." · "Kilometre 2. 14 seconds ahead of Markus K." · "Markus K. is 40 metres behind you." · "You've taken the lead." · "Model confidence is down to 31 percent." · Horde: "The horde is catching up — 60 metres and closing at 18 a minute." / "You're pulling away." Cadence: opening line, every kilometre, lead changes (after the first minute), a status line every ~2 minutes; 40 s cooldown, 20 lines per session. Settings → Voice: On / Off (default on). No engine → silent; the on-screen comms stay the primary channel. Timbre work per `docs/voice-design.md` is the next step (the system voice is the placeholder).
+
 ## [0.11.0] - 2026-08-21
 
 ### Added
