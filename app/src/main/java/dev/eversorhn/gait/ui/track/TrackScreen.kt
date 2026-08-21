@@ -7,39 +7,68 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import dev.eversorhn.gait.domain.fidelity.FidelityReplay
 import dev.eversorhn.gait.ui.debrief.DebriefContent
+import dev.eversorhn.gait.ui.forecast.formatDuration
+import dev.eversorhn.gait.ui.forecast.formatPace
 import dev.eversorhn.gait.ui.gaitViewModel
+import dev.eversorhn.gait.ui.theme.Alert
+import dev.eversorhn.gait.ui.theme.Brass
+import dev.eversorhn.gait.ui.theme.ButtonKind
+import dev.eversorhn.gait.ui.theme.CorpoButton
 import dev.eversorhn.gait.ui.theme.CorpoPanel
+import dev.eversorhn.gait.ui.theme.Cyan
+import dev.eversorhn.gait.ui.theme.FootNote
+import dev.eversorhn.gait.ui.theme.Good
+import dev.eversorhn.gait.ui.theme.LiveTrack
+import dev.eversorhn.gait.ui.theme.PanelTone
+import dev.eversorhn.gait.ui.theme.PhaseTrack
+import dev.eversorhn.gait.ui.theme.RecDot
+import dev.eversorhn.gait.ui.theme.ScreenTitle
+import dev.eversorhn.gait.ui.theme.SectionLabel
+import dev.eversorhn.gait.ui.theme.SelectCard
+import dev.eversorhn.gait.ui.theme.StatTile
+import dev.eversorhn.gait.ui.theme.TextFaint
+import dev.eversorhn.gait.ui.theme.TrackLegend
+import dev.eversorhn.gait.ui.theme.formatSignedTenths
+import kotlin.math.abs
 
 @Composable
-fun TrackScreen(onDone: () -> Unit) {
+fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
     val viewModel: TrackViewModel = gaitViewModel()
     val context = LocalContext.current
     val snapshot by viewModel.trackingSnapshot.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(duel) { viewModel.setDuel(duel) }
 
     var hasLocationPermission by remember {
         mutableStateOf(
@@ -118,10 +147,16 @@ fun TrackScreen(onDone: () -> Unit) {
         )
     }
 
+    val opponent = uiState.opponent
+    val isDuel = uiState.duel
+    val opponentName = opponent?.name ?: "Twin"
+    val screenEyebrow = if (isDuel) (if (opponent?.isHorde == true) "Outrun Trial" else "Decommission Trial") else "Track"
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         val result = uiState.result
@@ -134,8 +169,7 @@ fun TrackScreen(onDone: () -> Unit) {
             }
 
             uiState.awaitingIndoorDistance -> {
-                Text("TRACK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                Text("What did the machine say?", style = MaterialTheme.typography.headlineLarge)
+                ScreenTitle(screenEyebrow, "What did the machine say?")
                 Text(
                     "Timed at ${formatElapsed(uiState.indoorElapsedSeconds)}. Enter the distance shown on the console.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -149,126 +183,245 @@ fun TrackScreen(onDone: () -> Unit) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Button(
+                CorpoButton(
+                    text = if (uiState.finishing) "Saving…" else "Submit",
                     onClick = viewModel::submitIndoorDistance,
                     enabled = !uiState.finishing,
+                    kind = ButtonKind.PRIMARY,
                     modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(if (uiState.finishing) "SAVING…" else "SUBMIT")
-                }
+                )
             }
 
             uiState.mode == null -> {
-                Text("TRACK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                Text("Indoor or outdoor?", style = MaterialTheme.typography.headlineLarge)
-                Text(
-                    "Outdoor uses GPS to verify pace and distance. Indoor (treadmill, ergometer, ...) is timed only — you enter the distance the machine shows.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (isDuel) DuelBriefing(opponent) else PhaseTrack(current = 2)
+                ScreenTitle(screenEyebrow, "Indoor or outdoor?")
                 uiState.stopMessage?.let { StopNotice(it) }
-                Button(onClick = { viewModel.chooseMode(TrackMode.OUTDOOR) }, modifier = Modifier.fillMaxWidth()) {
-                    Text("OUTDOOR — GPS")
-                }
-                Button(onClick = { viewModel.chooseMode(TrackMode.INDOOR) }, modifier = Modifier.fillMaxWidth()) {
-                    Text("INDOOR — TREADMILL / ERGOMETER")
-                }
-                OutlinedButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-                    Text("BACK")
-                }
+                SelectCard(
+                    title = "Outdoor — GPS",
+                    description = "Pace, distance and route verified by the device. The live comparison runs on real data.",
+                    selected = false,
+                    onClick = { viewModel.chooseMode(TrackMode.OUTDOOR) },
+                    badge = "verified",
+                )
+                SelectCard(
+                    title = "Indoor — treadmill",
+                    description = "Timed only. You enter the distance the machine shows when you stop — tagged as self-reported.",
+                    selected = false,
+                    onClick = { viewModel.chooseMode(TrackMode.INDOOR) },
+                    badge = "self-reported",
+                )
+                CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
             }
 
             uiState.mode == TrackMode.OUTDOOR && !hasLocationPermission -> {
-                Text("TRACK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                Text("GAIT needs your location", style = MaterialTheme.typography.headlineLarge)
+                ScreenTitle(screenEyebrow, "GAIT needs your location")
                 Text(
                     "Used only to record pace, distance, and route while a session is active — recording runs " +
                         "as a foreground service with an ongoing notification, and nothing leaves this device.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Button(
+                CorpoButton(
+                    text = "Grant location access",
                     onClick = {
                         permissionLauncher.launch(
                             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
                         )
                     },
+                    kind = ButtonKind.PRIMARY,
                     modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("GRANT LOCATION ACCESS")
-                }
-                OutlinedButton(onClick = { viewModel.chooseMode(TrackMode.INDOOR) }, modifier = Modifier.fillMaxWidth()) {
-                    Text("USE INDOOR MODE INSTEAD")
-                }
+                )
+                CorpoButton("Use indoor mode instead", onClick = { viewModel.chooseMode(TrackMode.INDOOR) }, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
             }
 
             snapshot.isTracking -> {
-                Text(
-                    if (snapshot.autoPaused) "AUTO-PAUSED" else "LIVE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (snapshot.autoPaused) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+                LiveSession(
+                    snapshot = snapshot,
+                    mode = uiState.mode ?: TrackMode.OUTDOOR,
+                    opponent = opponent,
+                    isDuel = isDuel,
                 )
-                Text(formatElapsed(snapshot.elapsedSeconds), style = MaterialTheme.typography.headlineLarge)
-                if (uiState.mode == TrackMode.OUTDOOR) {
-                    Text(
-                        "${"%.2f".format(snapshot.distanceMeters / 1000.0)} km" +
-                            (snapshot.currentPaceSecPerKm?.let { "  ·  ${formatLivePace(it)}/km" } ?: ""),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Text(
-                        "moving ${formatElapsed(snapshot.movingSeconds)}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (snapshot.gpsFixCount == 0) {
-                        Text(
-                            "Waiting for a GPS fix…",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                } else {
-                    Text(
-                        "Indoor session — distance logged on stop.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                snapshot.error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error) }
-                Button(onClick = viewModel::stop, enabled = !uiState.finishing, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (uiState.finishing) "SAVING…" else "STOP")
-                }
+                CorpoButton(
+                    text = if (uiState.finishing) "Saving…" else "Stop",
+                    onClick = viewModel::stop,
+                    enabled = !uiState.finishing,
+                    kind = ButtonKind.PRIMARY,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
 
             else -> {
-                Text("TRACK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                Text("Ready when you are", style = MaterialTheme.typography.headlineLarge)
+                if (isDuel) DuelBriefing(opponent) else PhaseTrack(current = 2)
+                ScreenTitle(screenEyebrow, "Ready when you are")
                 Text(
                     if (uiState.mode == TrackMode.OUTDOOR) "Outdoor · GPS-verified" else "Indoor · timed, distance entered on stop",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (opponent?.forecastPaceSecPerKm != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatTile("$opponentName pace", formatPace(opponent.forecastPaceSecPerKm), accent = Cyan)
+                        StatTile("Finish", opponent.forecastFinishSeconds?.let { formatDuration(it) } ?: "—", accent = Cyan)
+                    }
+                }
                 uiState.stopMessage?.let { StopNotice(it) }
                 snapshot.error?.let { StopNotice(it) }
-                Button(onClick = viewModel::start, modifier = Modifier.fillMaxWidth()) {
-                    Text("START ACTIVITY")
-                }
-                OutlinedButton(onClick = { viewModel.chooseMode(TrackMode.OUTDOOR).also { viewModel.reset() } }, modifier = Modifier.fillMaxWidth()) {
-                    Text("CHANGE MODE")
-                }
-                OutlinedButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-                    Text("BACK")
+                CorpoButton(
+                    text = if (isDuel) "Start duel" else "Start activity",
+                    onClick = viewModel::start,
+                    kind = if (isDuel) ButtonKind.RISK else ButtonKind.PRIMARY,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CorpoButton("Change mode", onClick = { viewModel.chooseMode(TrackMode.OUTDOOR).also { viewModel.reset() } }, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
+                    CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
                 }
             }
         }
     }
 }
 
+/** Phase 04 header shown above a Trial before it starts: what you have to beat. */
+@Composable
+private fun DuelBriefing(opponent: LiveOpponent?) {
+    CorpoPanel(tone = PanelTone.WARN) {
+        SectionLabel("Asset review", color = Alert)
+        Text(
+            opponent?.duelTargetPaceSecPerKm?.let { "Beat ${formatPace(it)} — ${opponent.name}'s strongest session" }
+                ?: "No reference session yet — this run becomes the baseline.",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        FootNote("Min. 1 km · win resets ${if (opponent?.isHorde == true) "Proximity" else "Fidelity"} and advances the ${if (opponent?.isHorde == true) "wave" else "generation"}")
+    }
+}
+
+/**
+ * Phase 02, Live Divergence: the opponent runs alongside you at its forecast pace. Your marker
+ * advances by distance, the opponent's by moving time against its forecast finish — so standing
+ * at a light (auto-pause) doesn't hand it free ground, exactly as the saved pace is judged.
+ */
+@Composable
+private fun LiveSession(
+    snapshot: dev.eversorhn.gait.tracking.TrackingSnapshot,
+    mode: TrackMode,
+    opponent: LiveOpponent?,
+    isDuel: Boolean,
+) {
+    val name = opponent?.name ?: "Twin"
+    val twinColor = if (opponent?.isHorde == true) Alert else Cyan
+    val referencePace = if (isDuel) opponent?.duelTargetPaceSecPerKm ?: opponent?.forecastPaceSecPerKm else opponent?.forecastPaceSecPerKm
+    val referenceDistance = opponent?.forecastDistanceMeters
+    val referenceFinish = if (isDuel && referencePace != null && referenceDistance != null) {
+        (referencePace * referenceDistance / 1000.0).toInt()
+    } else {
+        opponent?.forecastFinishSeconds
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (!snapshot.autoPaused) RecDot()
+        Text(
+            if (snapshot.autoPaused) "AUTO-PAUSED" else if (isDuel) "REC · DUEL" else "REC · LIVE",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (snapshot.autoPaused) TextFaint else Alert,
+        )
+        Spacer(Modifier.weight(1f))
+        Text(formatElapsed(snapshot.elapsedSeconds), style = MaterialTheme.typography.headlineLarge)
+    }
+
+    SectionLabel("Live comparison")
+
+    val youFraction: Float
+    val twinFraction: Float
+    if (mode == TrackMode.OUTDOOR) {
+        youFraction = if (referenceDistance != null && referenceDistance > 0) (snapshot.distanceMeters / referenceDistance).toFloat() else 0f
+        twinFraction = if (referenceFinish != null && referenceFinish > 0) snapshot.movingSeconds.toFloat() / referenceFinish else 0f
+    } else {
+        // Indoor: no live distance. Both markers advance by time, so the track is just a clock.
+        twinFraction = if (referenceFinish != null && referenceFinish > 0) snapshot.elapsedSeconds.toFloat() / referenceFinish else 0f
+        youFraction = twinFraction
+    }
+    LiveTrack(youFraction = youFraction, twinFraction = twinFraction, twinColor = twinColor)
+    TrackLegend(youLabel = "You", twinLabel = name, twinColor = twinColor)
+
+    if (mode == TrackMode.OUTDOOR) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StatTile("Your pace", snapshot.currentPaceSecPerKm?.let { formatPace(it) } ?: "—", accent = Brass)
+            StatTile(
+                if (isDuel) "Target pace" else "$name pace",
+                referencePace?.let { formatPace(it) } ?: "—",
+                accent = twinColor,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StatTile("Distance", "%.2f km".format(snapshot.distanceMeters / 1000.0), sub = referenceDistance?.let { "of %.2f km".format(it / 1000.0) })
+            StatTile("Moving", formatElapsed(snapshot.movingSeconds), sub = referenceFinish?.let { "${if (isDuel) "target" else "forecast"} ${formatDuration(it)}" })
+        }
+        if (snapshot.gpsFixCount == 0) {
+            Text("Waiting for a GPS fix…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        // --- Divergence card: where you stand against the forecast, live ---
+        val pace = snapshot.currentPaceSecPerKm
+        if (pace != null && referencePace != null && opponent != null) {
+            val gap = referencePace - pace // > 0 → you're faster
+            val ahead = gap > 0
+            val tone = when {
+                abs(gap) < 3 -> PanelTone.NEUTRAL
+                ahead -> PanelTone.GOOD
+                else -> PanelTone.WARN
+            }
+            val projected = FidelityReplay.step(opponent.fidelity, FidelityReplay.sessionFidelity(referencePace, pace))
+            val impactPoints = (projected - opponent.fidelity) * 100f
+            val metric = if (opponent.isHorde) "Proximity" else "Fidelity"
+            CorpoPanel(tone = tone) {
+                SectionLabel(
+                    when {
+                        abs(gap) < 3 -> "On forecast"
+                        ahead -> "Divergence detected"
+                        else -> "Behind forecast"
+                    },
+                    color = when (tone) { PanelTone.GOOD -> Good; PanelTone.WARN -> Alert; else -> MaterialTheme.colorScheme.onSurfaceVariant },
+                )
+                Text(
+                    when {
+                        abs(gap) < 3 -> "Exactly what $name expected. Do something it didn't."
+                        ahead -> "${formatGap(gap)} faster than $name's forecast."
+                        else -> "${formatGap(-gap)} slower than $name's forecast."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                FootNote(
+                    "$metric impact: ${formatSignedTenths(impactPoints)} live",
+                    color = if (impactPoints <= -0.05f) Good else if (impactPoints >= 0.05f) Alert else TextFaint,
+                )
+            }
+        } else if (!isDuel && opponent?.forecastPaceSecPerKm == null) {
+            CorpoPanel {
+                Text("No forecast yet — $name is only watching this one.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    } else {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StatTile("Elapsed", formatElapsed(snapshot.elapsedSeconds), accent = Brass)
+            StatTile("$name finish", referenceFinish?.let { formatDuration(it) } ?: "—", accent = twinColor)
+        }
+        Text("Indoor session — distance logged on stop.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    snapshot.error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error) }
+}
+
 @Composable
 private fun StopNotice(message: String) {
-    CorpoPanel {
+    CorpoPanel(tone = PanelTone.WARN) {
         Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
     }
+}
+
+private fun formatGap(secPerKm: Double): String {
+    val total = secPerKm.toInt()
+    return "${total / 60}:${(total % 60).toString().padStart(2, '0')}/km"
 }
 
 private fun formatElapsed(totalSeconds: Int): String {
@@ -280,9 +433,4 @@ private fun formatElapsed(totalSeconds: Int): String {
     } else {
         "%d:%02d".format(m, s)
     }
-}
-
-private fun formatLivePace(secPerKm: Double): String {
-    val total = secPerKm.toInt()
-    return "${total / 60}:${(total % 60).toString().padStart(2, '0')}"
 }

@@ -67,6 +67,20 @@ object HordeSoundCues {
     fun forecastCaption(basedOnSessions: Int): String =
         if (basedOnSessions <= 0) "[no signal yet]" else ambient.random()
 
+    /** A won Outrun Trial: the wave breaks and a new one forms -- the Horde's generational handoff. */
+    fun handoffCaption(newWave: Int): String =
+        listOf(
+            "[the groaning thins out... then a new chorus, further back -- wave $newWave]",
+            "[silence. then, far off, something starts walking again -- wave $newWave]",
+        ).random()
+
+    /** A lost Outrun Trial: they stay exactly where they were. */
+    fun duelLostCaption(): String =
+        listOf(
+            "[breathing, steady, right where it was]",
+            "[footsteps don't fall back. not even a little]",
+        ).random()
+
     /** The horde's idle-taunt equivalent (docs/notifications.md) -- always ambient, never a spike. */
     fun idleCaption(): String = ambient.random()
 

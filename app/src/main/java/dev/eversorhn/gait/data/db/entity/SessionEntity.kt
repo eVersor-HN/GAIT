@@ -28,4 +28,12 @@ data class SessionEntity(
     val isRestDay: Boolean = false,
     /** [SessionSource.GPS] or [SessionSource.MANUAL] — see docs/activities-and-dimensions.md. */
     val dataSource: String = SessionSource.GPS,
+    /** What the opponent said at this session's Debrief, so the Direct Channel can show a log. Null if silent. */
+    val twinLine: String? = null,
+    /** ComposureState.name at the Debrief (COWED / WATCHFUL / PREDATORY). Null if not evaluated (rest day). */
+    val composureState: String? = null,
+    /** True if this session was run as a Decommission Trial -- see domain/trial. */
+    val isDuel: Boolean = false,
+    /** Duel verdict: true = won (generation advanced), false = lost, null = not a duel / too short. */
+    val duelWon: Boolean? = null,
 )

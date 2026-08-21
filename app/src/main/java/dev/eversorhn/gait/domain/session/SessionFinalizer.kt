@@ -9,16 +9,29 @@ import dev.eversorhn.gait.data.repository.ACTIVITY_RUNNING
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.composure.ComposureEngine
 import dev.eversorhn.gait.domain.composure.ComposureState
+import dev.eversorhn.gait.domain.fidelity.FidelityReplay
 import dev.eversorhn.gait.domain.forecast.ForecastEngine
 import dev.eversorhn.gait.domain.horde.HordeSoundCues
 import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.domain.restdays.RestDayPolicy
+import dev.eversorhn.gait.domain.trial.DecommissionTrial
 import dev.eversorhn.gait.notification.TwinNotifier
+import dev.eversorhn.gait.ui.forecast.formatDistanceKm
+import dev.eversorhn.gait.ui.forecast.formatDuration
 import dev.eversorhn.gait.ui.forecast.formatPace
 import java.time.Instant
 import java.time.ZoneId
-import kotlin.math.abs
 import kotlin.random.Random
+
+/** Outcome of a session run as a Decommission Trial (Twin) / Outrun Trial (Horde). */
+data class DuelOutcome(
+    val verdict: DecommissionTrial.Verdict,
+    val targetPaceLabel: String,
+    /** Set on a win: the generation/wave that just spun up. */
+    val newGeneration: Int?,
+    /** Set on a win: the opponent's handoff line (Phase 05), quoting the user's own data. */
+    val handoffLine: String?,
+)
 
 data class DebriefResult(
     val hadForecast: Boolean,
@@ -36,6 +49,21 @@ data class DebriefResult(
      * recorded as real training, but Fidelity was frozen and Composure didn't react.
      */
     val restNote: String? = null,
+    // --- v0.5.0: everything the Debrief screen in the concept demo shows ---
+    val opponentName: String = "",
+    val previousFidelityPercent: Int = newFidelityPercent,
+    /** Running Fidelity replayed over the whole history incl. this session, oldest first. */
+    val fidelityHistory: List<Float> = emptyList(),
+    val forecastDistanceLabel: String = "—",
+    val actualDistanceLabel: String = "—",
+    val forecastFinishLabel: String = "—",
+    val actualFinishLabel: String = "—",
+    /** Actual pace faster than forecast (lower sec/km). Null without a forecast. */
+    val beatForecast: Boolean? = null,
+    val generation: Int = 1,
+    val generationLabel: String = "Generation",
+    val trialThresholdPercent: Int = (DecommissionTrial.THRESHOLD * 100).toInt(),
+    val duel: DuelOutcome? = null,
 )
 
 /**
@@ -49,6 +77,10 @@ data class DebriefResult(
  * training on a rest day is real training — but Fidelity is frozen rather than moved,
  * Composure stays neutral, and no notification fires. The Forecast screen's "no fidelity
  * change while you're away" promise is kept here, not just displayed.
+ *
+ * Decommission Trial (domain/trial): a session flagged [duel] is judged against the
+ * opponent's strongest prior session. A win resets Fidelity and advances the generation;
+ * a loss is an ordinary session plus a pointed remark.
  */
 class SessionFinalizer(
     private val repository: GaitRepository,
@@ -56,12 +88,12 @@ class SessionFinalizer(
 ) {
     private val forecastEngine = ForecastEngine()
     private val composureEngine = ComposureEngine()
-    private val fidelityAlpha = 0.2f
 
     suspend fun finalize(
         distanceMeters: Double,
         durationSeconds: Int,
         dataSource: String = SessionSource.GPS,
+        duel: Boolean = false,
     ): DebriefResult {
         require(distanceMeters > 0.0 && durationSeconds > 0) { "finalize() needs a positive distance and duration" }
 
@@ -77,6 +109,73 @@ class SessionFinalizer(
         val priorSessions = repository.getSessions()
         val forecast = forecastEngine.forecast(priorSessions, dayOfWeek, now.toEpochMilli())
 
+        val isHorde = profile?.isHorde == true
+        val persona = if (profile != null && !isHorde) Personas.byKey(profile.personaKey) else null
+        val metricLabel = if (isHorde) "Proximity" else "Fidelity"
+        val generationLabel = if (isHorde) "Wave" else "Generation"
+
+        // --- Decommission Trial verdict: judged against *prior* history, before Fidelity moves ---
+        val duelTarget = if (duel && profile != null) DecommissionTrial.targetPaceSecPerKm(priorSessions) else null
+        val verdict = duelTarget?.let { DecommissionTrial.judge(distanceMeters, avgPace, it) }
+        val duelWon = verdict == DecommissionTrial.Verdict.WON
+
+        // On a rest day / vacation, Composure is deliberately neutral and Fidelity is frozen.
+        // A decided duel overrides the z-score: losing one is Predatory by definition.
+        val composureState = when {
+            isRestPeriod -> ComposureState.WATCHFUL
+            verdict == DecommissionTrial.Verdict.LOST -> ComposureState.PREDATORY
+            verdict == DecommissionTrial.Verdict.WON -> ComposureState.COWED
+            else -> composureEngine.evaluate(
+                listOf(stubForComposure(avgPace, forecast?.forecastPaceSecPerKm)) + repository.getRecentSessions(limit = 9)
+            )
+        }
+
+        val previousFidelity = profile?.fidelity ?: FidelityReplay.INITIAL_FIDELITY
+        var newFidelity = previousFidelity
+        var newGeneration = profile?.generation ?: 1
+        var handoffLine: String? = null
+
+        if (profile != null) {
+            when {
+                duelWon -> {
+                    // How often the user beat the forecast this generation -- the handoff line quotes it back.
+                    val timesBeaten = priorSessions
+                        .takeWhile { !(it.isDuel && it.duelWon == true) }
+                        .count { s -> s.forecastPaceSecPerKm?.let { s.avgPaceSecPerKm < it } == true } +
+                        (if (forecast != null && avgPace < forecast.forecastPaceSecPerKm) 1 else 0)
+                    newFidelity = DecommissionTrial.RESET_FIDELITY
+                    newGeneration = profile.generation + 1
+                    handoffLine = if (isHorde) {
+                        HordeSoundCues.handoffCaption(newGeneration)
+                    } else {
+                        persona!!.handoffLine(timesBeaten, newGeneration)
+                    }
+                    repository.updateTwinProfile(profile.copy(fidelity = newFidelity, generation = newGeneration))
+                }
+                forecast != null && !isRestPeriod -> {
+                    newFidelity = FidelityReplay.step(
+                        previousFidelity,
+                        FidelityReplay.sessionFidelity(forecast.forecastPaceSecPerKm, avgPace),
+                    )
+                    repository.updateTwinProfile(profile.copy(fidelity = newFidelity))
+                }
+            }
+        }
+
+        val opponentLine: String? = when {
+            isRestPeriod -> null
+            verdict == DecommissionTrial.Verdict.LOST ->
+                if (isHorde) HordeSoundCues.duelLostCaption() else persona?.duelLostLines?.random(Random)
+            verdict == DecommissionTrial.Verdict.WON -> handoffLine
+            isHorde -> HordeSoundCues.captionFor(composureState, profile?.hordeIntensity ?: "")
+            persona != null -> when (composureState) {
+                ComposureState.COWED -> persona.cowedLines.random(Random)
+                ComposureState.WATCHFUL -> persona.watchfulLines.random(Random)
+                ComposureState.PREDATORY -> persona.predatoryLines.random(Random)
+            }
+            else -> null
+        }
+
         repository.logSession(
             SessionEntity(
                 activityType = ACTIVITY_RUNNING,
@@ -89,49 +188,28 @@ class SessionFinalizer(
                 forecastFinishSeconds = forecast?.forecastFinishSeconds,
                 isRestDay = isRestPeriod,
                 dataSource = dataSource,
+                twinLine = opponentLine,
+                composureState = if (isRestPeriod) null else composureState.name,
+                isDuel = duelTarget != null,
+                duelWon = when (verdict) {
+                    DecommissionTrial.Verdict.WON -> true
+                    DecommissionTrial.Verdict.LOST -> false
+                    else -> null
+                },
             )
         )
-
-        val isHorde = profile?.isHorde == true
-        val persona = if (profile != null && !isHorde) Personas.byKey(profile.personaKey) else null
-
-        // On a rest day / vacation, Composure is deliberately neutral and Fidelity is frozen.
-        val composureState = if (isRestPeriod) {
-            ComposureState.WATCHFUL
-        } else {
-            composureEngine.evaluate(repository.getRecentSessions(limit = 10))
-        }
-
-        var newFidelityPercent = ((profile?.fidelity ?: 0.5f) * 100).toInt()
-        if (profile != null && forecast != null && !isRestPeriod) {
-            val normalizedError = (abs(forecast.forecastPaceSecPerKm - avgPace) / forecast.forecastPaceSecPerKm)
-                .coerceIn(0.0, 1.0)
-            val sessionFidelity = (1.0 - normalizedError).toFloat()
-            val updatedFidelity = profile.fidelity * (1 - fidelityAlpha) + sessionFidelity * fidelityAlpha
-            repository.updateTwinProfile(profile.copy(fidelity = updatedFidelity))
-            newFidelityPercent = (updatedFidelity * 100).toInt()
-        }
-
-        val opponentLine: String? = when {
-            isRestPeriod -> null
-            isHorde -> HordeSoundCues.captionFor(composureState, profile?.hordeIntensity ?: "")
-            persona != null -> when (composureState) {
-                ComposureState.COWED -> persona.cowedLines.random(Random)
-                ComposureState.WATCHFUL -> persona.watchfulLines.random(Random)
-                ComposureState.PREDATORY -> persona.predatoryLines.random(Random)
-            }
-            else -> null
-        }
 
         if (!isRestPeriod && composureState == ComposureState.PREDATORY && profile != null && opponentLine != null) {
             TwinNotifier.postTwinMessage(appContext, profile.twinName, opponentLine)
         }
 
         val restNote = when {
-            isOnVacation -> "Logged during vacation — counted as training, but ${if (isHorde) "Proximity" else "Fidelity"} stays frozen and nobody reacts."
-            isRestDay -> "Logged on a declared rest day — counted as training, but ${if (isHorde) "Proximity" else "Fidelity"} stays frozen and nobody reacts."
+            isOnVacation -> "Logged during vacation — counted as training, but $metricLabel stays frozen and nobody reacts."
+            isRestDay -> "Logged on a declared rest day — counted as training, but $metricLabel stays frozen and nobody reacts."
             else -> null
         }
+
+        val history = FidelityReplay.history(repository.getSessions())
 
         return DebriefResult(
             hadForecast = forecast != null,
@@ -139,11 +217,45 @@ class SessionFinalizer(
             actualPaceLabel = formatPace(avgPace),
             composureState = composureState,
             twinLine = opponentLine,
-            newFidelityPercent = newFidelityPercent,
+            newFidelityPercent = (newFidelity * 100).toInt(),
             dataSource = dataSource,
             opponentType = profile?.opponentType ?: OpponentType.TWIN,
-            metricLabel = if (isHorde) "Proximity" else "Fidelity",
+            metricLabel = metricLabel,
             restNote = restNote,
+            opponentName = profile?.twinName ?: "",
+            previousFidelityPercent = (previousFidelity * 100).toInt(),
+            fidelityHistory = history,
+            forecastDistanceLabel = forecast?.let { formatDistanceKm(it.forecastDistanceMeters) } ?: "—",
+            actualDistanceLabel = formatDistanceKm(distanceMeters),
+            forecastFinishLabel = forecast?.let { formatDuration(it.forecastFinishSeconds) } ?: "—",
+            actualFinishLabel = formatDuration(durationSeconds),
+            beatForecast = forecast?.let { avgPace < it.forecastPaceSecPerKm },
+            generation = newGeneration,
+            generationLabel = generationLabel,
+            duel = verdict?.let {
+                DuelOutcome(
+                    verdict = it,
+                    targetPaceLabel = formatPace(duelTarget!!),
+                    newGeneration = if (duelWon) newGeneration else null,
+                    handoffLine = handoffLine,
+                )
+            },
         )
     }
+
+    /**
+     * Composure is evaluated on the *new* session plus the nine before it. The row isn't in
+     * the database yet at that point (the verdict decides what gets stored with it), so a
+     * throwaway entity carries just the two fields ComposureEngine reads.
+     */
+    private fun stubForComposure(avgPace: Double, forecastPace: Double?) = SessionEntity(
+        activityType = ACTIVITY_RUNNING,
+        startTimeEpochMillis = 0L,
+        dayOfWeek = 1,
+        durationSeconds = 1,
+        distanceMeters = 1.0,
+        avgPaceSecPerKm = avgPace,
+        forecastPaceSecPerKm = forecastPace,
+        forecastFinishSeconds = null,
+    )
 }

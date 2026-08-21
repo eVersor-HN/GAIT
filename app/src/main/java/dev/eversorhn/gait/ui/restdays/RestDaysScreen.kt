@@ -13,9 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +29,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.domain.restdays.RestDayPolicy
 import dev.eversorhn.gait.ui.gaitViewModel
+import dev.eversorhn.gait.ui.theme.ScreenTitle
+import dev.eversorhn.gait.ui.theme.CorpoButton
+import dev.eversorhn.gait.ui.theme.ButtonKind
 import dev.eversorhn.gait.ui.theme.CorpoPanel
 
 private val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
@@ -47,8 +48,7 @@ fun RestDaysScreen(onDone: () -> Unit) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("REST & VACATION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-        Text("When you're allowed to disappear", style = MaterialTheme.typography.headlineLarge)
+        ScreenTitle("Rest & vacation", "When you're allowed to disappear")
 
         Text(
             "Declared rest days: no forecast, no fidelity change, no composure reaction.",
@@ -87,9 +87,7 @@ fun RestDaysScreen(onDone: () -> Unit) {
             if (state.onVacationUntilLabel != null) {
                 Text("ON VACATION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 Text("Until ${state.onVacationUntilLabel}", style = MaterialTheme.typography.bodyLarge)
-                OutlinedButton(onClick = viewModel::endVacationEarly, modifier = Modifier.fillMaxWidth()) {
-                    Text("END VACATION EARLY")
-                }
+                CorpoButton("End vacation early", onClick = viewModel::endVacationEarly, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
             } else {
                 Text("VACATION BANK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 Text("${state.vacationDaysRemaining} days left this year", style = MaterialTheme.typography.bodyLarge)
@@ -101,17 +99,15 @@ fun RestDaysScreen(onDone: () -> Unit) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Button(
+                CorpoButton(
+                    "Start vacation",
                     onClick = { vacationDaysInput.toIntOrNull()?.let { viewModel.startVacation(it) } },
+                    kind = ButtonKind.PRIMARY,
                     modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("START VACATION")
-                }
+                )
             }
         }
 
-        OutlinedButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-            Text("BACK")
-        }
+        CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
     }
 }

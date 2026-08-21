@@ -4,22 +4,30 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.eversorhn.gait.data.db.entity.isHorde
 import dev.eversorhn.gait.data.repository.GaitRepository
+import dev.eversorhn.gait.domain.composure.ComposureState
+import dev.eversorhn.gait.domain.fidelity.FidelityReplay
 import dev.eversorhn.gait.domain.forecast.ForecastEngine
 import dev.eversorhn.gait.domain.horde.HordeIntensity
 import dev.eversorhn.gait.domain.horde.HordeSoundCues
 import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.domain.restdays.RestDayPolicy
+import dev.eversorhn.gait.domain.trial.DecommissionTrial
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
+
+/** The most recent thing the opponent said, for the Forecast screen's inbox teaser. */
+data class LastMessage(val line: String, val state: ComposureState, val daysAgo: Long)
 
 sealed interface ForecastUiState {
     data object Loading : ForecastUiState
     data object NoTwin : ForecastUiState
     data class Ready(
+        val isHorde: Boolean,
         val opponentName: String,
         val opponentLabel: String,
         val metricLabel: String,
@@ -31,8 +39,20 @@ sealed interface ForecastUiState {
         /** Horde only: the atmospheric caption shown above the numbers. Null for a Twin. */
         val hordeCaption: String?,
         val basedOnSessions: Int,
+        val totalSessions: Int,
         val confidencePercent: Int,
         val restStateLabel: String?,
+        // --- v0.5.0 instrument panel ---
+        val forecastPaceLabel: String,
+        val forecastDistanceLabel: String,
+        val forecastFinishLabel: String,
+        val fidelityHistory: List<Float>,
+        val trialEligible: Boolean,
+        val trialProgressPercent: Int,
+        val trialThresholdPercent: Int,
+        /** "Decommission Trial" for a Twin, "Outrun Trial" for a Horde. */
+        val trialLabel: String,
+        val lastMessage: LastMessage?,
     ) : ForecastUiState
 }
 
@@ -76,21 +96,43 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
             }
             val generationLabel = if (isHorde) "Wave" else "Generation"
 
-            _uiState.value = if (forecast == null) {
-                ForecastUiState.Ready(
-                    opponentName = profile.twinName,
-                    opponentLabel = opponentLabel,
-                    metricLabel = metricLabel,
-                    metricPercent = (profile.fidelity * 100).toInt(),
-                    generationLabel = generationLabel,
-                    generation = profile.generation,
-                    coldStart = true,
-                    forecastLine = "No baseline on you yet. Log a session first.",
-                    hordeCaption = if (isHorde) HordeSoundCues.forecastCaption(0) else null,
-                    basedOnSessions = 0,
-                    confidencePercent = 0,
-                    restStateLabel = restLabel,
+            val lastMessage = sessions.firstOrNull { it.twinLine != null }?.let { s ->
+                LastMessage(
+                    line = s.twinLine!!,
+                    state = s.composureState?.let { runCatching { ComposureState.valueOf(it) }.getOrNull() }
+                        ?: ComposureState.WATCHFUL,
+                    daysAgo = ChronoUnit.DAYS.between(Instant.ofEpochMilli(s.startTimeEpochMillis), now),
                 )
+            }
+
+            val common = ForecastUiState.Ready(
+                isHorde = isHorde,
+                opponentName = profile.twinName,
+                opponentLabel = opponentLabel,
+                metricLabel = metricLabel,
+                metricPercent = (profile.fidelity * 100).toInt(),
+                generationLabel = generationLabel,
+                generation = profile.generation,
+                coldStart = forecast == null,
+                forecastLine = "No baseline on you yet. Log a session first.",
+                hordeCaption = if (isHorde) HordeSoundCues.forecastCaption(forecast?.basedOnSessions ?: 0) else null,
+                basedOnSessions = forecast?.basedOnSessions ?: 0,
+                totalSessions = sessions.size,
+                confidencePercent = forecast?.confidencePercent ?: 0,
+                restStateLabel = restLabel,
+                forecastPaceLabel = "—",
+                forecastDistanceLabel = "—",
+                forecastFinishLabel = "—",
+                fidelityHistory = FidelityReplay.history(sessions),
+                trialEligible = DecommissionTrial.isEligible(profile.fidelity) && forecast != null,
+                trialProgressPercent = DecommissionTrial.progressPercent(profile.fidelity),
+                trialThresholdPercent = (DecommissionTrial.THRESHOLD * 100).toInt(),
+                trialLabel = if (isHorde) "Outrun Trial" else "Decommission Trial",
+                lastMessage = lastMessage,
+            )
+
+            _uiState.value = if (forecast == null) {
+                common
             } else {
                 val paceLabel = formatPace(forecast.forecastPaceSecPerKm)
                 val finishLabel = formatDuration(forecast.forecastFinishSeconds)
@@ -101,19 +143,11 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                 } else {
                     Personas.byKey(profile.personaKey).forecastLine(forecast.basedOnSessions, paceLabel, finishLabel)
                 }
-                ForecastUiState.Ready(
-                    opponentName = profile.twinName,
-                    opponentLabel = opponentLabel,
-                    metricLabel = metricLabel,
-                    metricPercent = (profile.fidelity * 100).toInt(),
-                    generationLabel = generationLabel,
-                    generation = profile.generation,
-                    coldStart = false,
+                common.copy(
                     forecastLine = line,
-                    hordeCaption = if (isHorde) HordeSoundCues.forecastCaption(forecast.basedOnSessions) else null,
-                    basedOnSessions = forecast.basedOnSessions,
-                    confidencePercent = forecast.confidencePercent,
-                    restStateLabel = restLabel,
+                    forecastPaceLabel = paceLabel,
+                    forecastDistanceLabel = formatDistanceKm(forecast.forecastDistanceMeters),
+                    forecastFinishLabel = finishLabel,
                 )
             }
         }
@@ -126,7 +160,11 @@ fun formatPace(secPerKm: Double): String {
 }
 
 fun formatDuration(totalSeconds: Int): String {
-    val m = totalSeconds / 60
+    val h = totalSeconds / 3600
+    val m = (totalSeconds % 3600) / 60
     val s = totalSeconds % 60
-    return "$m:${s.toString().padStart(2, '0')}"
+    return if (h > 0) "$h:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
+    else "$m:${s.toString().padStart(2, '0')}"
 }
+
+fun formatDistanceKm(meters: Double): String = "%.2f km".format(meters / 1000.0)

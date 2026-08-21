@@ -1,6 +1,6 @@
 # GAIT
 
-**Status:** v0.4.0 — a real Android app, verified on a physical device. Setup → Forecast → GPS or indoor tracking → Debrief works end to end, against either a Rival Twin or a Zombie Horde, with Composure, Rest Days/Vacation (now actually enforced), Statistics with per-session delete, a Settings screen, crash-safe session recovery, unit-tested engines, a signed + R8-shrunk release pipeline, and full cyberpunk-corpo visual chrome. A separate small `:simdemo` APK is a shareable teaser with no real data. Free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope, [`CHANGELOG.md`](CHANGELOG.md) for the detailed history, and `app/` for the source.
+**Status:** v0.5.0 — a real Android app, verified on a physical device (v0.4.0) and emulator (v0.5.0). All six phases of the Asset Twin loop are in the app and laid out like the concept demo: Setup → Forecast → Live Divergence (you vs. the Twin, live) → Debrief → Decommission Trial → Generational Handoff, against either a Rival Twin or a Zombie Horde, plus a Direct Channel message log, Composure, Rest Days/Vacation, Statistics, Settings, crash-safe session recovery, unit-tested engines (35 tests), a signed + R8-shrunk release pipeline, and full cyberpunk-corpo visual chrome. A separate small `:simdemo` APK is a shareable teaser with no real data. Free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope, [`CHANGELOG.md`](CHANGELOG.md) for the detailed history, and `app/` for the source.
 
 GAIT is a concept for a GPS movement app (running, walking, cycling, e-scooter, ...) that deliberately avoids generic missions, achievements, or leaderboards against strangers. Everything is cyberpunk-corpo themed at its core: your movement data is a commodity that fictional corporations compete over.
 
@@ -57,7 +57,7 @@ The same-day Predatory exception from Composure, plus sparse, randomized "idle t
 
 ## Interactive demo
 
-`demo/asset-twin-demo.html` — phone mockups of all six phases, cyberpunk-corpo styled. Open locally in a browser (no dependencies, no external requests beyond Google Fonts).
+`demo/asset-twin-demo.html` — phone mockups of all six phases, cyberpunk-corpo styled. Open locally in a browser (no dependencies, no external requests beyond Google Fonts). As of v0.5.0 the app's screens are built from the same instrument set (`app/.../ui/theme/CorpoWidgets.kt`), so the demo doubles as the UI spec.
 
 ## Other, currently parked module ideas
 

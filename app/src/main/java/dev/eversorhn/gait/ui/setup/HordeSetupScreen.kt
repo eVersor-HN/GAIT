@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,8 +17,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.domain.horde.HordeIntensity
+import dev.eversorhn.gait.domain.horde.HordeSoundCues
 import dev.eversorhn.gait.ui.gaitViewModel
+import dev.eversorhn.gait.ui.theme.Alert
+import dev.eversorhn.gait.ui.theme.ButtonKind
+import dev.eversorhn.gait.ui.theme.CorpoButton
+import dev.eversorhn.gait.ui.theme.CorpoChip
 import dev.eversorhn.gait.ui.theme.CorpoPanel
+import dev.eversorhn.gait.ui.theme.FootNote
+import dev.eversorhn.gait.ui.theme.PanelTone
+import dev.eversorhn.gait.ui.theme.ScreenTitle
+import dev.eversorhn.gait.ui.theme.SectionLabel
 
 @Composable
 fun HordeSetupScreen(onConfirmed: () -> Unit) {
@@ -32,11 +41,12 @@ fun HordeSetupScreen(onConfirmed: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("SETUP · STEP 2/2", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-        Text("Where the horde comes from", style = MaterialTheme.typography.headlineLarge)
+        FootNote("Setup · step 2/2")
+        ScreenTitle("Horde configuration", "Where the horde comes from")
 
         CorpoPanel {
             Text(
@@ -47,18 +57,10 @@ fun HordeSetupScreen(onConfirmed: () -> Unit) {
             )
         }
 
-        Text(
-            "Intensity",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        SectionLabel("Intensity")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HordeIntensity.all.forEach { key ->
-                FilterChip(
-                    selected = state.intensityKey == key,
-                    onClick = { viewModel.selectIntensity(key) },
-                    label = { Text(HordeIntensity.label(key)) },
-                )
+                CorpoChip(label = HordeIntensity.label(key), active = state.intensityKey == key, onClick = { viewModel.selectIntensity(key) })
             }
         }
         Text(
@@ -67,8 +69,15 @@ fun HordeSetupScreen(onConfirmed: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Button(onClick = viewModel::confirm, modifier = Modifier.fillMaxWidth()) {
-            Text("CONFIRM")
+        CorpoPanel(tone = PanelTone.WARN) {
+            SectionLabel("When they're swarming", color = Alert)
+            Text(
+                HordeSoundCues.captionFor(dev.eversorhn.gait.domain.composure.ComposureState.PREDATORY, state.intensityKey),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            FootNote("Proximity · wave · aggression replace fidelity · generation · composure")
         }
+
+        CorpoButton("Confirm", onClick = viewModel::confirm, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
     }
 }

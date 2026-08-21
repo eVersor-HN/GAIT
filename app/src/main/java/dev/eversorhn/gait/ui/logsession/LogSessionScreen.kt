@@ -5,8 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -19,6 +20,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.ui.debrief.DebriefContent
 import dev.eversorhn.gait.ui.gaitViewModel
+import dev.eversorhn.gait.ui.theme.ButtonKind
+import dev.eversorhn.gait.ui.theme.CorpoButton
+import dev.eversorhn.gait.ui.theme.FootNote
+import dev.eversorhn.gait.ui.theme.ScreenTitle
 
 @Composable
 fun LogSessionScreen(onDone: () -> Unit) {
@@ -28,13 +33,13 @@ fun LogSessionScreen(onDone: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         val result = state.result
         if (result == null) {
-            Text("LOG SESSION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-            Text("What did you actually do?", style = MaterialTheme.typography.headlineLarge)
+            ScreenTitle("Log session", "What did you actually do?")
             Text(
                 "Prefer a real recording? Go back and use “START ACTIVITY” instead — this is the manual fallback.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -58,9 +63,15 @@ fun LogSessionScreen(onDone: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Button(onClick = viewModel::submit, enabled = !state.submitting, modifier = Modifier.fillMaxWidth()) {
-                Text(if (state.submitting) "SAVING…" else "SUBMIT")
-            }
+            CorpoButton(
+                text = if (state.submitting) "Saving…" else "Submit",
+                onClick = viewModel::submit,
+                enabled = !state.submitting,
+                kind = ButtonKind.PRIMARY,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
+            FootNote("Self-reported sessions are tagged · not GPS-verified")
         } else {
             DebriefContent(result = result, onDone = {
                 viewModel.reset()

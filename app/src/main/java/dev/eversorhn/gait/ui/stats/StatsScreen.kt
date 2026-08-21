@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,6 +30,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.R
 import dev.eversorhn.gait.ui.gaitViewModel
+import dev.eversorhn.gait.ui.theme.ScreenTitle
+import dev.eversorhn.gait.ui.theme.CorpoButton
+import dev.eversorhn.gait.ui.theme.ButtonKind
 import dev.eversorhn.gait.ui.theme.Brass
 import dev.eversorhn.gait.ui.theme.CorpoPanel
 import dev.eversorhn.gait.ui.theme.Good
@@ -68,8 +70,7 @@ fun StatsScreen(onDone: () -> Unit) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("STATISTICS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-        Text("What actually happened", style = MaterialTheme.typography.headlineLarge)
+        ScreenTitle("Statistics", "What actually happened")
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatsPeriod.entries.forEach { period ->
@@ -169,8 +170,6 @@ fun StatsScreen(onDone: () -> Unit) {
             }
         }
 
-        OutlinedButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-            Text("BACK")
-        }
+        CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
     }
 }

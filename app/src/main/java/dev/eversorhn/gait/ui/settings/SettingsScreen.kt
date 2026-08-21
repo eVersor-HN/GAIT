@@ -11,10 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +30,10 @@ import dev.eversorhn.gait.R
 import dev.eversorhn.gait.domain.horde.HordeIntensity
 import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.ui.gaitViewModel
+import dev.eversorhn.gait.ui.theme.ScreenTitle
+import dev.eversorhn.gait.ui.theme.CorpoButton
+import dev.eversorhn.gait.ui.theme.CorpoChip
+import dev.eversorhn.gait.ui.theme.ButtonKind
 import dev.eversorhn.gait.ui.theme.CorpoPanel
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -94,8 +95,7 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("SETTINGS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-        Text("Who's coming after you", style = MaterialTheme.typography.headlineLarge)
+        ScreenTitle("Settings", "Who's coming after you")
 
         if (!state.loaded) {
             Text("Loading…", style = MaterialTheme.typography.bodyLarge)
@@ -119,24 +119,16 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
 
         if (state.isHorde) {
             Text("Intensity", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 HordeIntensity.all.forEach { key ->
-                    FilterChip(
-                        selected = state.hordeIntensity == key,
-                        onClick = { viewModel.selectIntensity(key) },
-                        label = { Text(HordeIntensity.label(key)) },
-                    )
+                    CorpoChip(label = HordeIntensity.label(key), active = state.hordeIntensity == key, onClick = { viewModel.selectIntensity(key) })
                 }
             }
         } else {
             Text("Voice", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Personas.mvpRoster.forEach { persona ->
-                    FilterChip(
-                        selected = state.personaKey == persona.key,
-                        onClick = { viewModel.selectPersona(persona.key) },
-                        label = { Text(persona.label) },
-                    )
+                    CorpoChip(label = persona.label, active = state.personaKey == persona.key, onClick = { viewModel.selectPersona(persona.key) })
                 }
             }
             OutlinedTextField(
@@ -149,28 +141,20 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
             )
         }
 
-        Button(onClick = viewModel::save, modifier = Modifier.fillMaxWidth()) {
-            Text("SAVE CHANGES")
-        }
+        CorpoButton("Save changes", onClick = viewModel::save, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
         if (showSaved) {
             Text("Saved.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
         }
 
-        OutlinedButton(onClick = { confirmSwitch = true }, modifier = Modifier.fillMaxWidth()) {
-            Text(if (state.isHorde) "SWITCH TO RIVAL TWIN" else "SWITCH TO ZOMBIE HORDE")
-        }
+        CorpoButton(if (state.isHorde) "Switch to Rival Twin" else "Switch to Zombie Horde", onClick = { confirmSwitch = true }, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
 
         Text(
             "Danger zone",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.error,
         )
-        OutlinedButton(onClick = { confirmWipe = true }, modifier = Modifier.fillMaxWidth()) {
-            Text("ERASE ALL DATA", color = MaterialTheme.colorScheme.error)
-        }
+        CorpoButton("Erase all data", onClick = { confirmWipe = true }, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth())
 
-        OutlinedButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-            Text("BACK")
-        }
+        CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
     }
 }

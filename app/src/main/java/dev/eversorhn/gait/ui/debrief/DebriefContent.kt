@@ -2,79 +2,193 @@ package dev.eversorhn.gait.ui.debrief
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.domain.composure.ComposureState
 import dev.eversorhn.gait.domain.session.DebriefResult
+import dev.eversorhn.gait.domain.trial.DecommissionTrial
+import dev.eversorhn.gait.ui.forecast.composureTag
+import dev.eversorhn.gait.ui.theme.Alert
+import dev.eversorhn.gait.ui.theme.Brass
+import dev.eversorhn.gait.ui.theme.ButtonKind
+import dev.eversorhn.gait.ui.theme.CompareGrid
+import dev.eversorhn.gait.ui.theme.CompareRow
+import dev.eversorhn.gait.ui.theme.CorpoButton
 import dev.eversorhn.gait.ui.theme.CorpoPanel
+import dev.eversorhn.gait.ui.theme.Cyan
+import dev.eversorhn.gait.ui.theme.FootNote
+import dev.eversorhn.gait.ui.theme.Good
+import dev.eversorhn.gait.ui.theme.MessageCard
+import dev.eversorhn.gait.ui.theme.MessageTone
+import dev.eversorhn.gait.ui.theme.PanelTone
+import dev.eversorhn.gait.ui.theme.PhaseTrack
+import dev.eversorhn.gait.ui.theme.ScreenTitle
+import dev.eversorhn.gait.ui.theme.SectionLabel
+import dev.eversorhn.gait.ui.theme.Sparkline
+import dev.eversorhn.gait.ui.theme.TextFaint
+import dev.eversorhn.gait.ui.theme.formatSignedPoints
 
-/** Shared by both entry points into a finished session: manual logging and GPS tracking. */
+/**
+ * Shared by both entry points into a finished session: manual logging and GPS tracking.
+ * Phase 03 (Fidelity Debrief) and, after a Trial, Phase 05 (Generational Handoff) — laid out
+ * like the concept demo: compare grid, big Fidelity number with delta and sparkline, the
+ * opponent's message as a card.
+ */
 @Composable
 fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("DEBRIEF", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-        Text("Forecast vs. Actual", style = MaterialTheme.typography.headlineLarge)
+    val isHorde = result.opponentType == OpponentType.HORDE
+    val duel = result.duel
+    val won = duel?.verdict == DecommissionTrial.Verdict.WON
+    val lost = duel?.verdict == DecommissionTrial.Verdict.LOST
 
-        CorpoPanel {
-            if (result.hadForecast) {
-                Text("Forecast: ${result.forecastPaceLabel}", style = MaterialTheme.typography.bodyLarge)
-                Text("Actual: ${result.actualPaceLabel}", style = MaterialTheme.typography.bodyLarge)
-            } else {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        PhaseTrack(current = if (won) 5 else if (duel != null) 4 else 3)
+        ScreenTitle(
+            eyebrow = when {
+                won -> "Generational handoff"
+                duel != null -> if (isHorde) "Outrun Trial" else "Decommission Trial"
+                else -> "Debrief"
+            },
+            headline = when {
+                won -> if (isHorde) "The wave breaks" else "${result.opponentName} is decommissioned"
+                lost -> if (isHorde) "They kept up" else "${result.opponentName} stays"
+                else -> "Forecast vs. Actual"
+            },
+            headlineColor = when {
+                won -> Good
+                lost -> Alert
+                else -> MaterialTheme.colorScheme.onBackground
+            },
+        )
+
+        // --- Duel verdict, when there was one ---
+        duel?.let { d ->
+            CorpoPanel(tone = if (won) PanelTone.GOOD else PanelTone.WARN) {
+                SectionLabel(
+                    when (d.verdict) {
+                        DecommissionTrial.Verdict.WON -> "Duel: won"
+                        DecommissionTrial.Verdict.LOST -> "Duel: lost"
+                        DecommissionTrial.Verdict.TOO_SHORT -> "Duel: void"
+                    },
+                    color = if (won) Good else Alert,
+                )
+                CompareGrid(
+                    rows = listOf(CompareRow("Pace", d.targetPaceLabel, result.actualPaceLabel, actualGood = if (d.verdict == DecommissionTrial.Verdict.TOO_SHORT) null else won)),
+                    forecastHeader = "Target",
+                    actualHeader = "You",
+                )
+                if (d.verdict == DecommissionTrial.Verdict.TOO_SHORT) {
+                    Text(
+                        "Under ${DecommissionTrial.MIN_DUEL_DISTANCE_METERS.toInt()} m — a sprint isn't a duel. Logged as a normal session.",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        // --- Forecast vs actual ---
+        if (result.hadForecast) {
+            CorpoPanel {
+                CompareGrid(
+                    rows = listOf(
+                        CompareRow("Pace", result.forecastPaceLabel, result.actualPaceLabel, actualGood = result.beatForecast),
+                        CompareRow("Distance", result.forecastDistanceLabel, result.actualDistanceLabel),
+                        CompareRow("Finish", result.forecastFinishLabel, result.actualFinishLabel),
+                    )
+                )
+                if (result.dataSource == SessionSource.MANUAL) {
+                    Spacer(Modifier.height(2.dp))
+                    FootNote("Self-reported · not GPS-verified")
+                }
+            }
+        } else {
+            CorpoPanel {
                 Text(
                     "No forecast existed yet for this session — it's now part of the baseline.",
                     style = MaterialTheme.typography.bodyLarge,
                 )
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(result.actualPaceLabel, style = MaterialTheme.typography.titleLarge, color = Brass)
+                    Text(result.actualDistanceLabel, style = MaterialTheme.typography.titleLarge)
+                    Text(result.actualFinishLabel, style = MaterialTheme.typography.titleLarge)
+                }
+                if (result.dataSource == SessionSource.MANUAL) FootNote("Self-reported · not GPS-verified")
             }
-            Text(
-                "${result.metricLabel} now ${result.newFidelityPercent}% · ${composureStateLabel(result)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (result.dataSource == SessionSource.MANUAL) {
+        }
+
+        // --- Fidelity balance ---
+        val delta = result.newFidelityPercent - result.previousFidelityPercent
+        CorpoPanel {
+            SectionLabel("Overall ${result.metricLabel}")
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("${result.newFidelityPercent}%", style = MaterialTheme.typography.headlineLarge, color = if (won) Good else Brass)
                 Text(
-                    "SELF-REPORTED · NOT GPS-VERIFIED",
+                    when {
+                        won -> "reset from ${result.previousFidelityPercent}%"
+                        result.restNote != null -> "frozen"
+                        !result.hadForecast -> "baseline"
+                        else -> "${formatSignedPoints(delta)} this session"
+                    },
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = when {
+                        won || delta < 0 -> Good
+                        delta > 0 -> Alert
+                        else -> TextFaint
+                    },
+                    modifier = Modifier.padding(bottom = 6.dp),
                 )
             }
+            if (result.fidelityHistory.size >= 2) {
+                Sparkline(points = result.fidelityHistory, threshold = result.trialThresholdPercent / 100f)
+            }
+            FootNote(
+                "${result.generationLabel} ${result.generation} · " +
+                    if (won) "initialising" else "next review at ${result.trialThresholdPercent}%"
+            )
+            Text("Composure: ${composureTag(result.composureState, isHorde)}".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint)
         }
 
         result.restNote?.let {
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = Cyan)
         }
 
+        // --- What it said ---
         if (result.twinLine != null) {
-            val tint = when (result.composureState) {
-                ComposureState.PREDATORY -> MaterialTheme.colorScheme.error
-                ComposureState.COWED -> MaterialTheme.colorScheme.onSurfaceVariant
-                ComposureState.WATCHFUL -> MaterialTheme.colorScheme.onSurface
+            val tone = when {
+                won -> MessageTone.TWIN
+                else -> when (result.composureState) {
+                    ComposureState.PREDATORY -> MessageTone.PREDATORY
+                    ComposureState.COWED -> MessageTone.COWED
+                    ComposureState.WATCHFUL -> MessageTone.WATCHFUL
+                }
             }
-            Text("“${result.twinLine}”", style = MaterialTheme.typography.bodyLarge, color = tint)
+            MessageCard(
+                from = if (isHorde) "The Horde" else "${result.opponentName} (Twin-${if (won) result.generation - 1 else result.generation})",
+                tag = if (won) "direct channel" else composureTag(result.composureState, isHorde),
+                body = result.twinLine,
+                tone = tone,
+                footer = if (won) {
+                    {
+                        Text("DUEL: WON", style = MaterialTheme.typography.labelSmall, color = Good)
+                        Text("${result.metricLabel} reset → ${result.newFidelityPercent}%".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint)
+                        Text("${result.generationLabel} ${result.generation} is initialising…".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint)
+                    }
+                } else null,
+            )
         }
 
-        OutlinedButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-            Text("BACK TO FORECAST")
-        }
+        CorpoButton("Back to forecast", onClick = onDone, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
     }
-}
-
-private fun composureStateLabel(result: DebriefResult): String {
-    val prefix = if (result.opponentType == OpponentType.HORDE) "Aggression" else "Composure"
-    val value = if (result.opponentType == OpponentType.HORDE) {
-        when (result.composureState) {
-            ComposureState.COWED -> "FALLEN BACK"
-            ComposureState.WATCHFUL -> "TRACKING"
-            ComposureState.PREDATORY -> "SWARMING"
-        }
-    } else {
-        result.composureState.name
-    }
-    return "$prefix: $value"
 }

@@ -6,29 +6,51 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.R
+import dev.eversorhn.gait.domain.composure.ComposureState
+import dev.eversorhn.gait.ui.theme.Alert
+import dev.eversorhn.gait.ui.theme.Brass
+import dev.eversorhn.gait.ui.theme.ButtonKind
+import dev.eversorhn.gait.ui.theme.CorpoButton
 import dev.eversorhn.gait.ui.theme.CorpoPanel
+import dev.eversorhn.gait.ui.theme.FootNote
+import dev.eversorhn.gait.ui.theme.MessageCard
+import dev.eversorhn.gait.ui.theme.MessageTone
+import dev.eversorhn.gait.ui.theme.Meter
+import dev.eversorhn.gait.ui.theme.PanelTone
+import dev.eversorhn.gait.ui.theme.PhaseTrack
+import dev.eversorhn.gait.ui.theme.Quote
+import dev.eversorhn.gait.ui.theme.ScreenTitle
+import dev.eversorhn.gait.ui.theme.SectionLabel
+import dev.eversorhn.gait.ui.theme.Sparkline
+import dev.eversorhn.gait.ui.theme.StatTile
+import dev.eversorhn.gait.ui.theme.TextFaint
+import dev.eversorhn.gait.ui.theme.Cyan
 
 @Composable
 fun ForecastScreen(
     onStartActivity: () -> Unit,
+    onStartDuel: () -> Unit,
     onLogSession: () -> Unit,
+    onMessages: () -> Unit,
     onRestDays: () -> Unit,
     onStats: () -> Unit,
     onSettings: () -> Unit,
@@ -53,7 +75,7 @@ fun ForecastScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         when (val s = state) {
@@ -61,58 +83,150 @@ fun ForecastScreen(
                 Text("Loading…", style = MaterialTheme.typography.bodyLarge)
             }
             is ForecastUiState.Ready -> {
-                Text("PRE-SESSION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                Text("What ${s.opponentName} expects today", style = MaterialTheme.typography.headlineLarge)
+                PhaseTrack(current = 1)
+                ScreenTitle(
+                    eyebrow = "Pre-Session Forecast",
+                    headline = if (s.isHorde) "What the horde expects of you" else "What ${s.opponentName} expects today",
+                )
 
                 if (s.restStateLabel != null) {
-                    Text(
-                        s.restStateLabel,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.secondary,
+                    Text(s.restStateLabel, style = MaterialTheme.typography.bodyMedium, color = Cyan)
+                }
+
+                // --- The forecast itself: the provocation ---
+                CorpoPanel {
+                    if (s.hordeCaption != null) {
+                        Text(s.hordeCaption, style = MaterialTheme.typography.bodyMedium, color = Cyan)
+                    }
+                    Quote(s.forecastLine, color = MaterialTheme.colorScheme.onSurface)
+                    if (!s.coldStart) {
+                        Spacer(Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            StatTile("Pace", s.forecastPaceLabel, accent = Cyan)
+                            StatTile("Distance", s.forecastDistanceLabel, accent = Cyan)
+                            StatTile("Finish", s.forecastFinishLabel, accent = Cyan)
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        FootNote(
+                            "Forecast confidence: ${s.confidencePercent}% · based on " +
+                                pluralStringResource(R.plurals.sessions_count, s.basedOnSessions, s.basedOnSessions)
+                        )
+                    } else {
+                        FootNote("No forecast yet · the first session becomes the baseline")
+                    }
+                }
+
+                FootNote("${s.generationLabel} ${s.generation} · ${s.opponentLabel} · basis: ${s.totalSessions} sessions")
+
+                CorpoButton(
+                    text = when {
+                        s.coldStart -> "Start first session"
+                        s.isHorde -> "Start route — outrun them"
+                        else -> "Start route — refute it"
+                    },
+                    onClick = onStartActivity,
+                    kind = ButtonKind.PRIMARY,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                // --- Phase 04: substitution eligible ---
+                if (s.trialEligible) {
+                    CorpoPanel(tone = PanelTone.WARN) {
+                        SectionLabel("Substitution eligible", color = Alert)
+                        Text(
+                            "${s.opponentName} — ${s.metricLabel} ${s.metricPercent}%",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Alert,
+                        )
+                        Meter(fraction = s.metricPercent / 100f, color = Alert, threshold = s.trialThresholdPercent / 100f)
+                        Text(
+                            if (s.isHorde) {
+                                "They've learned your pace. One run, faster than your own strongest session, " +
+                                    "and the wave breaks."
+                            } else {
+                                "${s.opponentName} predicts you well enough to replace you. Win a single duel " +
+                                    "against its strongest session to reset it."
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CorpoButton("Start duel", onClick = onStartDuel, kind = ButtonKind.RISK, modifier = Modifier.weight(1f))
+                        }
+                        FootNote("${s.trialLabel} · min. 1 km · judged on average pace")
+                    }
+                }
+
+                // --- Asset status: the number the whole loop is about ---
+                CorpoPanel {
+                    SectionLabel("Asset status")
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            "${s.metricPercent}%",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = if (s.trialEligible) Alert else Brass,
+                        )
+                        Text(
+                            s.metricLabel.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextFaint,
+                            modifier = Modifier.padding(bottom = 6.dp),
+                        )
+                    }
+                    Meter(
+                        fraction = s.metricPercent / 100f,
+                        color = if (s.trialEligible) Alert else Brass,
+                        threshold = s.trialThresholdPercent / 100f,
+                    )
+                    if (s.fidelityHistory.size >= 2) {
+                        Spacer(Modifier.height(2.dp))
+                        SectionLabel("${s.metricLabel} over sessions", color = TextFaint)
+                        Sparkline(points = s.fidelityHistory, threshold = s.trialThresholdPercent / 100f)
+                    }
+                    FootNote("${s.generationLabel} ${s.generation} · next review at ${s.trialThresholdPercent}%")
+                }
+
+                // --- Last thing it said ---
+                s.lastMessage?.let { m ->
+                    MessageCard(
+                        from = if (s.isHorde) "The Horde" else "${s.opponentName} (Twin-${s.generation})",
+                        tag = (if (m.daysAgo == 0L) "today" else if (m.daysAgo == 1L) "yesterday" else "${m.daysAgo}d ago") +
+                            " · " + composureTag(m.state, s.isHorde),
+                        body = m.line,
+                        tone = when (m.state) {
+                            ComposureState.COWED -> MessageTone.COWED
+                            ComposureState.WATCHFUL -> MessageTone.WATCHFUL
+                            ComposureState.PREDATORY -> MessageTone.PREDATORY
+                        },
                     )
                 }
 
-                CorpoPanel {
-                    if (s.hordeCaption != null) {
-                        Text(
-                            s.hordeCaption,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.secondary,
-                        )
+                // --- Secondary navigation: ghost row, not a stack of text buttons ---
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CorpoButton("Log manually", onClick = onLogSession, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
+                        CorpoButton("Direct channel", onClick = onMessages, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
                     }
-                    Text(s.forecastLine, style = MaterialTheme.typography.bodyLarge)
-                    if (!s.coldStart) {
-                        Text(
-                            "FORECAST CONFIDENCE: ${s.confidencePercent}% · BASED ON " +
-                                pluralStringResource(R.plurals.sessions_count, s.basedOnSessions, s.basedOnSessions).uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CorpoButton("Statistics", onClick = onStats, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
+                        CorpoButton("Rest & vacation", onClick = onRestDays, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
                     }
+                    CorpoButton("Settings", onClick = onSettings, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
                 }
-
-                Text(
-                    "${s.opponentLabel} · ${s.generationLabel} ${s.generation} · ${s.metricLabel} ${s.metricPercent}%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                Button(onClick = onStartActivity, modifier = Modifier.fillMaxWidth()) {
-                    Text("START ACTIVITY")
-                }
-                TextButton(onClick = onLogSession, modifier = Modifier.fillMaxWidth()) {
-                    Text("Log manually instead")
-                }
-                TextButton(onClick = onStats, modifier = Modifier.fillMaxWidth()) {
-                    Text("Statistics")
-                }
-                TextButton(onClick = onRestDays, modifier = Modifier.fillMaxWidth()) {
-                    Text("Rest days & vacation")
-                }
-                TextButton(onClick = onSettings, modifier = Modifier.fillMaxWidth()) {
-                    Text("Settings")
-                }
+                Spacer(Modifier.height(8.dp))
             }
         }
     }
+}
+
+/** The demo's "MON · COWED" / "THU · PREDATORY" tags, relabelled for a Horde. */
+fun composureTag(state: ComposureState, isHorde: Boolean): String = if (isHorde) {
+    when (state) {
+        ComposureState.COWED -> "fallen back"
+        ComposureState.WATCHFUL -> "tracking"
+        ComposureState.PREDATORY -> "swarming"
+    }
+} else {
+    state.name.lowercase()
 }

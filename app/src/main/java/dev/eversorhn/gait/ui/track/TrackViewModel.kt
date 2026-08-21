@@ -5,7 +5,10 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.eversorhn.gait.data.db.entity.SessionSource
+import dev.eversorhn.gait.data.db.entity.isHorde
 import dev.eversorhn.gait.data.repository.GaitRepository
+import dev.eversorhn.gait.domain.forecast.ForecastEngine
+import dev.eversorhn.gait.domain.trial.DecommissionTrial
 import dev.eversorhn.gait.domain.session.DebriefResult
 import dev.eversorhn.gait.domain.session.SessionFinalizer
 import dev.eversorhn.gait.tracking.ActiveSessionStore
@@ -16,6 +19,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
 
 /** Kept as the UI-facing name; maps 1:1 onto the service's TrackingMode. */
 enum class TrackMode { OUTDOOR, INDOOR }
@@ -38,8 +43,27 @@ data class RecoverableSession(
     val movingSeconds: Int,
 )
 
+/**
+ * Who you're running against, resolved once when the screen opens: the opponent's name and
+ * today's forecast (pace/distance/finish) drive the live You-vs-Twin comparison, and a duel
+ * target pace is set when this session is a Decommission Trial. See docs phase 02.
+ */
+data class LiveOpponent(
+    val name: String,
+    val isHorde: Boolean,
+    val generation: Int,
+    val fidelity: Float,
+    val forecastPaceSecPerKm: Double?,
+    val forecastDistanceMeters: Double?,
+    val forecastFinishSeconds: Int?,
+    val duelTargetPaceSecPerKm: Double?,
+)
+
 data class TrackUiState(
     val mode: TrackMode? = null,
+    /** True when this session was opened as a Decommission/Outrun Trial from the Forecast screen. */
+    val duel: Boolean = false,
+    val opponent: LiveOpponent? = null,
     val finishing: Boolean = false,
     /** Indoor only: timer stopped, waiting for the user to type the distance off the machine. */
     val awaitingIndoorDistance: Boolean = false,
@@ -76,6 +100,37 @@ class TrackViewModel(
             }
         }
         checkForInterruptedSession()
+        loadOpponent()
+    }
+
+    /** Called by the screen with its nav argument. Idempotent; re-resolves the duel target. */
+    fun setDuel(duel: Boolean) {
+        if (_uiState.value.duel == duel && _uiState.value.opponent != null) return
+        _uiState.value = _uiState.value.copy(duel = duel)
+        loadOpponent()
+    }
+
+    private fun loadOpponent() {
+        viewModelScope.launch {
+            val profile = repository.getTwinProfile() ?: return@launch
+            val sessions = repository.getSessions()
+            val now = Instant.now()
+            val forecast = ForecastEngine().forecast(
+                sessions, now.atZone(ZoneId.systemDefault()).dayOfWeek.value, now.toEpochMilli(),
+            )
+            _uiState.value = _uiState.value.copy(
+                opponent = LiveOpponent(
+                    name = profile.twinName,
+                    isHorde = profile.isHorde,
+                    generation = profile.generation,
+                    fidelity = profile.fidelity,
+                    forecastPaceSecPerKm = forecast?.forecastPaceSecPerKm,
+                    forecastDistanceMeters = forecast?.forecastDistanceMeters,
+                    forecastFinishSeconds = forecast?.forecastFinishSeconds,
+                    duelTargetPaceSecPerKm = if (_uiState.value.duel) DecommissionTrial.targetPaceSecPerKm(sessions) else null,
+                )
+            )
+        }
     }
 
     /**
@@ -109,7 +164,7 @@ class TrackViewModel(
                 }
                 _uiState.value = _uiState.value.copy(recoverable = null, finishing = true)
                 viewModelScope.launch {
-                    val result = finalizer.finalize(r.distanceMeters, r.movingSeconds, dataSource = SessionSource.GPS)
+                    val result = finalizer.finalize(r.distanceMeters, r.movingSeconds, dataSource = SessionSource.GPS, duel = _uiState.value.duel)
                     _uiState.value = _uiState.value.copy(finishing = false, result = result)
                 }
             }
@@ -187,7 +242,7 @@ class TrackViewModel(
         _uiState.value = _uiState.value.copy(finishing = true)
         viewModelScope.launch {
             // Pace and the session's duration are based on moving time, not wall time.
-            val result = finalizer.finalize(distanceMeters, movingSeconds, dataSource = SessionSource.GPS)
+            val result = finalizer.finalize(distanceMeters, movingSeconds, dataSource = SessionSource.GPS, duel = _uiState.value.duel)
             _uiState.value = _uiState.value.copy(finishing = false, result = result)
         }
     }
@@ -206,6 +261,7 @@ class TrackViewModel(
                 distanceMeters = distanceKm * 1000.0,
                 durationSeconds = _uiState.value.indoorElapsedSeconds,
                 dataSource = SessionSource.MANUAL,
+                duel = _uiState.value.duel,
             )
             _uiState.value = _uiState.value.copy(finishing = false, awaitingIndoorDistance = false, result = result)
         }
@@ -217,6 +273,6 @@ class TrackViewModel(
 
     fun reset() {
         TrackingSessionState.reset()
-        _uiState.value = TrackUiState()
+        _uiState.value = TrackUiState(duel = _uiState.value.duel, opponent = _uiState.value.opponent)
     }
 }

@@ -53,7 +53,8 @@ Everything designed so far is the full vision, not the first release.
 - Simulation as a separate, standalone `:simdemo` APK rather than a mode inside the real app — see `docs/simulation-mode.md`. *(built)*
 - Unit tests for the three pure engines (Forecast, Composure, RestDayPolicy). *(built — 26 tests)*
 - Release signing (untracked `keystore.properties`) + R8/resource shrinking, debug/release installable side by side. *(built, verified on device)*
-- Live Divergence and Decommission Trial screens (currently only in the HTML concept demo, not yet wired into the app).
+- Live Divergence (you vs. the opponent's forecast pace, live, with a divergence/Fidelity-impact readout) and the Decommission Trial → Generational Handoff (eligible at 95 % Fidelity; one duel against your own strongest ≥ 1 km session; a win resets Fidelity to 61 % and advances the generation). *(built in v0.5.0 — see `domain/trial`, `domain/fidelity`)*
+- Screens laid out after the HTML concept demo via a shared widget kit (`ui/theme/CorpoWidgets.kt`), plus a Direct Channel message log. *(built in v0.5.0)*
 
 ### v1.1
 - Live audio callouts — the most exciting differentiator, but a real chunk of Android complexity (foreground audio, TTS, audio focus) better added once the core loop is validated with real use.

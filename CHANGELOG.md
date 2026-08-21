@@ -4,6 +4,30 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.5.0] - 2026-08-21
+
+The "the app is naked" release. v0.4.0 had the whole loop running underneath, but every screen was a few lines of text and a stack of Material buttons. This pass rebuilds the UI after `demo/asset-twin-demo.html` phase by phase, and wires in the two phases that were still only in the demo: Live Divergence and the Decommission Trial / Generational Handoff.
+
+### Added
+- **Widget kit** (`ui/theme/CorpoWidgets.kt`) mirroring the demo's phone mockups: stat tiles (brass = you, cyan = opponent), Forecast/Actual compare grid, Fidelity sparkline with the 95 % review line, meter bars, toned panels (warn / divergence / twin), opponent message cards tagged with the Composure state, pulsing REC dot, five-bar phase track, mono chips, console buttons (primary / safe / risk / ghost), selectable option cards. Every screen now composes these instead of raw `Text()` + `Button()`.
+- **Phase 01 — Forecast** rebuilt: the opponent's line as a quote, PACE / DISTANCE / FINISH tiles, confidence + basis footnotes, "START ROUTE — REFUTE IT", an **Asset status** panel (big Fidelity %, meter with the review threshold, Fidelity-over-sessions sparkline, generation), the opponent's **last message** as a card, and the secondary actions as a ghost-button grid.
+- **Phase 02 — Live Divergence**: the Track screen now runs the opponent alongside you. YOUR PACE vs **{TWIN} PACE** tiles, distance/moving tiles against the forecast, a live route track with both markers (yours by distance, the opponent's by moving time against its forecast finish — auto-pause doesn't hand it free ground), and a **Divergence card** ("0:13/km faster than Markus K.'s forecast · FIDELITY IMPACT: −1.4 % LIVE") computed with the same EWMA the Debrief will apply. Indoor shows the opponent's finish time instead.
+- **Phase 03 — Debrief** rebuilt: Forecast/Actual grid for pace, distance and finish (actual tinted good/alert), big Fidelity % with the signed per-session delta ("+5 % this session" in red — up is bad for you), the replayed Fidelity sparkline, generation + next-review footnote, and the opponent's line as a Composure-tinted message card.
+- **Phase 04 — Decommission Trial** (`domain/trial/DecommissionTrial.kt`): at Fidelity ≥ 95 % the Forecast shows a red **SUBSTITUTION ELIGIBLE** panel with a meter and **START DUEL**. A duel is an ordinary tracked session (outdoor or indoor) judged on average pace against the opponent's *strongest session* — the fastest pace you ever held over ≥ 1 km — with a 1 km minimum so a sprint can't count. The Track screen shows the target pace and a "Beat 5:25/km" briefing; the status bar reads ASSET REVIEW.
+- **Phase 05 — Generational Handoff**: a won duel resets Fidelity to 61 %, advances the generation, and the opponent sends a handoff line quoting your data ("You beat my forecast 5 times this generation. I've adjusted. Generation 2 is watching now."); the Debrief turns green with DUEL: WON / FIDELITY RESET → 61 % / GENERATION 2 IS INITIALISING. A lost duel is Predatory by definition and gets its own line bank; Fidelity updates normally. Horde equivalents: "Outrun Trial", wave advance, non-verbal captions.
+- **Direct Channel** screen: every line the opponent has ever said, newest first, as message cards tagged by date and Composure state (the demo's "Same twin. Same weeks." panel), with Cowed/Predatory counts. Reachable from the Forecast.
+- **Setup** rebuilt: opponent type as two selectable cards with a CONTINUE; naming with a brass input, persona chips, and a "how this persona sounds" preview (one Cowed and one Predatory line) before committing; horde setup with a swarming-caption preview.
+- `FidelityReplay` (`domain/fidelity`): the running Fidelity replayed deterministically from stored sessions (forecast vs. actual per row, rest days skipped, won duels reset), so the sparkline needs no extra storage and uses exactly the finalizer's update step. Splash shows the GAIT wordmark.
+- Unit tests for `DecommissionTrial` (eligibility, meter, strongest-session target, verdicts) and `FidelityReplay` (per-session accuracy, replay vs. running update, rest-day skip, duel reset). 35 tests total, all green.
+
+### Changed
+- **Database v6** with a real `Migration(5, 6)` — `sessions` gains `twinLine`, `composureState`, `isDuel`, `duelWon`. Existing data on devices is preserved; the destructive fallback only still applies to pre-v5 schemas nobody has.
+- `SessionFinalizer` stores the opponent's line and Composure state with the session, takes a `duel` flag, and returns the full Debrief payload (previous Fidelity, history, distance/finish labels, duel outcome). Composure is evaluated on the new session before it's written (a stub row carries the two fields the engine reads) so the verdict can be stored with it — same result as before.
+- `formatDuration` handles hours; `formatDistanceKm` added. Settings / Rest days / Statistics / Log session headers and buttons restyled to the kit (no functional change).
+
+### Verified
+- On the `llmtest` emulator (API 35): setup → naming → cold Forecast → five manual sessions (Debrief grid, Fidelity delta, sparkline, Predatory card) → Forecast with tiles + asset status + last message → Direct Channel log → outdoor session with mocked GPS (REC · LIVE, live pace vs. twin pace, route markers, "1:04/km faster" divergence card) → Fidelity forced to 96 % → SUBSTITUTION ELIGIBLE panel → indoor duel → DUEL: WON, Generation 2, handoff card. Screenshots were reviewed for each.
+
 ## [0.4.0] - 2026-08-20
 
 A hardening pass driven by a full code review of v0.3.0: one shipped crash fixed, several "built" features made actually true, the UX holes a real user would hit first, and the plumbing a real release needs (tests, signing, R8, icons).

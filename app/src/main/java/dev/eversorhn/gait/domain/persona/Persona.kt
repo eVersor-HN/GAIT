@@ -22,6 +22,14 @@ data class Persona(
     val predatoryLines: List<String>,
     /** Ambient, not tied to any specific session — see docs/notifications.md "Idle taunts". */
     val idleLines: List<String>,
+    /**
+     * Phase 05, Generational Handoff: spoken once after a *won* Decommission Trial, quoting the
+     * user's own data back at them. [timesBeaten] = how often the user beat the forecast pace
+     * in the sessions this generation saw; [newGeneration] = the one spinning up now.
+     */
+    val handoffLine: (timesBeaten: Int, newGeneration: Int) -> String,
+    /** Spoken after a *lost* Decommission Trial -- the Twin keeps its primary-asset status. */
+    val duelLostLines: List<String>,
 )
 
 /** Grammar helpers for the forecast templates: "1 session" vs "12 sessions", "once" vs "12 times". */
@@ -62,6 +70,13 @@ object Personas {
             "Thinking about you. Not in a good way.",
             "Still here. Are you?",
         ),
+        handoffLine = { n, gen ->
+            "You beat my forecast ${times(n).lowercase()} this generation. I've adjusted. Generation $gen is watching now. Do it again."
+        },
+        duelLostLines = listOf(
+            "That was your best shot? I'm staying. Obviously.",
+            "You had one run to get rid of me and you paced it like a Sunday.",
+        ),
     )
 
     val betterSelf = Persona(
@@ -86,6 +101,13 @@ object Personas {
         idleLines = listOf(
             "I haven't gone anywhere. Have you?",
             "Whenever you're ready. I'm not in a hurry — you should be.",
+        ),
+        handoffLine = { n, gen ->
+            "${times(n)} you ran past what I expected of you. Good. Generation $gen expects more — because you showed it."
+        },
+        duelLostLines = listOf(
+            "Not today. That's allowed. The version of you that wins this is still in there.",
+            "Close. Closer than last time. Again.",
         ),
     )
 
@@ -112,6 +134,13 @@ object Personas {
             "No session logged in a while. Model idle.",
             "Awaiting new data.",
         ),
+        handoffLine = { n, gen ->
+            "Forecast exceeded $n time(s) this generation. Model reset. Generation $gen initializing."
+        },
+        duelLostLines = listOf(
+            "Trial failed. Primary asset status retained.",
+            "Target pace not met. No generation change.",
+        ),
     )
 
     val theEx = Persona(
@@ -137,6 +166,13 @@ object Personas {
             "Funny how quiet it's been.",
             "No rush. I remember how this usually goes.",
         ),
+        handoffLine = { n, gen ->
+            "${times(n)} you surprised me. Fine — I'll learn you again. Generation $gen. Don't get comfortable."
+        },
+        duelLostLines = listOf(
+            "You wanted me gone that badly and still couldn't. That's very us.",
+            "I knew you'd fade at the end. I always knew.",
+        ),
     )
 
     val theAuditor = Persona(
@@ -161,6 +197,13 @@ object Personas {
         idleLines = listOf(
             "Asset inactive. No action required — yet.",
             "Flagged for review: extended inactivity.",
+        ),
+        handoffLine = { n, gen ->
+            "Asset exceeded projection on $n occasion(s) this cycle. Model decommissioned. Generation $gen assumes oversight."
+        },
+        duelLostLines = listOf(
+            "Trial outcome: asset below target. Substitution upheld.",
+            "Asset failed to exceed reference session. Status unchanged. Filed.",
         ),
     )
 
