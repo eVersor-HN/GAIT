@@ -30,8 +30,8 @@ object Directive {
                 "Substitution review open. $unit fidelity ${fidelityPercent}% exceeds the ${trialThresholdPercent}% retention ceiling. " +
                     "Asset may contest via a single Trial. Absent a win, primary-asset status lapses at the next review."
             ledger.roundsPlayed == 0 ->
-                "Asset enrolled. No rounds on record. The $unit is training on the asset's first sessions; " +
-                    "performance against it is mandatory from the next session onward."
+                "Asset enrolled at the bottom of the board — everyone does. The $unit is training on the asset's first sessions; " +
+                    "every round won from here is a place earned. New hires are protected from the quarterly cull for 60 days."
             lead <= -4 ->
                 "Asset trails its $unit by ${-lead} points over ${ledger.roundsPlayed} rounds. Continued underperformance is " +
                     "being logged toward substitution. Division recommends immediate correction."

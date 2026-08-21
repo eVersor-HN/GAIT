@@ -18,7 +18,7 @@ import dev.eversorhn.gait.data.db.entity.TwinProfileEntity
 @Database(
     entities = [SessionEntity::class, TwinProfileEntity::class, TwinMessageEntity::class, PlannedDayOffEntity::class],
     version = 8,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class GaitDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao

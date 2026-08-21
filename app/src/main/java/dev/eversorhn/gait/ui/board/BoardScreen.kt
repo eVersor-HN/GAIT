@@ -90,7 +90,7 @@ fun BoardScreen(onContinue: () -> Unit, onEnrolNew: () -> Unit) {
         when {
             !state.loaded || snap == null -> {
                 ScreenTitle("Asset board", "Compiling standings…")
-                FootNote("Retention Index · since yesterday's close")
+                FootNote("First open of the day: the division re-runs the whole roster · a few seconds")
             }
             state.termination != null -> TerminationNotice(state.termination!!, snap, state.career, onEnrolNew = { viewModel.enrolNewAsset(onEnrolNew) })
             state.isHorde -> HordeMap(snap, state.proximityPercent, state.career, onContinue)
@@ -123,14 +123,16 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
             }
             IndexCell(u.index, u.delta)
         }
+        val protectedDaysLeft = career?.let { (RosterEngine.CULL_GRACE_DAYS - it.tenureDays).coerceAtLeast(0) } ?: 0
         FootNote(
             when {
                 u.rank <= 15 -> "On the board. Stay there."
+                !safe && protectedDaysLeft > 0 -> "New hire: protected from the cull for $protectedDaysLeft more days. Everyone starts last. Climb ${u.rank - snap.cullLine} places to be safe."
                 !safe -> "Below the cull line (#${snap.cullLine}). ${if (snap.nextCullInDays == 0) "Today." else "${snap.nextCullInDays} days to climb ${u.rank - snap.cullLine}."}"
                 u.rank <= 100 -> "${u.rank - 15} places off the board · ${u.rank - 15 + (snap.cullLine - u.rank)} above the cull line"
                 else -> "Top 15 is ${u.rank - 15} places away · cull line #${snap.cullLine}, ${snap.cullLine - u.rank} below you"
             },
-            color = if (safe) TextFaint else Alert,
+            color = if (safe || protectedDaysLeft > 0) TextFaint else Alert,
         )
         career?.let { c ->
             Spacer(Modifier.height(2.dp))

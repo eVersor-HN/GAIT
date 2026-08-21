@@ -182,6 +182,37 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
+        if (dev.eversorhn.gait.BuildConfig.DEBUG) {
+            // Debug builds only: shortcuts for exercising the rare states without weeks of running.
+            Text("Developer (debug build)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CorpoButton("Fidelity → 96 %", onClick = { scope.launch { appRepo.getTwinProfile()?.let { appRepo.updateTwinProfile(it.copy(fidelity = 0.96f)) }; onDone() } }, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
+                CorpoButton("Seed 6 sessions", onClick = {
+                    scope.launch {
+                        val now = System.currentTimeMillis()
+                        repeat(6) { i ->
+                            val pace = 320.0 + (i % 3) * 6 - (i / 3) * 4
+                            appRepo.logSession(
+                                dev.eversorhn.gait.data.db.entity.SessionEntity(
+                                    activityType = appRepo.activeActivityType,
+                                    startTimeEpochMillis = now - (6 - i) * 86_400_000L,
+                                    dayOfWeek = ((java.time.Instant.ofEpochMilli(now - (6 - i) * 86_400_000L).atZone(java.time.ZoneId.systemDefault()).dayOfWeek.value)),
+                                    durationSeconds = (pace * 5).toInt(),
+                                    distanceMeters = 5000.0,
+                                    avgPaceSecPerKm = pace,
+                                    forecastPaceSecPerKm = if (i == 0) null else 326.0,
+                                    forecastFinishSeconds = if (i == 0) null else 1630,
+                                    dataSource = dev.eversorhn.gait.data.db.entity.SessionSource.MANUAL,
+                                    stake = 1,
+                                )
+                            )
+                        }
+                        onDone()
+                    }
+                }, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
+            }
+        }
+
         CorpoButton("Save changes", onClick = viewModel::save, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
         if (showSaved) {
             Text("Saved.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)

@@ -118,6 +118,7 @@ fun GaitNavGraph() {
                 if (!onSetup) {
                     // The ticker: today's movers on the division board, you included.
                     val ticker by produceState<List<TickerItem>>(initialValue = emptyList(), key1 = ledger.roundsPlayed, key2 = profile.fidelity) {
+                        while (true) {
                         value = withContext(Dispatchers.Default) {
                             val now = Instant.now()
                             val zoned = now.atZone(ZoneId.systemDefault())
@@ -128,6 +129,8 @@ fun GaitNavGraph() {
                             listOf(TickerItem("You #${snap.user.rank}", snap.user.delta, isUser = true)) +
                                 listOfNotNull(snap.twin?.let { TickerItem("${profile.twinName} #${it.rank}", it.delta) }) +
                                 snap.movers.map { TickerItem("${it.asset.name} #${it.rank}", it.delta) }
+                        }
+                        kotlinx.coroutines.delay(60_000L)
                         }
                     }
                     TickerStrip(items = ticker)

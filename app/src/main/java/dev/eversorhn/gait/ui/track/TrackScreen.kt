@@ -356,8 +356,10 @@ private fun LiveSession(
         twinFraction = if (referenceFinish != null && referenceFinish > 0) snapshot.elapsedSeconds.toFloat() / referenceFinish else 0f
         youFraction = twinFraction
     }
-    LiveTrack(youFraction = youFraction, twinFraction = twinFraction, twinColor = twinColor)
-    TrackLegend(youLabel = "You", twinLabel = name, twinColor = twinColor)
+    if (mode == TrackMode.OUTDOOR) {
+        LiveTrack(youFraction = youFraction, twinFraction = twinFraction, twinColor = twinColor)
+        TrackLegend(youLabel = "You", twinLabel = name, twinColor = twinColor)
+    }
 
     if (mode == TrackMode.OUTDOOR) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

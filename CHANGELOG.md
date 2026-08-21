@@ -4,6 +4,18 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.9.0] - 2026-08-21
+
+### Changed
+- **A new asset starts last.** Enrolment index is below the floor (`START_INDEX = 250`), for you and for your model alike (ties go to you); every ledger point is +30 — the first places come fast, the top takes a long lead. The division memo and the board say so ("Everyone starts last"), and new hires see how many protected days they have left before the quarterly cull can touch them (60).
+- **Repository now actually receives the app context** — the chosen activity is persisted across launches (it wasn't, since 0.8.0; the constructor call in `GaitApplication` still used the one-arg form).
+- **Roster preload** at process start (background), so the board is usually ready when the splash hands over; the loading screen says why it takes a few seconds on the first open of the day.
+- Ticker refreshes every minute like the board; no track graphic indoors (it only moved by time); Room schemas are now exported to `app/schemas/` (`exportSchema = true`) so future migrations can be written and tested against a real history.
+- **Debug builds only:** a Developer section in Settings — "Fidelity → 96 %" (reach the Trial) and "Seed 6 sessions" (get a forecast, stakes and a ledger without a week of running).
+
+### Added
+- `docs/privacy-policy.md` — the honest version: nothing leaves the device; the division is a simulation.
+
 ## [0.8.2] - 2026-08-21
 
 ### Changed

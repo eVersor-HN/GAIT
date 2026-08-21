@@ -445,15 +445,19 @@ object RosterEngine {
         return Cache(foundingDay, todayEpochDay, today, yesterday, states.map { it.asset }, fired, history, cullCloses)
     }
 
+    /** Where a new asset (and its model) starts: under the floor, i.e. last place. Everything above is earned. */
+    const val START_INDEX = 250.0
+
     /**
-     * The user's Retention Index, in the same space as the simulation: 500 at enrolment,
-     * +30 per ledger point of lead (so a 6-point lead is already top-quartile material),
-     * and Fidelity pulls it down — a well-modelled asset is a replaceable one.
+     * The user's Retention Index, in the same space as the simulation: a new asset enrols at
+     * the bottom of the board (START_INDEX, below the floor) and climbs +30 per ledger point of
+     * lead; Fidelity pulls it down — a well-modelled asset is a replaceable one. Arcade curve:
+     * the first places come fast, the top needs a long lead (soft clamp).
      */
     fun userIndex(ledger: LedgerState, fidelityPercent: Int): Double {
         val lead = ledger.lead.toDouble()
         val streak = ledger.streak?.let { (side, n) -> if (side == dev.eversorhn.gait.domain.ledger.Side.USER) n else -n } ?: 0
-        val raw = 500.0 + 30.0 * lead + 6.0 * streak - 1.5 * (fidelityPercent - 50)
+        val raw = START_INDEX + 30.0 * lead + 6.0 * streak - 1.5 * (fidelityPercent - 50)
         // Soft clamp so it can't run away with a long lead.
         return (CEILING / (1 + exp(-(raw - 500) / 220)) ).coerceIn(0.0, CEILING)
     }
@@ -466,7 +470,7 @@ object RosterEngine {
     fun twinIndex(ledger: LedgerState, fidelityPercent: Int): Double {
         val lead = -ledger.lead.toDouble()
         val streak = ledger.streak?.let { (side, n) -> if (side == dev.eversorhn.gait.domain.ledger.Side.TWIN) n else -n } ?: 0
-        val raw = 500.0 + 30.0 * lead + 6.0 * streak + 1.5 * (fidelityPercent - 50)
+        val raw = START_INDEX + 30.0 * lead + 6.0 * streak + 1.5 * (fidelityPercent - 50)
         return (CEILING / (1 + exp(-(raw - 500) / 220))).coerceIn(0.0, CEILING)
     }
 

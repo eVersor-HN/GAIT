@@ -43,10 +43,14 @@ class RosterEngineTest {
     }
 
     @Test
-    fun `user index sits at 500 on enrolment, rises with lead, falls with fidelity`() {
-        assertEquals(500.0, RosterEngine.userIndex(empty, 50), 0.5)
-        assertTrue(RosterEngine.userIndex(LedgerState(6, 0, emptyList()), 50) > 650)
-        assertTrue(RosterEngine.userIndex(LedgerState(0, 6, emptyList()), 50) < 350)
+    fun `user index starts at the bottom on enrolment, rises with lead, falls with fidelity`() {
+        val start = RosterEngine.userIndex(empty, 50)
+        assertTrue("a new asset starts under the floor, got $start", start < RosterEngine.FLOOR)
+        val s = RosterEngine.snapshot(20_000, 20_100, 12 * 60, empty, 50, empty)
+        assertTrue("new user starts at the bottom (rank ${s.user.rank} of ${s.enrolled})", s.user.rank >= s.enrolled - 1)
+        assertEquals("the model starts last, behind the user", s.enrolled, s.twin!!.rank)
+        assertTrue(RosterEngine.userIndex(LedgerState(6, 0, emptyList()), 50) > start + 150)
+        assertTrue(RosterEngine.userIndex(LedgerState(0, 6, emptyList()), 50) < start)
         assertTrue(RosterEngine.userIndex(empty, 96) < RosterEngine.userIndex(empty, 50))
         assertTrue(RosterEngine.userIndex(LedgerState(40, 0, emptyList()), 50) < RosterEngine.CEILING)
     }
