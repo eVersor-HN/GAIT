@@ -4,6 +4,12 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.12.2] - 2026-08-21
+
+### Changed
+- **Ticker is a real news ticker now.** It scrolls right-to-left at a constant ~52 dp/s driven by the frame clock — it never pauses or restarts when its content is refreshed (every minute), so there is no visible jump. Content is repeated until it spans at least two screen widths. Besides the movers it carries division news, interleaved: next cull countdown, under-review count, review day, hires and decommissions (30 d), the latest decommission, an open stake on today, the head-count — so there is always something moving even when no one moved this second.
+- **Breathing room** between the static bars: HUD 8 dp, ticker with 6 dp above and below (24 dp tall), ledger row 4/8 dp, page indicator 8 dp below.
+
 ## [0.12.1] - 2026-08-21
 
 ### Changed

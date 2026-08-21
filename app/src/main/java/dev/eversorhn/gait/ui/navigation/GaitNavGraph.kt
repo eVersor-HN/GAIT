@@ -126,9 +126,23 @@ fun GaitNavGraph() {
                             val today = RosterEngine.epochDay(now.toEpochMilli(), offset)
                             val enrolled = RosterEngine.epochDay(app.repository.earliestEnrolmentEpochMillis() ?: profile.createdAtEpochMillis, offset)
                             val snap = RosterEngine.snapshot(enrolled, today, zoned.hour * 60 + zoned.minute, ledger, (profile.fidelity * 100).toInt(), ledger, includeTwin = !profile.isHorde)
-                            listOf(TickerItem("You #${snap.user.rank}", snap.user.delta, isUser = true)) +
-                                listOfNotNull(snap.twin?.let { TickerItem("${profile.twinName} #${it.rank}", it.delta) }) +
-                                snap.movers.map { TickerItem("${it.asset.name} #${it.rank}", it.delta) }
+                            val news = ArrayList<TickerItem>()
+                            news += TickerItem("You #${snap.user.rank}", snap.user.delta, isUser = true)
+                            snap.twin?.let { news += TickerItem("${profile.twinName} #${it.rank}", it.delta) }
+                            news += TickerItem(if (snap.nextCullInDays == 0) "Cull today · bottom ${RosterEngine.CULL_COUNT} go" else "Next cull in ${snap.nextCullInDays} d · bottom ${RosterEngine.CULL_COUNT}", 0, isNews = true)
+                            news += TickerItem("${snap.underReview} under review · floor ${RosterEngine.FLOOR.toInt()}", 0, isNews = true)
+                            if (snap.nextReviewInDays == 0) news += TickerItem("Review day", 0, isNews = true)
+                            if (snap.newHires30d > 0) news += TickerItem("+${snap.newHires30d} hired · 30 d", 0, isNews = true)
+                            if (snap.decommissioned30d > 0) news += TickerItem("${snap.decommissioned30d} decommissioned · 30 d", 0, isNews = true)
+                            snap.decommissioned.firstOrNull()?.let { news += TickerItem("Latest decommission: ${it.asset.name}", 0, isNews = true) }
+                            if (profile.wagerStake > 0 && profile.wagerClaim != null) news += TickerItem("${profile.twinName} has ${profile.wagerStake} pts on today", 0, isNews = true)
+                            news += TickerItem("${"%,d".format(snap.enrolled)} enrolled", 0, isNews = true)
+                            // Interleave movers with news so the line reads like a ticker, not two lists.
+                            val movers = snap.movers.map { TickerItem("${it.asset.name} #${it.rank}", it.delta) }
+                            val out = ArrayList<TickerItem>()
+                            val n = maxOf(news.size, movers.size)
+                            for (i in 0 until n) { movers.getOrNull(i)?.let { out += it }; news.getOrNull(i)?.let { out += it } }
+                            out
                         }
                         kotlinx.coroutines.delay(60_000L)
                         }

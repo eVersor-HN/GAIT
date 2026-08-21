@@ -486,7 +486,7 @@ fun LedgerStrip(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .padding(top = 3.dp, bottom = 2.dp),
+            .padding(top = 4.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -525,44 +525,56 @@ fun FormDots(form: List<Boolean>, twinColor: Color = Cyan) {
     }
 }
 
-/** One entry on the ticker: who moved, by how much (index points), and whether it's you. */
-data class TickerItem(val label: String, val delta: Int, val isUser: Boolean = false)
+/** One entry on the ticker: who/what moved, by how much (index points; 0 = plain news), and whether it's you. */
+data class TickerItem(val label: String, val delta: Int, val isUser: Boolean = false, val isNews: Boolean = false)
 
 /**
- * The stock-ticker strip: one line of today's movers scrolling right-to-left at a constant
- * speed, ▲ green / ▼ red, your own entry in brass. Fixed height, clipped to its own box, so
- * it never overlaps what's below; the content is duplicated so the loop is seamless.
+ * The news ticker: one line scrolling right-to-left at a constant speed, never pausing and
+ * never restarting — the offset is derived from a running frame clock, so the list can be
+ * replaced underneath (every minute) without a visible jump. Content is repeated until it is
+ * at least two screen widths, then duplicated once more for the seamless loop. Fixed height,
+ * clipped to its own box, breathing room above and below.
  */
 @Composable
 fun TickerStrip(items: List<TickerItem>, modifier: Modifier = Modifier) {
     if (items.isEmpty()) return
     var contentWidth by androidx.compose.runtime.remember { mutableIntStateOf(0) }
+    var boxWidth by androidx.compose.runtime.remember { mutableIntStateOf(0) }
+    // Running clock in ms since first composition; survives item changes.
+    var elapsedMs by androidx.compose.runtime.remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        var last = 0L
+        while (true) {
+            androidx.compose.runtime.withFrameMillis { now ->
+                if (last != 0L) elapsedMs += now - last
+                last = now
+            }
+        }
+    }
     val density = androidx.compose.ui.platform.LocalDensity.current
-    // ~56 dp per second: readable, news-ticker pace. Duration follows the measured width.
-    val durationMs = with(density) { ((contentWidth / 56.dp.toPx()) * 1000).toInt() }.coerceAtLeast(4000)
-    val transition = rememberInfiniteTransition(label = "ticker")
-    val progress by transition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(durationMillis = durationMs, easing = LinearEasing)),
-        label = "tickerX",
-    )
+    val speedPxPerMs = with(density) { 52.dp.toPx() } / 1000f   // ~52 dp per second, news-ticker pace
+    // Repeat the list until one copy is at least twice the box width (measured after first layout).
+    val repeats = if (boxWidth > 0 && contentWidth > 0) (2 * boxWidth / contentWidth + 1).coerceIn(1, 12) else 1
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(22.dp)
+            .padding(vertical = 6.dp)
+            .height(24.dp)
             .background(Ink2)
             .border(BorderStroke(1.dp, LineSoft))
-            .clipToBounds(),
+            .clipToBounds()
+            .onSizeChanged { boxWidth = it.width },
         contentAlignment = Alignment.CenterStart,
     ) {
-        val x = if (contentWidth == 0) 0 else -((progress * contentWidth).toInt() % contentWidth)
+        val loopWidth = contentWidth * repeats
+        val x = if (loopWidth == 0) 0 else -((elapsedMs * speedPxPerMs).toLong() % loopWidth).toInt()
         Row(
             modifier = Modifier
                 .offset { IntOffset(x, 0) }
                 .wrapContentWidth(align = Alignment.Start, unbounded = true),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            repeat(2) { copy ->
+            repeat(repeats + 1) { copy ->
                 Row(
                     modifier = if (copy == 0) Modifier.onSizeChanged { contentWidth = it.width } else Modifier,
                     verticalAlignment = Alignment.CenterVertically,
@@ -570,13 +582,15 @@ fun TickerStrip(items: List<TickerItem>, modifier: Modifier = Modifier) {
                     items.forEach { it ->
                         val color = when {
                             it.isUser -> Brass
+                            it.isNews -> TextDim
                             it.delta > 0 -> Good
                             it.delta < 0 -> Alert
                             else -> TextFaint
                         }
-                        val glyph = when { it.delta > 0 -> "▲"; it.delta < 0 -> "▼"; else -> "·" }
+                        val glyph = when { it.isNews -> "◆"; it.delta > 0 -> "▲"; it.delta < 0 -> "▼"; else -> "·" }
+                        val tail = if (it.isNews) "" else " " + (if (it.delta > 0) "+" else if (it.delta < 0) "−" else "") + kotlin.math.abs(it.delta)
                         Text(
-                            "$glyph ${it.label.uppercase()} ${if (it.delta > 0) "+" else if (it.delta < 0) "−" else ""}${kotlin.math.abs(it.delta)}",
+                            "$glyph ${it.label.uppercase()}$tail",
                             style = MaterialTheme.typography.labelSmall,
                             color = color,
                             maxLines = 1,

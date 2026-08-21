@@ -99,7 +99,7 @@ private fun PageIndicator(current: Int, isHorde: Boolean, onSelect: (HomePage) -
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .padding(top = 2.dp, bottom = 2.dp),
+            .padding(top = 2.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
