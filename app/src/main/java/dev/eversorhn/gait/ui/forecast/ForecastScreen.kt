@@ -32,7 +32,6 @@ import dev.eversorhn.gait.ui.theme.Brass
 import dev.eversorhn.gait.ui.theme.ButtonKind
 import dev.eversorhn.gait.ui.theme.CorpoButton
 import dev.eversorhn.gait.ui.theme.CorpoPanel
-import dev.eversorhn.gait.ui.theme.ExitGuard
 import dev.eversorhn.gait.ui.theme.Cyan
 import dev.eversorhn.gait.ui.theme.FootNote
 import dev.eversorhn.gait.ui.theme.FormDots
@@ -87,7 +86,6 @@ fun ForecastScreen(
                 Text("Loading…", style = MaterialTheme.typography.bodyLarge)
             }
             is ForecastUiState.Ready -> {
-                ExitGuard(opponentName = if (s.isHorde) "The horde" else s.opponentName)
                 val twinColor = if (s.isHorde) Alert else Cyan
                 val them = if (s.isHorde) "the horde" else s.opponentName
 

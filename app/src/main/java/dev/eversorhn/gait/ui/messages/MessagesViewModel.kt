@@ -54,7 +54,9 @@ class MessagesViewModel(private val repository: GaitRepository) : ViewModel() {
 
     private val dateFormat = SimpleDateFormat("EEE · d MMM", Locale.getDefault())
 
-    init {
+    init { refresh() }
+
+    fun refresh() {
         viewModelScope.launch {
             val profile = repository.getTwinProfile()
             val sessions = repository.getSessions()

@@ -43,7 +43,6 @@ import dev.eversorhn.gait.ui.theme.ButtonKind
 import dev.eversorhn.gait.ui.theme.CorpoButton
 import dev.eversorhn.gait.ui.theme.CorpoPanel
 import dev.eversorhn.gait.ui.theme.Cyan
-import dev.eversorhn.gait.ui.theme.ExitGuard
 import dev.eversorhn.gait.ui.theme.FootNote
 import dev.eversorhn.gait.ui.theme.Good
 import dev.eversorhn.gait.ui.theme.Ink
@@ -75,8 +74,6 @@ import kotlin.math.sin
 fun BoardScreen(onContinue: () -> Unit, onEnrolNew: () -> Unit) {
     val viewModel: BoardViewModel = gaitViewModel()
     val state by viewModel.uiState.collectAsState()
-
-    ExitGuard(opponentName = if (state.isHorde) "The horde" else state.opponentName.ifBlank { "The model" })
 
     state.dossier?.let { d ->
         DossierDialog(d, state.dossierStanding, state.snapshot?.day ?: 0L, onClose = viewModel::closeDossier)

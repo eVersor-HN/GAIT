@@ -76,6 +76,8 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
 
     fun selectPeriod(period: StatsPeriod) = reload(period)
 
+    fun refresh() = reload(_uiState.value.period)
+
     fun deleteSession(id: Long) {
         viewModelScope.launch {
             repository.deleteSession(id)

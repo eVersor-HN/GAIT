@@ -4,6 +4,11 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.8.1] - 2026-08-21
+
+### Added
+- **Swipe navigation.** The main screen is now a pager: Board (or Containment Map) ↔ Forecast ↔ Direct Channel ↔ Statistics, with a labelled page indicator under the ledger strip (tap to jump, swipe to move). Opens on the board as before; Track, Log, Rest & Vacation and Settings stay as pushed screens. The exit dialog now lives once, on the main screen, so the system back gesture always asks before the app closes. Channel and Statistics refresh whenever their page is entered.
+
 ## [0.8.0] - 2026-08-21
 
 The division becomes a place you can be fired from. Plus: all 17 personas, a real ticker, a live board, the opponent's own row, a rest calendar, an activity picker, an exit dialog, dossiers, commendations.

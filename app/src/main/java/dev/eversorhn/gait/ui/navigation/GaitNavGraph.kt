@@ -25,8 +25,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.eversorhn.gait.GaitApplication
-import dev.eversorhn.gait.ui.forecast.ForecastScreen
-import dev.eversorhn.gait.ui.board.BoardScreen
+import dev.eversorhn.gait.ui.home.HomeScreen
+import dev.eversorhn.gait.ui.home.HomePage
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import dev.eversorhn.gait.ui.theme.TickerStrip
 import dev.eversorhn.gait.ui.theme.TickerItem
 import dev.eversorhn.gait.domain.roster.RosterEngine
@@ -36,14 +38,12 @@ import androidx.compose.runtime.produceState
 import java.time.Instant
 import java.time.ZoneId
 import dev.eversorhn.gait.ui.logsession.LogSessionScreen
-import dev.eversorhn.gait.ui.messages.MessagesScreen
 import dev.eversorhn.gait.ui.restdays.RestDaysScreen
 import dev.eversorhn.gait.ui.settings.SettingsScreen
 import dev.eversorhn.gait.ui.setup.HordeSetupScreen
 import dev.eversorhn.gait.ui.setup.ActivityScreen
 import dev.eversorhn.gait.ui.setup.NamingScreen
 import dev.eversorhn.gait.ui.setup.OpponentTypeScreen
-import dev.eversorhn.gait.ui.stats.StatsScreen
 import dev.eversorhn.gait.ui.theme.Brass
 import dev.eversorhn.gait.ui.theme.CorpoBackground
 import dev.eversorhn.gait.ui.theme.CorpoStatusBar
@@ -62,14 +62,11 @@ private object Routes {
     const val OPPONENT_TYPE = "opponent_type"
     const val NAMING = "naming"
     const val HORDE_SETUP = "horde_setup"
-    const val BOARD = "board"
-    const val FORECAST = "forecast"
+    const val HOME = "home"
     const val TRACK = "track"
     const val TRACK_PATTERN = "track?duel={duel}"
     const val LOG_SESSION = "log_session"
-    const val MESSAGES = "messages"
     const val REST_DAYS = "rest_days"
-    const val STATS = "stats"
     const val SETTINGS = "settings"
 }
 
@@ -79,13 +76,10 @@ private val routeLabels = mapOf(
     Routes.OPPONENT_TYPE to "SETUP",
     Routes.NAMING to "SETUP",
     Routes.HORDE_SETUP to "SETUP",
-    Routes.BOARD to "ASSET BOARD",
-    Routes.FORECAST to "PRE-SESSION",
+    Routes.HOME to "GAIT",
     Routes.TRACK_PATTERN to "TRACK",
     Routes.LOG_SESSION to "LOG SESSION",
-    Routes.MESSAGES to "DIRECT CHANNEL",
     Routes.REST_DAYS to "REST & VACATION",
-    Routes.STATS to "STATISTICS",
     Routes.SETTINGS to "SETTINGS",
 )
 
@@ -94,8 +88,15 @@ fun GaitNavGraph() {
     val navController: NavHostController = rememberNavController()
     val currentEntry by navController.currentBackStackEntryAsState()
     val route = currentEntry?.destination?.route
+    var homePage by remember { mutableStateOf(HomePage.BOARD) }
     val label = when {
         route == Routes.TRACK_PATTERN && currentEntry?.arguments?.getBoolean("duel") == true -> "ASSET REVIEW"
+        route == Routes.HOME -> when (homePage) {
+            HomePage.BOARD -> "ASSET BOARD"
+            HomePage.FORECAST -> "PRE-SESSION"
+            HomePage.CHANNEL -> "DIRECT CHANNEL"
+            HomePage.STATS -> "STATISTICS"
+        }
         else -> routeLabels[route] ?: "GAIT"
     }
 
@@ -146,7 +147,7 @@ fun GaitNavGraph() {
                     val app = LocalContext.current.applicationContext as GaitApplication
                     LaunchedEffect(Unit) {
                         val hasOpponent = app.repository.getTwinProfile() != null
-                        val destination = if (hasOpponent) Routes.BOARD else Routes.ACTIVITY
+                        val destination = if (hasOpponent) Routes.HOME else Routes.ACTIVITY
                         navController.navigate(destination) {
                             popUpTo(Routes.LOADING) { inclusive = true }
                         }
@@ -176,44 +177,32 @@ fun GaitNavGraph() {
 
                 composable(Routes.NAMING) {
                     NamingScreen(onConfirmed = {
-                        navController.navigate(Routes.FORECAST) {
-                            popUpTo(Routes.OPPONENT_TYPE) { inclusive = true }
+                        navController.navigate(Routes.HOME) {
+                            popUpTo(0) { inclusive = true }
                         }
                     })
                 }
 
                 composable(Routes.HORDE_SETUP) {
                     HordeSetupScreen(onConfirmed = {
-                        navController.navigate(Routes.FORECAST) {
-                            popUpTo(Routes.OPPONENT_TYPE) { inclusive = true }
+                        navController.navigate(Routes.HOME) {
+                            popUpTo(0) { inclusive = true }
                         }
                     })
                 }
 
-                composable(Routes.BOARD) {
-                    BoardScreen(
-                        onContinue = {
-                            navController.navigate(Routes.FORECAST) {
-                                popUpTo(Routes.BOARD) { inclusive = true }
-                            }
-                        },
-                        onEnrolNew = {
-                            // Terminated at a cull: everything's wiped, a new asset enrols from the top.
-                            navController.navigate(Routes.ACTIVITY) { popUpTo(0) { inclusive = true } }
-                        },
-                    )
-                }
-
-                composable(Routes.FORECAST) {
-                    ForecastScreen(
-                        onBoard = { navController.navigate(Routes.BOARD) },
+                composable(Routes.HOME) {
+                    val p = ledgerInfo?.first
+                    HomeScreen(
+                        opponentName = p?.twinName ?: "",
+                        isHorde = p?.isHorde == true,
+                        onPageChanged = { homePage = it },
                         onStartActivity = { navController.navigate(Routes.TRACK) },
                         onStartDuel = { navController.navigate("${Routes.TRACK}?duel=true") },
                         onLogSession = { navController.navigate(Routes.LOG_SESSION) },
-                        onMessages = { navController.navigate(Routes.MESSAGES) },
                         onRestDays = { navController.navigate(Routes.REST_DAYS) },
-                        onStats = { navController.navigate(Routes.STATS) },
                         onSettings = { navController.navigate(Routes.SETTINGS) },
+                        onEnrolNew = { navController.navigate(Routes.ACTIVITY) { popUpTo(0) { inclusive = true } } },
                     )
                 }
 
@@ -231,16 +220,8 @@ fun GaitNavGraph() {
                     LogSessionScreen(onDone = { navController.popBackStack() })
                 }
 
-                composable(Routes.MESSAGES) {
-                    MessagesScreen(onDone = { navController.popBackStack() })
-                }
-
                 composable(Routes.REST_DAYS) {
                     RestDaysScreen(onDone = { navController.popBackStack() })
-                }
-
-                composable(Routes.STATS) {
-                    StatsScreen(onDone = { navController.popBackStack() })
                 }
 
                 composable(Routes.SETTINGS) {

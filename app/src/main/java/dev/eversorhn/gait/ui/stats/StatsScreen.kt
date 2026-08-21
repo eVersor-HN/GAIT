@@ -47,6 +47,7 @@ fun StatsScreen(onDone: () -> Unit) {
     val viewModel: StatsViewModel = gaitViewModel()
     val state by viewModel.uiState.collectAsState()
     var pendingDelete by remember { mutableStateOf<SessionRow?>(null) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.refresh() }
 
     pendingDelete?.let { row ->
         AlertDialog(

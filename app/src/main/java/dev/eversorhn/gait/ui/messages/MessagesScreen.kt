@@ -43,6 +43,7 @@ fun MessagesScreen(onDone: () -> Unit) {
     val viewModel: MessagesViewModel = gaitViewModel()
     val state by viewModel.uiState.collectAsState()
     val twinColor = if (state.isHorde) Alert else Cyan
+    androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.refresh() }
 
     Column(
         modifier = Modifier
