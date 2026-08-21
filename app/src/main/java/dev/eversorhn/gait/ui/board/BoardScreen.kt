@@ -2,8 +2,9 @@ package dev.eversorhn.gait.ui.board
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,11 +16,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -30,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.domain.roster.AssetKind
 import dev.eversorhn.gait.domain.roster.AssetStatus
+import dev.eversorhn.gait.domain.roster.RosterEngine
 import dev.eversorhn.gait.domain.roster.RosterSnapshot
 import dev.eversorhn.gait.domain.roster.Standing
 import dev.eversorhn.gait.ui.gaitViewModel
@@ -39,30 +43,44 @@ import dev.eversorhn.gait.ui.theme.ButtonKind
 import dev.eversorhn.gait.ui.theme.CorpoButton
 import dev.eversorhn.gait.ui.theme.CorpoPanel
 import dev.eversorhn.gait.ui.theme.Cyan
+import dev.eversorhn.gait.ui.theme.ExitGuard
 import dev.eversorhn.gait.ui.theme.FootNote
 import dev.eversorhn.gait.ui.theme.Good
+import dev.eversorhn.gait.ui.theme.Ink
 import dev.eversorhn.gait.ui.theme.Ink2
-import dev.eversorhn.gait.ui.theme.Line
 import dev.eversorhn.gait.ui.theme.LineSoft
 import dev.eversorhn.gait.ui.theme.PanelTone
 import dev.eversorhn.gait.ui.theme.ScreenTitle
 import dev.eversorhn.gait.ui.theme.SectionLabel
+import dev.eversorhn.gait.ui.theme.Sparkline
 import dev.eversorhn.gait.ui.theme.StatTile
 import dev.eversorhn.gait.ui.theme.TextDim
 import dev.eversorhn.gait.ui.theme.TextFaint
+import dev.eversorhn.gait.ui.theme.TextPrimary
+import java.time.DayOfWeek
+import java.time.format.TextStyle
+import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
 
 /**
  * The first thing you see when the app opens with an opponent on file.
- * Twin: the division's Asset Board — the top 15 of 1,001 enrolled assets by Retention Index,
- * ▲▼ against yesterday's close, your own row pinned with your rank. Horde: the containment
- * map — you at the centre, the decommissioned (the horde) as dots closing in by Proximity.
+ * Twin: the division's Asset Board — the top 15 by Retention Index, ▲▼ against yesterday's
+ * close, your own row pinned with your rank; tap any row for the division's file on them.
+ * Horde: the containment map — you ahead, the decommissioned (the horde) behind you.
+ * Re-evaluates every minute while open: a row moves when that asset's result lands.
+ * If a quarterly cull caught you in the bottom 400, this is the termination notice.
  */
 @Composable
-fun BoardScreen(onContinue: () -> Unit) {
+fun BoardScreen(onContinue: () -> Unit, onEnrolNew: () -> Unit) {
     val viewModel: BoardViewModel = gaitViewModel()
     val state by viewModel.uiState.collectAsState()
+
+    ExitGuard(opponentName = if (state.isHorde) "The horde" else state.opponentName.ifBlank { "The model" })
+
+    state.dossier?.let { d ->
+        DossierDialog(d, state.dossierStanding, state.snapshot?.day ?: 0L, onClose = viewModel::closeDossier)
+    }
 
     Column(
         modifier = Modifier
@@ -72,29 +90,33 @@ fun BoardScreen(onContinue: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         val snap = state.snapshot
-        if (!state.loaded || snap == null) {
-            ScreenTitle("Asset board", "Compiling standings…")
-            FootNote("1,000 assets · Retention Index · since yesterday's close")
-        } else if (state.isHorde) {
-            HordeMap(snap, state.proximityPercent, onContinue)
-        } else {
-            Board(snap, state.opponentName, onContinue)
+        when {
+            !state.loaded || snap == null -> {
+                ScreenTitle("Asset board", "Compiling standings…")
+                FootNote("Retention Index · since yesterday's close")
+            }
+            state.termination != null -> TerminationNotice(state.termination!!, snap, state.career, onEnrolNew = { viewModel.enrolNewAsset(onEnrolNew) })
+            state.isHorde -> HordeMap(snap, state.proximityPercent, state.career, onContinue)
+            else -> Board(snap, state.opponentName, state.career, onContinue, onRow = viewModel::openDossier)
         }
     }
 }
 
+// ------------------------------------------------------------------ Twin: the board
+
 @Composable
-private fun Board(snap: RosterSnapshot, opponentName: String, onContinue: () -> Unit) {
+private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, onContinue: () -> Unit, onRow: (Int) -> Unit) {
     ScreenTitle("Asset Performance Division · standings", "Asset board")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatTile("Enrolled", "%,d".format(snap.enrolled))
-        StatTile("Under review", "${snap.underReview}", accent = Alert)
-        StatTile("Decom. 30d", "${snap.decommissioned30d}", accent = TextDim)
+        StatTile("Enrolled", "%,d".format(snap.enrolled), sub = "+${snap.newHires30d} in 30 d")
+        StatTile("Under review", "${snap.underReview}", accent = Alert, sub = "floor ${RosterEngine.FLOOR.toInt()}")
+        StatTile("Next cull", if (snap.nextCullInDays == 0) "today" else "${snap.nextCullInDays} d", accent = Alert, sub = "bottom ${RosterEngine.CULL_COUNT} go")
     }
 
     // --- Your row, always visible ---
     val u = snap.user
-    CorpoPanel(tone = PanelTone.TWIN) {
+    val safe = u.rank <= snap.cullLine
+    CorpoPanel(tone = if (safe) PanelTone.TWIN else PanelTone.WARN) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("#${u.rank}", style = MaterialTheme.typography.titleLarge, color = Brass, modifier = Modifier.width(64.dp))
             Arrow(u.prevRank?.let { it - u.rank } ?: 0)
@@ -107,35 +129,71 @@ private fun Board(snap: RosterSnapshot, opponentName: String, onContinue: () -> 
         FootNote(
             when {
                 u.rank <= 15 -> "On the board. Stay there."
-                u.rank <= 100 -> "${u.rank - 15} places off the board."
-                else -> "Top 15 is ${u.rank - 15} places away. The division is watching the bottom, not the top."
-            }
+                !safe -> "Below the cull line (#${snap.cullLine}). ${if (snap.nextCullInDays == 0) "Today." else "${snap.nextCullInDays} days to climb ${u.rank - snap.cullLine}."}"
+                u.rank <= 100 -> "${u.rank - 15} places off the board · ${u.rank - 15 + (snap.cullLine - u.rank)} above the cull line"
+                else -> "Top 15 is ${u.rank - 15} places away · cull line #${snap.cullLine}, ${snap.cullLine - u.rank} below you"
+            },
+            color = if (safe) TextFaint else Alert,
         )
+        career?.let { c ->
+            Spacer(Modifier.height(2.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatTile("Tenure", "${c.tenureDays} d", sub = "company days")
+                StatTile("Survived", "${c.cullsSurvived}", sub = if (c.cullsSurvived == 1) "cull" else "culls")
+                StatTile("Best streak", "${c.bestStreak}", sub = "${c.roundsPlayed} rounds")
+            }
+        }
+    }
+
+    // --- The opponent's own row: where the rounds put it, not where the story wants it ---
+    snap.twin?.let { t ->
+        CorpoPanel {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("#${t.rank}", style = MaterialTheme.typography.titleLarge, color = Cyan, modifier = Modifier.width(64.dp))
+                Arrow(t.prevRank?.let { it - t.rank } ?: 0)
+                Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+                    Text(opponentName.uppercase(), style = MaterialTheme.typography.titleMedium, color = Cyan)
+                    FootNote("Model · your replacement candidate")
+                }
+                IndexCell(t.index, t.delta)
+            }
+            FootNote(
+                when {
+                    t.rank < u.rank -> "${t.rank - 0} — it is ahead of you by ${u.rank - t.rank} places. It earned that on the ledger."
+                    t.rank > u.rank -> "${u.rank - 0} — you are ahead of it by ${t.rank - u.rank} places. Keep it there."
+                    else -> "Level with you."
+                }.substringAfter("— "),
+                color = if (t.rank < u.rank) Alert else TextFaint,
+            )
+        }
     }
 
     // --- Top 15 ---
     CorpoPanel {
         Row(modifier = Modifier.fillMaxWidth()) {
             SectionLabel("#", color = TextFaint); Spacer(Modifier.width(40.dp))
-            SectionLabel("Asset", color = TextFaint)
+            SectionLabel("Asset · tap for file", color = TextFaint)
             Spacer(Modifier.weight(1f))
             SectionLabel("Index · Δ", color = TextFaint)
         }
-        val top = snap.standings.take(15)
-        val userInTop = u.rank <= 15
-        var shown = 0
-        for (row in snap.standings) {
-            if (shown >= 15) break
-            if (userInTop && row.rank > u.rank && shown == u.rank - 1) {
-                UserRowInline(u.rank, u.delta, u.index, u.prevRank)
-                shown++
-                if (shown >= 15) break
+        // Merge the sim rows with the user's (and the opponent's) by rank, show the first 15.
+        val twinRow = snap.twin
+        var placed = 0
+        var i = 0
+        var userPlaced = false
+        var twinPlaced = false
+        while (placed < 15) {
+            val next = snap.standings.getOrNull(i)
+            val nextRank = next?.rank ?: Int.MAX_VALUE
+            when {
+                !userPlaced && u.rank < nextRank && (twinRow == null || twinPlaced || u.rank < twinRow.rank) -> { UserRowInline(u.rank, u.delta, u.index, u.prevRank); userPlaced = true }
+                twinRow != null && !twinPlaced && twinRow.rank < nextRank -> { TwinRowInline(opponentName, twinRow); twinPlaced = true }
+                next != null -> { StandingRow(next, onClick = { onRow(next.asset.slot) }); i++ }
+                else -> break
             }
-            StandingRow(row)
-            shown++
+            placed++
         }
-        if (userInTop && shown < 15) UserRowInline(u.rank, u.delta, u.index, u.prevRank)
-        FootNote("${if (snap.nextReviewInDays == 0) "Review today" else "Next review in ${snap.nextReviewInDays} d"} · floor ${dev.eversorhn.gait.domain.roster.RosterEngine.FLOOR.toInt()} · ${snap.onLeave} on leave · ${snap.newHires30d} new hires (30 d)")
+        FootNote("${if (snap.nextReviewInDays == 0) "Review today" else "Next review in ${snap.nextReviewInDays} d"} · ${snap.onLeave} on leave · ${snap.decommissioned30d} decommissioned (30 d)")
     }
 
     // --- Movers ---
@@ -143,7 +201,10 @@ private fun Board(snap: RosterSnapshot, opponentName: String, onContinue: () -> 
         CorpoPanel {
             SectionLabel("Movers today")
             snap.movers.take(5).forEach { m ->
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onRow(m.asset.slot) },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Arrow(m.delta)
                     Text(m.asset.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).padding(start = 8.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("#${m.rank}", style = MaterialTheme.typography.labelSmall, color = TextFaint, modifier = Modifier.padding(end = 10.dp))
@@ -163,7 +224,7 @@ private fun Board(snap: RosterSnapshot, opponentName: String, onContinue: () -> 
                     FootNote("${snap.day - d.day}d ago · ${d.lastIndex}")
                 }
             }
-            FootNote("Folded into containment. They don't leave — they follow.")
+            FootNote(snap.lastCullDay?.let { "Last cull ${snap.day - it} d ago · ${snap.decommissioned.count { d -> d.day == it }} removed" } ?: "Individual reviews only so far")
         }
     }
 
@@ -172,9 +233,15 @@ private fun Board(snap: RosterSnapshot, opponentName: String, onContinue: () -> 
 }
 
 @Composable
-private fun StandingRow(row: Standing) {
+private fun StandingRow(row: Standing, onClick: () -> Unit) {
     val rankDelta = row.prevRank?.let { it - row.rank } ?: 0
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+            .padding(vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text("${row.rank}", style = MaterialTheme.typography.titleMedium, color = TextDim, modifier = Modifier.width(34.dp))
         Arrow(rankDelta)
         Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
@@ -206,6 +273,22 @@ private fun UserRowInline(rank: Int, delta: Int, index: Int, prevRank: Int?) {
             FootNote("Asset · enrolled")
         }
         IndexCell(index, delta)
+    }
+}
+
+@Composable
+private fun TwinRowInline(name: String, t: dev.eversorhn.gait.domain.roster.TwinStanding) {
+    Row(
+        modifier = Modifier.fillMaxWidth().background(Cyan.copy(alpha = 0.07f), RoundedCornerShape(4.dp)).padding(vertical = 4.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("${t.rank}", style = MaterialTheme.typography.titleMedium, color = Cyan, modifier = Modifier.width(34.dp))
+        Arrow(t.prevRank?.let { it - t.rank } ?: 0)
+        Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+            Text(name.uppercase(), style = MaterialTheme.typography.bodyMedium, color = Cyan)
+            FootNote("Model · replacement candidate")
+        }
+        IndexCell(t.index, t.delta)
     }
 }
 
@@ -243,64 +326,148 @@ private fun statusTag(s: AssetStatus): Pair<String, Color>? = when (s) {
 
 private fun signed(v: Int) = when { v > 0 -> "+$v"; v < 0 -> "−${-v}"; else -> "±0" }
 
-// ------------------------------------------------------------------ Horde: containment map
+// ------------------------------------------------------------------ the file on one asset
 
 @Composable
-private fun HordeMap(snap: RosterSnapshot, proximityPercent: Int, onContinue: () -> Unit) {
-    val zombies = dev.eversorhn.gait.domain.roster.RosterEngine.zombies(snap)
-    ScreenTitle("Containment unit · live", "Where they are")
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatTile("Horde", "${snap.decommissioned.size}", accent = Alert, sub = "decommissioned assets")
-        StatTile("Proximity", "$proximityPercent%", accent = Alert)
-        StatTile("Nearest", "${(100 - proximityPercent).coerceAtLeast(1) * 4} m", sub = "closing")
+private fun DossierDialog(d: RosterEngine.Dossier, standing: Standing?, today: Long, onClose: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        containerColor = Ink2,
+        titleContentColor = TextPrimary,
+        textContentColor = TextDim,
+        title = {
+            Column {
+                FootNote("${d.asset.id} · ${d.asset.unit}")
+                Text(d.asset.name, style = MaterialTheme.typography.titleLarge, color = if (d.asset.kind == AssetKind.SYNTH) Cyan else TextPrimary)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile("Rank", standing?.let { "#${it.rank}" } ?: "—")
+                    StatTile("Index", standing?.let { "${it.index}" } ?: "—", accent = Brass)
+                    StatTile("Tenure", "${d.tenureDays} d")
+                }
+                if (d.history14.size >= 2) {
+                    SectionLabel("Last ${d.history14.size} days · ${d.worstIndex14}–${d.bestIndex14}", color = TextFaint)
+                    Sparkline(points = d.history14, color = if (d.asset.kind == AssetKind.SYNTH) Cyan else Brass)
+                }
+                Text(
+                    "Reads as ${d.readsAs} · ${d.trendLabel} this month · ${d.landingLabel}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    if (d.restDays.isEmpty()) (if (d.asset.kind == AssetKind.SYNTH) "No rest days. Maintenance windows only." else "No fixed rest days.")
+                    else "Rests " + d.restDays.joinToString(", ") { DayOfWeek.of(it).getDisplayName(TextStyle.SHORT, Locale.ENGLISH) } + ".",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                standing?.let { st ->
+                    statusTag(st.status)?.let { (t, c) -> Text(t, style = MaterialTheme.typography.labelSmall, color = c) }
+                }
+                FootNote(
+                    when (d.asset.kind) {
+                        AssetKind.SYNTH -> "Humanoid synth · series ${d.asset.name.substringBefore('-')} · the division's most consistent"
+                        else -> "Hire #${d.asset.hireIndex + 1} in slot ${d.asset.slot} · ${today - d.asset.hiredDay} days on the floor"
+                    }
+                )
+            }
+        },
+        confirmButton = { CorpoButton("Close file", onClick = onClose, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth()) },
+    )
+}
+
+// ------------------------------------------------------------------ the end of the line
+
+@Composable
+private fun TerminationNotice(t: Termination, snap: RosterSnapshot, career: Career?, onEnrolNew: () -> Unit) {
+    ScreenTitle("Asset Performance Division · notice", "Asset decommissioned", headlineColor = Alert)
+    CorpoPanel(tone = PanelTone.WARN) {
+        SectionLabel("Quarterly review · ${t.daysAgo} d ago", color = Alert)
+        Text(
+            "At the cull you ranked #${t.rank} of ${"%,d".format(t.headcount)}. The line was #${t.cullLine}. " +
+                "The bottom ${RosterEngine.CULL_COUNT} were released; you were one of them.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        career?.let { c ->
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatTile("Tenure", "${c.tenureDays} d", sub = "company days")
+                StatTile("Culls survived", "${c.cullsSurvived}")
+                StatTile("Best streak", "${c.bestStreak}", sub = "${c.roundsPlayed} rounds")
+            }
+        }
+        FootNote("Your model keeps running. It always did. It's just not yours to beat any more.")
     }
     CorpoPanel {
-        SectionLabel("Containment map · you at centre")
-        Canvas(modifier = Modifier.fillMaxWidth().height(300.dp)) {
-            val c = Offset(size.width / 2, size.height / 2)
-            val maxR = size.minDimension / 2 - 8.dp.toPx()
-            // Range rings.
-            for (i in 1..4) drawCircle(LineSoft, radius = maxR * i / 4, center = c, style = Stroke(1f))
-            drawLine(LineSoft, Offset(c.x, c.y - maxR), Offset(c.x, c.y + maxR), 1f)
-            drawLine(LineSoft, Offset(c.x - maxR, c.y), Offset(c.x + maxR, c.y), 1f)
-            // The horde: each decommissioned asset is a dot. Distance = 1 − proximity (closer
-            // when the horde models you well), jittered deterministically per asset; the
-            // most recently decommissioned are the closest — they remember you best.
-            val baseDist = (1.0 - proximityPercent / 100.0).coerceIn(0.08, 1.0)
+        SectionLabel("Re-enrolment")
+        Text(
+            "A new asset can enrol under a new name, with a new opponent and a clean ledger. The history of this one stays closed.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    CorpoButton("Enrol a new asset", onClick = onEnrolNew, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth())
+    Spacer(Modifier.height(8.dp))
+}
+
+// ------------------------------------------------------------------ Horde: containment map
+
+/**
+ * You're running from them, so you're ahead: the user sits in the upper third, the horde
+ * spreads behind in a cone below, the closest ones by Proximity. Rings are 100 m.
+ */
+@Composable
+private fun HordeMap(snap: RosterSnapshot, proximityPercent: Int, career: Career?, onContinue: () -> Unit) {
+    val zombies = RosterEngine.zombies(snap, limit = 90)
+    ScreenTitle("Containment unit · live", "Where they are")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        StatTile("Behind you", "${snap.decommissioned.size}", accent = Alert, sub = "decommissioned")
+        StatTile("Proximity", "$proximityPercent%", accent = Alert)
+        StatTile("Nearest", "${(100 - proximityPercent).coerceAtLeast(1) * 4} m", sub = "and closing")
+    }
+    CorpoPanel {
+        SectionLabel("Containment map · you ahead, heading up")
+        Canvas(modifier = Modifier.fillMaxWidth().height(320.dp)) {
+            val you = Offset(size.width / 2, size.height * 0.22f)
+            val maxR = size.height * 0.74f
+            // Range rings behind you (lower half-circles), 100 m apart.
+            for (i in 1..4) drawCircle(LineSoft, radius = maxR * i / 4, center = you, style = Stroke(1f))
+            drawLine(LineSoft, Offset(you.x, 0f), Offset(you.x, size.height), 1f)
+            // Your heading: a short brass tick forward.
+            drawLine(Brass.copy(alpha = 0.5f), you, Offset(you.x, you.y - 26.dp.toPx()), 2.dp.toPx())
+            // The horde: a cone behind you (angles 35°..145° below the horizontal), newest closest.
+            val baseDist = (1.0 - proximityPercent / 100.0).coerceIn(0.10, 1.0)
             zombies.forEachIndexed { i, z ->
                 val seed = z.asset.slot * 31 + z.asset.hireIndex * 7
-                val angle = ((seed * 2654435761L) % 360L).toDouble() * Math.PI / 180.0
-                val recency = (i.toDouble() / zombies.size.coerceAtLeast(1)) // 0 = newest
-                val r = maxR * (baseDist * (0.55 + 0.45 * recency) + ((seed % 17) / 17.0) * 0.12).coerceIn(0.08, 1.0)
-                val p = Offset(c.x + (r * cos(angle)).toFloat(), c.y + (r * sin(angle)).toFloat())
-                val alpha = if (i < 8) 0.95f else 0.55f
+                val spread = ((seed * 2654435761L) % 1000L).toDouble() / 1000.0   // 0..1
+                val angle = Math.PI * (0.20 + 0.60 * spread)                     // 36°..144°, i.e. below you
+                val recency = i.toDouble() / zombies.size.coerceAtLeast(1)       // 0 = newest
+                val r = maxR * (baseDist * (0.45 + 0.50 * recency) + ((seed % 17) / 17.0) * 0.10).coerceIn(0.10, 1.0)
+                val p = Offset(you.x + (r * cos(angle)).toFloat(), you.y + (r * sin(angle)).toFloat())
+                if (p.y > size.height - 2.dp.toPx()) return@forEachIndexed
+                val alpha = if (i < 10) 0.95f else 0.55f
                 drawCircle(Alert.copy(alpha = alpha * 0.3f), radius = 6.dp.toPx(), center = p)
                 drawCircle(Alert.copy(alpha = alpha), radius = 2.5.dp.toPx(), center = p)
             }
-            // You.
-            drawCircle(Brass.copy(alpha = 0.25f), radius = 10.dp.toPx(), center = c)
-            drawCircle(Brass, radius = 5.dp.toPx(), center = c)
-            drawCircle(Ink2, radius = 2.dp.toPx(), center = c)
+            drawCircle(Brass.copy(alpha = 0.25f), radius = 10.dp.toPx(), center = you)
+            drawCircle(Brass, radius = 5.dp.toPx(), center = you)
+            drawCircle(Ink, radius = 2.dp.toPx(), center = you)
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             FootNote("● you", color = Brass)
-            FootNote("● decommissioned · ${zombies.size} plotted", color = Alert)
+            FootNote("● behind you · ${zombies.size} in range", color = Alert)
         }
-        FootNote("Rings: 100 m · newest decommissions closest · proximity ${proximityPercent}% sets the range")
+        FootNote("Rings 100 m · the newest decommissions are closest · proximity ${proximityPercent}% sets how close")
     }
-    if (snap.decommissioned.isNotEmpty()) {
-        CorpoPanel(tone = PanelTone.WARN) {
-            SectionLabel("Joined the horde · recent", color = Alert)
-            snap.decommissioned.take(4).forEach { d ->
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text("${d.asset.id} · ${d.asset.name}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    FootNote("${snap.day - d.day}d ago")
-                }
-            }
-            FootNote("Every Twin that loses its Trial. ${snap.decommissioned30d} this month.")
+    career?.let { c ->
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StatTile("Tenure", "${c.tenureDays} d", sub = "company days")
+            StatTile("Survived", "${c.cullsSurvived}", sub = if (c.cullsSurvived == 1) "cull" else "culls")
+            StatTile("Best streak", "${c.bestStreak}", sub = "${c.roundsPlayed} rounds")
         }
     }
-    FootNote("${"%,d".format(snap.enrolled)} assets enrolled · ${snap.underReview} under review · ${if (snap.nextReviewInDays == 0) "review today" else "next review in ${snap.nextReviewInDays} d"}")
+    FootNote("${"%,d".format(snap.enrolled)} assets enrolled · ${snap.underReview} under review · next cull ${if (snap.nextCullInDays == 0) "today" else "in ${snap.nextCullInDays} d"}")
     CorpoButton("Continue to forecast", onClick = onContinue, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
     Spacer(Modifier.height(8.dp))
 }

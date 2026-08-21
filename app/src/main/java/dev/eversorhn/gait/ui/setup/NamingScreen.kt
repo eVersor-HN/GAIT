@@ -55,7 +55,7 @@ fun NamingScreen(onConfirmed: () -> Unit) {
             .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        FootNote("Setup · step 2/2")
+        FootNote("Setup · step 3/3")
         ScreenTitle("Twin identity assignment", "Who should want to beat you?")
         Text(
             "The name and voice you pick appear in every forecast, live comparison, and message. " +
@@ -85,7 +85,6 @@ fun NamingScreen(onConfirmed: () -> Unit) {
             Personas.mvpRoster.forEach { p ->
                 CorpoChip(label = p.label, active = state.selectedPersonaKey == p.key, onClick = { viewModel.selectPersona(p.key) })
             }
-            CorpoChip(label = "+12 in v1.1", active = false, onClick = {})
         }
 
         // A taste of the voice before committing: one line each from the quiet and the cruel end.
@@ -104,6 +103,6 @@ fun NamingScreen(onConfirmed: () -> Unit) {
             kind = ButtonKind.PRIMARY,
             modifier = Modifier.fillMaxWidth(),
         )
-        FootNote("5 personas available in v1 · name & voice changeable in Settings")
+        FootNote("17 personas · name & voice changeable in Settings")
     }
 }

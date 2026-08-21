@@ -74,6 +74,7 @@ fun MessagesScreen(onDone: () -> Unit) {
         ) {
             items(state.rows, key = { it.key }) { row ->
                 val tone = when {
+                    row.kind == MessageKind.COMMENDATION -> MessageTone.COWED
                     row.duelWon == true -> MessageTone.TWIN
                     row.kind == MessageKind.STAKE -> MessageTone.TWIN
                     row.state == ComposureState.PREDATORY -> MessageTone.PREDATORY
@@ -83,6 +84,7 @@ fun MessagesScreen(onDone: () -> Unit) {
                 val tag = row.dateLabel + " · " + when {
                     row.duelWon == true -> "handoff"
                     row.duelWon == false -> "duel lost"
+                    row.kind == MessageKind.COMMENDATION -> "division · commendation"
                     row.kind == MessageKind.STAKE -> "stake"
                     row.kind == MessageKind.CALL -> "stake called"
                     row.kind == MessageKind.IDLE -> "unprompted"
@@ -91,7 +93,7 @@ fun MessagesScreen(onDone: () -> Unit) {
                     else -> row.kind
                 }
                 MessageCard(
-                    from = if (state.isHorde) "The Horde" else state.opponentName,
+                    from = if (row.kind == MessageKind.COMMENDATION) "Asset Performance Division" else if (state.isHorde) "The Horde" else state.opponentName,
                     tag = tag,
                     body = row.line,
                     tone = tone,

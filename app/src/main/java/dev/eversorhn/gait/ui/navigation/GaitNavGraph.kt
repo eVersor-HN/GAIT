@@ -40,6 +40,7 @@ import dev.eversorhn.gait.ui.messages.MessagesScreen
 import dev.eversorhn.gait.ui.restdays.RestDaysScreen
 import dev.eversorhn.gait.ui.settings.SettingsScreen
 import dev.eversorhn.gait.ui.setup.HordeSetupScreen
+import dev.eversorhn.gait.ui.setup.ActivityScreen
 import dev.eversorhn.gait.ui.setup.NamingScreen
 import dev.eversorhn.gait.ui.setup.OpponentTypeScreen
 import dev.eversorhn.gait.ui.stats.StatsScreen
@@ -57,6 +58,7 @@ import dev.eversorhn.gait.ui.track.TrackScreen
 
 private object Routes {
     const val LOADING = "loading"
+    const val ACTIVITY = "activity"
     const val OPPONENT_TYPE = "opponent_type"
     const val NAMING = "naming"
     const val HORDE_SETUP = "horde_setup"
@@ -73,6 +75,7 @@ private object Routes {
 
 private val routeLabels = mapOf(
     Routes.LOADING to "GAIT",
+    Routes.ACTIVITY to "SETUP",
     Routes.OPPONENT_TYPE to "SETUP",
     Routes.NAMING to "SETUP",
     Routes.HORDE_SETUP to "SETUP",
@@ -105,7 +108,7 @@ fun GaitNavGraph() {
         }
     }
     val ledgerInfo by ledgerFlow.collectAsState(initial = null)
-    val onSetup = route == Routes.LOADING || route == Routes.OPPONENT_TYPE || route == Routes.NAMING || route == Routes.HORDE_SETUP
+    val onSetup = route == Routes.LOADING || route == Routes.ACTIVITY || route == Routes.OPPONENT_TYPE || route == Routes.NAMING || route == Routes.HORDE_SETUP
 
     CorpoBackground {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -120,8 +123,9 @@ fun GaitNavGraph() {
                             val offset = zoned.offset.totalSeconds * 1000L
                             val today = RosterEngine.epochDay(now.toEpochMilli(), offset)
                             val enrolled = RosterEngine.epochDay(profile.createdAtEpochMillis, offset)
-                            val snap = RosterEngine.snapshot(enrolled, today, zoned.hour * 60 + zoned.minute, ledger, (profile.fidelity * 100).toInt(), ledger)
+                            val snap = RosterEngine.snapshot(enrolled, today, zoned.hour * 60 + zoned.minute, ledger, (profile.fidelity * 100).toInt(), ledger, includeTwin = !profile.isHorde)
                             listOf(TickerItem("You #${snap.user.rank}", snap.user.delta, isUser = true)) +
+                                listOfNotNull(snap.twin?.let { TickerItem("${profile.twinName} #${it.rank}", it.delta) }) +
                                 snap.movers.map { TickerItem("${it.asset.name} #${it.rank}", it.delta) }
                         }
                     }
@@ -142,7 +146,7 @@ fun GaitNavGraph() {
                     val app = LocalContext.current.applicationContext as GaitApplication
                     LaunchedEffect(Unit) {
                         val hasOpponent = app.repository.getTwinProfile() != null
-                        val destination = if (hasOpponent) Routes.BOARD else Routes.OPPONENT_TYPE
+                        val destination = if (hasOpponent) Routes.BOARD else Routes.ACTIVITY
                         navController.navigate(destination) {
                             popUpTo(Routes.LOADING) { inclusive = true }
                         }
@@ -157,6 +161,10 @@ fun GaitNavGraph() {
                             FootNote("Asset Twin Systems · R&D internal", color = Brass)
                         }
                     }
+                }
+
+                composable(Routes.ACTIVITY) {
+                    ActivityScreen(onContinue = { navController.navigate(Routes.OPPONENT_TYPE) })
                 }
 
                 composable(Routes.OPPONENT_TYPE) {
@@ -183,11 +191,17 @@ fun GaitNavGraph() {
                 }
 
                 composable(Routes.BOARD) {
-                    BoardScreen(onContinue = {
-                        navController.navigate(Routes.FORECAST) {
-                            popUpTo(Routes.BOARD) { inclusive = true }
-                        }
-                    })
+                    BoardScreen(
+                        onContinue = {
+                            navController.navigate(Routes.FORECAST) {
+                                popUpTo(Routes.BOARD) { inclusive = true }
+                            }
+                        },
+                        onEnrolNew = {
+                            // Terminated at a cull: everything's wiped, a new asset enrols from the top.
+                            navController.navigate(Routes.ACTIVITY) { popUpTo(0) { inclusive = true } }
+                        },
+                    )
                 }
 
                 composable(Routes.FORECAST) {
@@ -233,8 +247,8 @@ fun GaitNavGraph() {
                     SettingsScreen(
                         onDone = { navController.popBackStack() },
                         onWiped = {
-                            // Everything's gone: drop the whole back stack and restart at setup.
-                            navController.navigate(Routes.OPPONENT_TYPE) {
+                            // Everything's gone (or a new activity was chosen): restart at setup.
+                            navController.navigate(Routes.ACTIVITY) {
                                 popUpTo(0) { inclusive = true }
                             }
                         },

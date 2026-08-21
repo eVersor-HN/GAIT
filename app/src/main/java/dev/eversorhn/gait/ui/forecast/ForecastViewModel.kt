@@ -70,6 +70,7 @@ sealed interface ForecastUiState {
         val memo: Directive.Memo,
         val intel: Intel.Observation?,
         val stake: OpenStake?,
+        val activityLabel: String,
     ) : ForecastUiState
 }
 
@@ -122,10 +123,10 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
 
             val metricLabel = if (isHorde) "Proximity" else "Fidelity"
             val isVacation = RestDayPolicy.isOnVacation(profile, now.toEpochMilli())
-            val isRestDay = RestDayPolicy.isRestDay(profile, todayIso)
+            val isRestDay = RestDayPolicy.isRestDay(profile, todayIso) || repository.isPlannedDayOff(java.time.LocalDate.now(ZoneId.systemDefault()).toEpochDay())
             val restLabel = when {
                 isVacation -> "On vacation. Sessions still count, but $metricLabel stays frozen and nobody reacts."
-                isRestDay -> "Declared rest day. Train anyway if you want — $metricLabel stays frozen and nobody reacts."
+                isRestDay -> "Rest day (declared or planned). Train anyway if you want — $metricLabel stays frozen and nobody reacts."
                 else -> null
             }
 
@@ -144,9 +145,10 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
             if (unevaluatedToday && forecast != null &&
                 WagerPolicy.shouldStake(forecast.confidencePercent, forecast.basedOnSessions, isVacation || isRestDay)
             ) {
-                val claim = if (isHorde) HordeSoundCues.stakeCaption(paceLabel, WagerPolicy.STAKE)
-                else persona!!.stakeLine(paceLabel, WagerPolicy.STAKE)
-                profile = profile.copy(wagerStake = WagerPolicy.STAKE, wagerCalled = false, wagerEpochDay = todayEpochDay, wagerClaim = claim)
+                val stakePts = WagerPolicy.stakeFor(Ledger.from(sessions).lead)
+                val claim = if (isHorde) HordeSoundCues.stakeCaption(paceLabel, stakePts)
+                else persona!!.stakeLine(paceLabel, stakePts)
+                profile = profile.copy(wagerStake = stakePts, wagerCalled = false, wagerEpochDay = todayEpochDay, wagerClaim = claim)
                 repository.updateTwinProfile(profile)
                 repository.recordMessage(MessageKind.STAKE, claim, ComposureState.WATCHFUL.name, now.toEpochMilli())
             } else if (unevaluatedToday) {
@@ -155,7 +157,7 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                 repository.updateTwinProfile(profile)
             }
             val openStake = if (profile.wagerStake > 0 && profile.wagerEpochDay == todayEpochDay && profile.wagerClaim != null) {
-                OpenStake(points = profile.wagerStake, called = profile.wagerCalled, claim = profile.wagerClaim!!, calledPoints = WagerPolicy.CALLED_STAKE)
+                OpenStake(points = profile.wagerStake, called = profile.wagerCalled, claim = profile.wagerClaim!!, calledPoints = WagerPolicy.calledStakeFor(profile.wagerStake))
             } else null
 
             // --- Inbox teaser: newest of (debrief lines, unprompted messages) ---
@@ -228,6 +230,7 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                 memo = memo,
                 intel = intel,
                 stake = openStake,
+                activityLabel = dev.eversorhn.gait.domain.activity.Activities.byKey(repository.activeActivityType).label,
             )
         }
     }

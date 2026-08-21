@@ -72,13 +72,17 @@ data class Standing(
 /** The user's own row, computed from their ledger so it lives in the same index space. */
 data class UserStanding(val index: Int, val delta: Int, val rank: Int, val prevRank: Int?)
 
+/** The opponent's row: the same ledger read from its side. Null for a Horde (the horde isn't one asset). */
+data class TwinStanding(val index: Int, val delta: Int, val rank: Int, val prevRank: Int?)
+
 data class Decommissioned(val asset: SimAsset, val day: Long, val lastIndex: Int)
 
 data class RosterSnapshot(
     val day: Long,
     val standings: List<Standing>,          // ranked, all ROSTER_SIZE
     val user: UserStanding,
-    val enrolled: Int,                      // ROSTER_SIZE + 1
+    val twin: TwinStanding?,
+    val enrolled: Int,                      // headcount incl. user (and twin)
     val underReview: Int,
     val onLeave: Int,
     val newHires30d: Int,
@@ -87,11 +91,26 @@ data class RosterSnapshot(
     /** Biggest movers today (abs delta), for the ticker. */
     val movers: List<Standing>,
     val nextReviewInDays: Int,
+    /** Days until the next quarterly cull (0 = today). */
+    val nextCullInDays: Int,
+    /** Head-count the last cull removed, and when. */
+    val lastCullDay: Long?,
+    /** Rank above which an asset is safe at the next cull, given today's headcount. */
+    val cullLine: Int,
 )
 
 object RosterEngine {
 
-    const val ROSTER_SIZE = 1000
+    /** Slots in the division. Between culls the headcount ramps from ~900 up to this. */
+    const val ROSTER_SIZE = 1300
+    /** Headcount at founding; vacant slots above are hired into over the following weeks. */
+    const val INITIAL_HEADCOUNT = 1000
+    /** Every CULL_EVERY_DAYS the bottom CULL_COUNT (by index, tenure ≥ CULL_GRACE_DAYS) are decommissioned. */
+    const val CULL_EVERY_DAYS = 90
+    const val CULL_COUNT = 400
+    const val CULL_GRACE_DAYS = 60
+    /** New hires per day between culls — refills ~400 over a quarter. */
+    private const val HIRES_PER_DAY = 4.5
     const val FLOOR = 340.0
     const val CEILING = 1000.0
     const val REVIEW_EVERY_DAYS = 14
@@ -125,17 +144,23 @@ object RosterEngine {
     fun asset(slot: Int, hireIndex: Int, hiredDay: Long): SimAsset {
         val s = slot.toLong(); val h = hireIndex.toLong()
         val kindRoll = u(s, h, 10)
+        // Rare hires: a handful of familiar names, ~0.4 % of all hires, humans and synths alike.
+        val rare = u(s, h, 25) < 0.004
         val kind = when {
+            rare && u(s, h, 26) < 0.5 -> AssetKind.SYNTH
+            rare -> if (u(s, h, 26) < 0.75) AssetKind.HUMAN_M else AssetKind.HUMAN_F
             kindRoll < 0.04 -> AssetKind.SYNTH
             kindRoll < 0.52 -> AssetKind.HUMAN_F
             else -> AssetKind.HUMAN_M
         }
         // A middle initial for some — 1,000 people from two name pools collide otherwise.
         val initial = if (u(s, h, 23) < 0.45) " ${'A' + (u(s, h, 24) * 26).toInt()}." else ""
-        val name = when (kind) {
-            AssetKind.HUMAN_F -> "${Names.firstF[(u(s, h, 11) * Names.firstF.size).toInt()]}$initial ${Names.last[(u(s, h, 12) * Names.last.size).toInt()]}"
-            AssetKind.HUMAN_M -> "${Names.firstM[(u(s, h, 11) * Names.firstM.size).toInt()]}$initial ${Names.last[(u(s, h, 12) * Names.last.size).toInt()]}"
-            AssetKind.SYNTH -> "${Names.synthSeries[(u(s, h, 11) * Names.synthSeries.size).toInt()]}-${(u(s, h, 13) * 90 + 10).toInt()} “${Names.synthCallsigns[(u(s, h, 12) * Names.synthCallsigns.size).toInt()]}”"
+        val name = when {
+            rare && kind == AssetKind.SYNTH -> "${Names.synthSeries[(u(s, h, 11) * Names.synthSeries.size).toInt()]}-${(u(s, h, 13) * 90 + 10).toInt()} “${Names.rareSynthCallsigns[(u(s, h, 27) * Names.rareSynthCallsigns.size).toInt()]}”"
+            rare -> Names.rareHumans[(u(s, h, 27) * Names.rareHumans.size).toInt()]
+            kind == AssetKind.HUMAN_F -> "${Names.firstF[(u(s, h, 11) * Names.firstF.size).toInt()]}$initial ${Names.last[(u(s, h, 12) * Names.last.size).toInt()]}"
+            kind == AssetKind.HUMAN_M -> "${Names.firstM[(u(s, h, 11) * Names.firstM.size).toInt()]}$initial ${Names.last[(u(s, h, 12) * Names.last.size).toInt()]}"
+            else -> "${Names.synthSeries[(u(s, h, 11) * Names.synthSeries.size).toInt()]}-${(u(s, h, 13) * 90 + 10).toInt()} “${Names.synthCallsigns[(u(s, h, 12) * Names.synthCallsigns.size).toInt()]}”"
         }
         val archetype = Archetype.entries[(u(s, h, 14) * Archetype.entries.size).toInt()]
         val talent = when (archetype) {
@@ -249,14 +274,28 @@ object RosterEngine {
     }
 
     // ---------------------------------------------------------------- snapshot (cached)
-    private data class Cache(val foundingDay: Long, val day: Long, val today: List<DayResult>, val yesterday: List<DayResult>, val assets: List<SimAsset>, val fired: List<Decommissioned>)
+    /** Days of per-slot history kept for dossiers (today inclusive). */
+    const val HISTORY_DAYS = 14
+
+    private data class Cache(
+        val foundingDay: Long,
+        val day: Long,
+        val today: List<DayResult>,
+        val yesterday: List<DayResult>,
+        val assets: List<SimAsset>,
+        val fired: List<Decommissioned>,
+        /** [slot][0..HISTORY_DAYS-1], oldest first; NaN where vacant. */
+        val history: Array<DoubleArray>,
+        /** For every cull day since founding: the closes of every slot that day (NaN = vacant). */
+        val cullCloses: Map<Long, DoubleArray>,
+    )
     @Volatile private var cache: Cache? = null
 
     /**
      * Local epoch-day helpers: the roster lives in the user's local days so "today" matches
      * what they see on the clock. [enrolledEpochDay] is the user's profile creation day.
      */
-    fun snapshot(enrolledEpochDay: Long, todayEpochDay: Long, minuteOfDay: Int, ledger: LedgerState, fidelityPercent: Int, ledgerYesterday: LedgerState): RosterSnapshot {
+    fun snapshot(enrolledEpochDay: Long, todayEpochDay: Long, minuteOfDay: Int, ledger: LedgerState, fidelityPercent: Int, ledgerYesterday: LedgerState, includeTwin: Boolean = true): RosterSnapshot {
         val foundingDay = enrolledEpochDay - PREHISTORY_DAYS
         val c = synchronized(this) {
             cache?.takeIf { it.foundingDay == foundingDay && it.day == todayEpochDay } ?: build(foundingDay, todayEpochDay).also { cache = it }
@@ -268,7 +307,7 @@ object RosterEngine {
             val a = c.assets[i]
             val t = c.today[i]; val y = c.yesterday[i]
             if (t.index.isNaN() && y.index.isNaN()) continue // vacant both days
-            val landed = minuteOfDay >= a.trainingMinute
+            val landed = minuteOfDay >= landingMinute(a, todayEpochDay)
             val shown = if (landed || y.index.isNaN()) t else y
             if (shown.index.isNaN()) continue
             val prev = if (y.index.isNaN()) shown.index else y.index
@@ -277,29 +316,39 @@ object RosterEngine {
 
         val userIndex = userIndex(ledger, fidelityPercent)
         val userPrev = userIndex(ledgerYesterday, fidelityPercent)
+        val twinIndex = if (includeTwin) twinIndex(ledger, fidelityPercent) else Double.NEGATIVE_INFINITY
+        val twinPrev = if (includeTwin) twinIndex(ledgerYesterday, fidelityPercent) else Double.NEGATIVE_INFINITY
+        fun extra(idx: Double, u: Double, t: Double): Int = (if (u > idx) 1 else 0) + (if (t > idx) 1 else 0)
 
-        // Rank today (user included) and yesterday (by previous closes).
+        // Rank today (user + twin included) and yesterday (by previous closes).
         val todaySorted = rows.sortedByDescending { it.second }
-        val userRank = 1 + todaySorted.count { it.second > userIndex }
+        val userRank = 1 + todaySorted.count { it.second > userIndex } + (if (twinIndex > userIndex) 1 else 0)
+        // Ties between you and the model (both at 500 on day one) go to you: it has to earn the place.
+        val twinRank = 1 + todaySorted.count { it.second > twinIndex } + (if (userIndex >= twinIndex) 1 else 0)
         val yesterdaySorted = rows.map { it.first.slot to it.third.first }.sortedByDescending { it.second }
         val prevRankBySlot = HashMap<Int, Int>(ROSTER_SIZE)
-        yesterdaySorted.forEachIndexed { i, (slot, v) -> prevRankBySlot[slot] = i + 1 + (if (userPrev > v) 1 else 0) }
-        val userPrevRank = 1 + yesterdaySorted.count { it.second > userPrev }
+        yesterdaySorted.forEachIndexed { i, (slot, v) -> prevRankBySlot[slot] = i + 1 + extra(v, userPrev, twinPrev) }
+        val userPrevRank = 1 + yesterdaySorted.count { it.second > userPrev } + (if (twinPrev > userPrev) 1 else 0)
+        val twinPrevRank = 1 + yesterdaySorted.count { it.second > twinPrev } + (if (userPrev >= twinPrev) 1 else 0)
 
         val standings = ArrayList<Standing>(rows.size)
         var rank = 0
         for ((a, idx, pv) in todaySorted) {
             rank++
-            val r = rank + (if (userIndex > idx) 1 else 0)
+            val r = rank + extra(idx, userIndex, twinIndex)
             standings += Standing(a, idx.roundToInt(), (idx - pv.first).roundToInt(), r, prevRankBySlot[a.slot], pv.second)
         }
         val movers = standings.filter { it.delta != 0 }.sortedByDescending { abs(it.delta) }.take(8)
         val sinceReview = ((todayEpochDay - foundingDay) % REVIEW_EVERY_DAYS).toInt()
+        val sinceCull = ((todayEpochDay - foundingDay) % CULL_EVERY_DAYS).toInt()
+        val lastCull = c.cullCloses.keys.maxOrNull()
+        val headcount = standings.size + 1 + (if (includeTwin) 1 else 0)
         return RosterSnapshot(
             day = todayEpochDay,
             standings = standings,
             user = UserStanding(userIndex.roundToInt(), (userIndex - userPrev).roundToInt(), userRank, userPrevRank),
-            enrolled = standings.size + 1,
+            twin = if (includeTwin) TwinStanding(twinIndex.roundToInt(), (twinIndex - twinPrev).roundToInt(), twinRank, twinPrevRank) else null,
+            enrolled = headcount,
             underReview = standings.count { it.status == AssetStatus.UNDER_REVIEW },
             onLeave = standings.count { it.status == AssetStatus.ON_LEAVE || it.status == AssetStatus.MAINTENANCE },
             newHires30d = standings.count { todayEpochDay - it.asset.hiredDay <= 30 },
@@ -307,27 +356,93 @@ object RosterEngine {
             decommissioned30d = c.fired.count { todayEpochDay - it.day <= 30 },
             movers = movers,
             nextReviewInDays = if (sinceReview == 0) 0 else REVIEW_EVERY_DAYS - sinceReview,
+            nextCullInDays = if (sinceCull == 0) 0 else CULL_EVERY_DAYS - sinceCull,
+            lastCullDay = lastCull,
+            cullLine = (headcount - CULL_COUNT).coerceAtLeast(1),
+        )
+    }
+
+    /** The minute today's result lands for [a]: its habitual training time ± up to 40 min, per day. */
+    fun landingMinute(a: SimAsset, day: Long): Int =
+        (a.trainingMinute + ((u(a.slot.toLong(), a.hireIndex.toLong(), day, 60) - 0.5) * 80).toInt()).coerceIn(0, 24 * 60 - 1)
+
+    /**
+     * The dossier: what the division has on one asset. Read from the cached simulation, so it
+     * needs a snapshot for the same day to exist first (it always does when the board is up).
+     */
+    data class Dossier(
+        val asset: SimAsset,
+        val history14: List<Float>,      // oldest first, normalised 0..1 over FLOOR..CEILING, NaN-free
+        val tenureDays: Long,
+        val landingLabel: String,        // "results land ~06:10"
+        val restDays: List<Int>,         // ISO days
+        val trendLabel: String,          // "drifting up" / "drifting down" / "flat"
+        val readsAs: String,             // archetype hint
+        val bestIndex14: Int,
+        val worstIndex14: Int,
+    )
+
+    fun dossier(slot: Int, day: Long): Dossier? {
+        val c = cache?.takeIf { it.day == day } ?: return null
+        val a = c.assets.getOrNull(slot) ?: return null
+        val raw = c.history[slot].filter { !it.isNaN() }
+        val norm = raw.map { ((it - FLOOR) / (CEILING - FLOOR)).toFloat().coerceIn(0f, 1f) }
+        val lm = a.trainingMinute
+        val rest = (1..7).filter { (a.restMask shr (it - 1)) and 1 == 1 }
+        return Dossier(
+            asset = a,
+            history14 = norm,
+            tenureDays = day - a.hiredDay,
+            landingLabel = "results land ~%02d:%02d".format(lm / 60, lm % 60),
+            restDays = rest,
+            trendLabel = when { a.trend > 3 -> "drifting up"; a.trend < -3 -> "drifting down"; else -> "flat" },
+            readsAs = a.archetype.label,
+            bestIndex14 = raw.maxOrNull()?.roundToInt() ?: 0,
+            worstIndex14 = raw.minOrNull()?.roundToInt() ?: 0,
         )
     }
 
     private fun build(foundingDay: Long, todayEpochDay: Long): Cache {
+        // Slots below INITIAL_HEADCOUNT are staffed at founding; the rest are hired into at
+        // HIRES_PER_DAY, so the division grows toward ROSTER_SIZE until the first cull.
         val states = Array(ROSTER_SIZE) { slot ->
             val a = asset(slot, 0, foundingDay)
-            SlotState(a, a.talent + n(slot.toLong(), 0, 30) * 40, -1, -1, -1)
+            val st = SlotState(a, a.talent + n(slot.toLong(), 0, 30) * 40, -1, -1, -1)
+            if (slot >= INITIAL_HEADCOUNT) st.rehireAt = foundingDay + 1 + ((slot - INITIAL_HEADCOUNT) / HIRES_PER_DAY).toLong()
+            st
         }
         val fired = ArrayList<Decommissioned>()
         var yesterday: List<DayResult> = emptyList()
         var today: List<DayResult> = emptyList()
+        val history = Array(ROSTER_SIZE) { DoubleArray(HISTORY_DAYS) { Double.NaN } }
+        val cullCloses = HashMap<Long, DoubleArray>()
         var day = foundingDay
         while (day <= todayEpochDay) {
             val res = ArrayList<DayResult>(ROSTER_SIZE)
             for (st in states) res += step(st, day, foundingDay, fired)
+            // Quarterly cull: the bottom CULL_COUNT by close (tenure ≥ grace) are decommissioned;
+            // their slots are refilled gradually over the next quarter.
+            if (day > foundingDay && (day - foundingDay) % CULL_EVERY_DAYS == 0L) {
+                cullCloses[day] = DoubleArray(ROSTER_SIZE) { res[it].index }
+                val eligible = states.indices.filter { i ->
+                    !res[i].index.isNaN() && states[i].rehireAt < 0 && day - states[i].asset.hiredDay >= CULL_GRACE_DAYS
+                }.sortedBy { res[it].index }
+                val culled = eligible.take(CULL_COUNT)
+                culled.forEachIndexed { k, i ->
+                    val st = states[i]
+                    fired += Decommissioned(st.asset, day, st.index.roundToInt())
+                    st.rehireAt = day + REHIRE_GAP_DAYS + (k / HIRES_PER_DAY).toLong()
+                    res[i] = DayResult(Double.NaN, AssetStatus.ACTIVE)
+                }
+            }
+            val back = (todayEpochDay - day).toInt()
+            if (back < HISTORY_DAYS) for (i in 0 until ROSTER_SIZE) history[i][HISTORY_DAYS - 1 - back] = res[i].index
             if (day == todayEpochDay - 1) yesterday = res
             if (day == todayEpochDay) today = res
             day++
         }
         if (yesterday.isEmpty()) yesterday = today
-        return Cache(foundingDay, todayEpochDay, today, yesterday, states.map { it.asset }, fired)
+        return Cache(foundingDay, todayEpochDay, today, yesterday, states.map { it.asset }, fired, history, cullCloses)
     }
 
     /**
@@ -343,7 +458,46 @@ object RosterEngine {
         return (CEILING / (1 + exp(-(raw - 500) / 220)) ).coerceIn(0.0, CEILING)
     }
 
+    /**
+     * The opponent's index: the same ledger from its side — its lead, its streak — and Fidelity
+     * *helps* it (a model that predicts you well is doing its job). Not forced above or below
+     * the user: it sits exactly where the rounds put it. Same soft clamp.
+     */
+    fun twinIndex(ledger: LedgerState, fidelityPercent: Int): Double {
+        val lead = -ledger.lead.toDouble()
+        val streak = ledger.streak?.let { (side, n) -> if (side == dev.eversorhn.gait.domain.ledger.Side.TWIN) n else -n } ?: 0
+        val raw = 500.0 + 30.0 * lead + 6.0 * streak + 1.5 * (fidelityPercent - 50)
+        return (CEILING / (1 + exp(-(raw - 500) / 220))).coerceIn(0.0, CEILING)
+    }
+
     fun epochDay(epochMillis: Long, zoneOffsetMillis: Long): Long = Math.floorDiv(epochMillis + zoneOffsetMillis, MS_PER_DAY)
+
+    /** Cull days that fell inside (enrolled + grace, today]. */
+    fun cullDaysSince(enrolledEpochDay: Long, todayEpochDay: Long): List<Long> {
+        val foundingDay = enrolledEpochDay - PREHISTORY_DAYS
+        val first = enrolledEpochDay + CULL_GRACE_DAYS
+        return generateSequence(foundingDay) { it + CULL_EVERY_DAYS }
+            .dropWhile { it < first }
+            .takeWhile { it <= todayEpochDay }
+            .toList()
+    }
+
+    data class CullVerdict(val day: Long, val rank: Int, val headcount: Int, val cullLine: Int, val culled: Boolean)
+
+    /**
+     * Was the user in the bottom CULL_COUNT at the cull on [cullDay]? Needs a snapshot for
+     * today to have been built (it always has when the board is up). [userIndexThatDay] is the
+     * user's index from their ledger as of that day.
+     */
+    fun cullVerdict(cullDay: Long, userIndexThatDay: Double): CullVerdict? {
+        val c = cache ?: return null
+        val closes = c.cullCloses[cullDay] ?: return null
+        val live = closes.filter { !it.isNaN() }
+        val headcount = live.size + 1
+        val rank = 1 + live.count { it > userIndexThatDay }
+        val line = (headcount - CULL_COUNT).coerceAtLeast(1)
+        return CullVerdict(cullDay, rank, headcount, line, rank > line)
+    }
 
     /** For the horde map: the decommissioned are the zombies. Returns at most [limit], newest first. */
     fun zombies(snapshot: RosterSnapshot, limit: Int = 120): List<Decommissioned> = snapshot.decommissioned.take(limit)

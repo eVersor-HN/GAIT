@@ -9,6 +9,8 @@ import dev.eversorhn.gait.data.repository.ACTIVITY_RUNNING
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.composure.ComposureEngine
 import dev.eversorhn.gait.domain.composure.ComposureState
+import dev.eversorhn.gait.domain.directive.Commendation
+import dev.eversorhn.gait.data.db.entity.MessageKind
 import dev.eversorhn.gait.domain.fidelity.FidelityReplay
 import dev.eversorhn.gait.domain.forecast.ForecastEngine
 import dev.eversorhn.gait.domain.horde.HordeSoundCues
@@ -78,6 +80,8 @@ data class DebriefResult(
     val stakeCalled: Boolean = false,
     val ledger: LedgerState = LedgerState(0, 0, emptyList()),
     val ledgerBefore: LedgerState = LedgerState(0, 0, emptyList()),
+    /** A division commendation earned by this round, if any. */
+    val commendation: String? = null,
 )
 
 /**
@@ -116,7 +120,10 @@ class SessionFinalizer(
         val dayOfWeek = now.atZone(ZoneId.systemDefault()).dayOfWeek.value
 
         val profile = repository.getTwinProfile()
-        val isRestDay = profile != null && RestDayPolicy.isRestDay(profile, dayOfWeek)
+        val isRestDay = profile != null && (
+            RestDayPolicy.isRestDay(profile, dayOfWeek) ||
+                repository.isPlannedDayOff(java.time.LocalDate.now(ZoneId.systemDefault()).toEpochDay())
+            )
         val isOnVacation = profile != null && RestDayPolicy.isOnVacation(profile, now.toEpochMilli())
         val isRestPeriod = isRestDay || isOnVacation
 
@@ -141,7 +148,7 @@ class SessionFinalizer(
         val duelWon = verdict == DecommissionTrial.Verdict.WON
         val roundStake = when {
             verdict == DecommissionTrial.Verdict.WON || verdict == DecommissionTrial.Verdict.LOST -> Ledger.DUEL_STAKE
-            else -> WagerPolicy.roundStake(stakeOpen, stakeCalled)
+            else -> WagerPolicy.roundStake(stakeOpen, stakeCalled, profile?.wagerStake ?: WagerPolicy.STAKE)
         }
 
         // On a rest day / vacation, Composure is deliberately neutral and Fidelity is frozen.
@@ -203,7 +210,7 @@ class SessionFinalizer(
 
         repository.logSession(
             SessionEntity(
-                activityType = ACTIVITY_RUNNING,
+                activityType = repository.activeActivityType,
                 startTimeEpochMillis = now.toEpochMilli(),
                 dayOfWeek = dayOfWeek,
                 durationSeconds = durationSeconds,
@@ -246,6 +253,13 @@ class SessionFinalizer(
         val history = FidelityReplay.history(allSessions)
         val ledgerAfter = Ledger.from(allSessions)
 
+        // The division's note, if this round earned one (stored in the inbox, shown on the Forecast).
+        var commendation: Commendation.Note? = null
+        if (forecast != null && !isRestPeriod && profile != null) {
+            commendation = Commendation.afterRound(ledgerBefore, ledgerAfter, forecast.forecastPaceSecPerKm - avgPace, profile.twinName, isHorde)
+            commendation?.let { repository.recordMessage(MessageKind.COMMENDATION, "${it.code} · ${it.body}", null, now.toEpochMilli()) }
+        }
+
         return DebriefResult(
             hadForecast = forecast != null,
             forecastPaceLabel = forecast?.let { formatPace(it.forecastPaceSecPerKm) } ?: "—",
@@ -281,6 +295,7 @@ class SessionFinalizer(
             stakeCalled = stakeCalled,
             ledger = ledgerAfter,
             ledgerBefore = ledgerBefore,
+            commendation = commendation?.body,
         )
     }
 

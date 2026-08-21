@@ -12,6 +12,8 @@ object MessageKind {
     const val STAKE = "stake"
     /** The user called the stake; the opponent's reaction. */
     const val CALL = "call"
+    /** A note from the Asset Performance Division — the company, not the opponent. */
+    const val COMMENDATION = "commendation"
 }
 
 /**

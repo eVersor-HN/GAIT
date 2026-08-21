@@ -1,8 +1,9 @@
 package dev.eversorhn.gait.domain.persona
 
 /**
- * A selectable Twin voice. v1 ships 5 of the 17 designed in docs/twin-personas.md;
- * the rest move to v1.1 per docs/scope-and-stack.md.
+ * A selectable Twin voice. All 17 from docs/twin-personas.md ship: five here, twelve in
+ * PersonaRoster.kt. "The Doppelgänger" is the AI clone of the user -- built from their data,
+ * speaking as if it were them, trying to be the better copy.
  *
  * The line banks are a small curated start, not the full variation system from
  * docs/composure-system.md -- real production content should grow these substantially
@@ -161,8 +162,8 @@ object Personas {
 
     val justTwin7 = Persona(
         key = "just_twin7",
-        label = "Just Twin-7",
-        defaultName = "Twin-7",
+        label = "The Model",
+        defaultName = "The Model",
         forecastLine = { n, pace, finish ->
             "Forecast based on ${sessions(n)}: pace $pace, finish approx. $finish."
         },
@@ -312,7 +313,9 @@ object Personas {
         ),
     )
 
-    val mvpRoster: List<Persona> = listOf(hatedPerson, betterSelf, justTwin7, theEx, theAuditor)
+    /** All 17: the 3 base presets, the 2 archetypes that shipped first, and the 12 in PersonaRoster.kt. */
+    val mvpRoster: List<Persona> = listOf(hatedPerson, betterSelf, theDoppelganger, justTwin7, theEx, theAuditor) +
+        extendedRoster.filter { it.key != "doppelganger" }
 
     fun byKey(key: String?): Persona = mvpRoster.firstOrNull { it.key == key } ?: hatedPerson
 }

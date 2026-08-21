@@ -35,7 +35,7 @@ fun OpponentTypeScreen(onTwin: () -> Unit, onHorde: () -> Unit) {
             .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        FootNote("Setup · step 1/2")
+        FootNote("Setup · step 2/3")
         ScreenTitle("Opponent selection", "Who's coming after you?")
         Text(
             "Pick one opponent type. Either way, it's built entirely from your own data — never another person's.",

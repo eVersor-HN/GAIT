@@ -528,35 +528,39 @@ fun FormDots(form: List<Boolean>, twinColor: Color = Cyan) {
 data class TickerItem(val label: String, val delta: Int, val isUser: Boolean = false)
 
 /**
- * The stock-ticker strip: a continuously scrolling line of today's movers, ▲ green / ▼ red,
- * with your own entry in brass. Pure animation, no per-frame allocation beyond the offset.
+ * The stock-ticker strip: one line of today's movers scrolling right-to-left at a constant
+ * speed, ▲ green / ▼ red, your own entry in brass. Fixed height, clipped to its own box, so
+ * it never overlaps what's below; the content is duplicated so the loop is seamless.
  */
 @Composable
 fun TickerStrip(items: List<TickerItem>, modifier: Modifier = Modifier) {
     if (items.isEmpty()) return
     var contentWidth by androidx.compose.runtime.remember { mutableIntStateOf(0) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    // ~56 dp per second: readable, news-ticker pace. Duration follows the measured width.
+    val durationMs = with(density) { ((contentWidth / 56.dp.toPx()) * 1000).toInt() }.coerceAtLeast(4000)
     val transition = rememberInfiniteTransition(label = "ticker")
     val progress by transition.animateFloat(
         initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(durationMillis = (items.size * 2600).coerceAtLeast(9000), easing = LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(durationMillis = durationMs, easing = LinearEasing)),
         label = "tickerX",
     )
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .height(26.dp)
             .background(Ink2)
             .border(BorderStroke(1.dp, LineSoft))
-            .clipToBounds()
-            .padding(vertical = 5.dp),
+            .clipToBounds(),
+        contentAlignment = Alignment.CenterStart,
     ) {
-        val x = if (contentWidth == 0) 0 else -(progress * contentWidth).toInt()
+        val x = if (contentWidth == 0) 0 else -((progress * contentWidth).toInt() % contentWidth)
         Row(
-            // unbounded: the marquee must be laid out at its natural width, wider than the screen.
-            modifier = Modifier.offset { IntOffset(x, 0) }.wrapContentWidth(align = Alignment.Start, unbounded = true),
-            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            modifier = Modifier
+                .offset { IntOffset(x, 0) }
+                .wrapContentWidth(align = Alignment.Start, unbounded = true),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Two copies back to back → seamless loop once the first copy has scrolled out.
             repeat(2) { copy ->
                 Row(
                     modifier = if (copy == 0) Modifier.onSizeChanged { contentWidth = it.width } else Modifier,
@@ -575,6 +579,7 @@ fun TickerStrip(items: List<TickerItem>, modifier: Modifier = Modifier) {
                             style = MaterialTheme.typography.labelSmall,
                             color = color,
                             maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(horizontal = 14.dp),
                         )
                         Text("·", style = MaterialTheme.typography.labelSmall, color = LineSoft)

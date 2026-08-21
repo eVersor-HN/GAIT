@@ -67,6 +67,9 @@ object TwinNotifier {
     }
 
     fun postTwinMessage(context: Context, twinName: String, body: String) {
+        // The user chose "close and mute" on the exit dialog: the opponent stays on the record
+        // (messages are still stored) but nothing breaks out of the app.
+        if (NotificationPrefs.isMuted(context)) return
         ensureChannel(context)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

@@ -14,17 +14,17 @@ class RosterEngineTest {
         val a = RosterEngine.snapshot(20_000, 20_100, 12 * 60, empty, 50, empty)
         val b = RosterEngine.snapshot(20_000, 20_100, 12 * 60, empty, 50, empty)
         assertEquals(a.standings.map { it.asset.id to it.index }, b.standings.map { it.asset.id to it.index })
-        val ranks = a.standings.map { it.rank } + a.user.rank
+        val ranks = a.standings.map { it.rank } + a.user.rank + listOfNotNull(a.twin?.rank)
         assertEquals(ranks.size, ranks.toSet().size)
         assertEquals((1..ranks.size).toList(), ranks.sorted())
-        assertTrue(a.standings.size in 950..RosterEngine.ROSTER_SIZE)
+        assertTrue("headcount ${a.standings.size}", a.standings.size in 850..RosterEngine.ROSTER_SIZE)
         assertTrue(a.standings.zipWithNext().all { (x, y) -> x.index >= y.index })
     }
 
     @Test
     fun `the division has a history - people have been decommissioned and rehired before the user enrolled`() {
         val s = RosterEngine.snapshot(20_000, 20_100, 12 * 60, empty, 50, empty)
-        assertTrue("expected firings over ~520 days, got ${s.decommissioned.size}", s.decommissioned.size >= 20)
+        assertTrue("expected firings over ~520 days, got ${s.decommissioned.size}", s.decommissioned.size >= 400)
         assertTrue(s.standings.any { it.asset.hireIndex > 0 })
         assertTrue(s.standings.any { it.asset.kind == AssetKind.SYNTH })
         val f = s.standings.count { it.asset.kind == AssetKind.HUMAN_F }

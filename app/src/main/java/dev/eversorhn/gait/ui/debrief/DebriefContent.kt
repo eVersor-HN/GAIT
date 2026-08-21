@@ -120,6 +120,13 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
             }
         }
 
+        result.commendation?.let { note ->
+            CorpoPanel(tone = PanelTone.GOOD) {
+                SectionLabel("Asset Performance Division · commendation", color = Good)
+                Text(note, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+
         // --- Duel verdict, when there was one ---
         duel?.let { d ->
             CorpoPanel(tone = if (won) PanelTone.GOOD else PanelTone.WARN) {

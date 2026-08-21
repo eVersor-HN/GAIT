@@ -31,6 +31,9 @@ internal object Names {
         "Halcyon", "Vesper", "Cinder", "Aurel", "Tessellate", "Quill", "Meridian", "Solace", "Onyx", "Caldera",
         "Ferrule", "Lumen", "Saffron", "Ketteridge", "Nocturne", "Pallas", "Riven", "Skein", "Talos", "Ulric",
     )
+    /** Easter eggs: rare hires with familiar names. Humans get the full name; synths the callsign. */
+    val rareHumans = listOf("Marco Fattizzo", "Chiara Thiele")
+    val rareSynthCallsigns = listOf("Rubina", "Fay", "Kimmi", "Noah", "Aslan", "Penny", "Abei", "Marsh")
     val units = listOf(
         "Asset Performance", "Predictive Ops", "Field Telemetry", "Model Retention", "Substitution Review",
         "Containment", "Route Intel", "Endurance Assets", "Node 7", "Node 12",

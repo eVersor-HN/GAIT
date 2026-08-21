@@ -4,6 +4,33 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.8.0] - 2026-08-21
+
+The division becomes a place you can be fired from. Plus: all 17 personas, a real ticker, a live board, the opponent's own row, a rest calendar, an activity picker, an exit dialog, dossiers, commendations.
+
+### Added
+- **Quarterly cull.** Headcount now breathes between ~900 and 1,300: new hires arrive at ~4.5 a day, and every 90 days the bottom 400 by Retention Index (tenure ≥ 60 days) are decommissioned — "fired, gone, whatever" — and their slots refilled over the following quarter. The board shows the **cull line** ("#762 — 640 below you"), days to the next cull, and your row turns red below the line. **If you are in the bottom 400 at a cull, the app is over for that asset**: a termination notice replaces the board (rank, line, tenure, culls survived, best streak) and the only way on is **Enrol a new asset** — everything is wiped and setup starts again. New hires (and new users) get a 60-day grace. Deterministic: the verdict is recomputed from the simulation and your ledger as of that day, so it can't be dodged by reinstalling.
+- **All 17 personas** (`PersonaRoster.kt`): The Sibling, Former Best Friend, Mentor Who Moved On, Rival Teammate, The Understudy, Replacement Hire, The Boss, Future You (Ideal), Future You (Feared), Younger You, **The Doppelgänger** (the AI clone of you — built from your data, speaks as if it *is* you, intends to be the better copy), The Algorithm — each with forecast, cowed/watchful/predatory, idle, handoff, duel-lost, stake, call, and live ahead/behind/level banks. "Just Twin-7" is now **The Model** (same key, existing profiles unaffected).
+- **The opponent's own row on the board.** Its index is the same ledger read from its side (its lead, its streak; Fidelity *helps* it) with the same soft clamp — so it sits exactly where the rounds put it, ahead of you when it has earned that, behind when it hasn't. Shown under your row and inline in the top 15; in the ticker too. Ties on day one go to you.
+- **Live board.** The Asset Board re-evaluates every minute while open; an asset's result lands at its own training minute (now ± up to 40 min per day), so rows move when *that person* finishes — not every second, not on a timer. Reopening the app recomputes from scratch (the simulation is pure; cached per day).
+- **Dossier on tap.** Any row (and any mover) opens the division's file: rank, index, tenure, 14-day sparkline with best/worst, what the asset "reads as", drift this month, when its results land, rest days, hire number; synths flagged.
+- **Ticker** rebuilt: constant right-to-left speed (~56 dp/s), fixed 26 dp height, clipped to its own box, duplicated content for a seamless loop — it never overlaps the ledger strip.
+- **Containment map** rebuilt: you are ahead (upper third, heading up), the horde spreads in a cone *behind* you, newest closest; range rings 100 m. The "joined the horde" panel is gone.
+- **Exit dialog**: back on a root screen (Board, Forecast) asks "Leave the floor?" — Close · keep notifications / Close · mute notifications / Stay. Mute is a real switch (`NotificationPrefs`): the opponent keeps writing to the Direct Channel, nothing reaches the notification shade. Re-enable in Settings ("Notifications: On / Muted").
+- **Rest & Vacation calendar**: a month grid (prev/next, Monday-first) where any day from today on can be tapped off in advance; planned days are stored (`planned_days_off`, DB v8) and treated as rest days when they arrive — sessions count, Fidelity frozen, no stake, no notification. Weekly pattern and vacation bank stay; legend shows all three.
+- **Activity picker** (setup step 1/3, the demo's "Wähle deine Sportart"): Running, Walking, Cycling, Hiking, E-Scooter, E-Bike, Hand-cycle, Wheelchair — each with its dimension hints and an honest note that v1 scores on pace. Every activity has its own opponent profile, Fidelity, generation, ledger; switchable in Settings (a new activity starts its setup). The active activity is persisted and shown on the Forecast.
+- **Division commendations** — the company's version of a like: a formal note when the numbers back it (3 / 5 / 10 rounds clear of the opponent; forecast beaten by ≥ 0:30/km; ledger recovered from behind to level; 40+ / 100+ places climbed in a day). Recorded in the inbox (from "Asset Performance Division"), shown on the Debrief and as the Forecast's last-message card.
+- **Career numbers** on the board: tenure in company days, culls survived, best streak, rounds played.
+- **Arcade pressure**: the opponent's stake scales with your lead — 2 normally, 3 at +4, 4 at +8 (counter-stake always doubles). Pressure, not punishment.
+- **Easter eggs**: ~0.4 % of hires are familiar names — Marco Fattizzo, Chiara Thiele; synths Rubina, Fay, Kimmi, Noah, Aslan, Penny, Abei, Marsh.
+
+### Changed
+- Database v8 with `Migration(7, 8)` (new `planned_days_off` table). Repository defaults now follow the active activity; `GaitRepository` takes the app context for its tiny preference store.
+- Roster tuning for liveliness: floor 340, wider talent range, stronger fader drift, bigger injuries and form cycles; fixed-arity hashing. 49 tests green (roster tests cover the dynamic headcount, firings ≥ 400 over the prehistory, synths, gender split, intraday movement, user/twin index behaviour and the one-rank-per-participant invariant incl. the opponent).
+
+### Verified
+- Emulator over v7 data: migration → Containment Map with the horde behind you → Settings switch to Twin → Asset Board with your row, the opponent's row (#1161 while you lead 6–0), top 15, dossier dialog → Rest & Vacation calendar with two days planned → exit dialog on back. Screenshots reviewed.
+
 ## [0.7.0] - 2026-08-21
 
 The division gets a roster. You are no longer one asset against one model — you are one of 1,001 assets the Asset Performance Division ranks, reviews, decommissions and replaces. Opening the app now lands on the **Asset Board** (Twin) or the **Containment Map** (Horde); a stock-style **ticker** of today's movers runs under the HUD on every screen.

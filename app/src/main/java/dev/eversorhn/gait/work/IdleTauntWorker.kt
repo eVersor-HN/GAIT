@@ -53,6 +53,7 @@ class IdleTauntWorker(
 
         val profile = app.repository.getTwinProfile() ?: return Result.success()
         if (RestDayPolicy.isOnVacation(profile, now)) return Result.success()
+        if (app.repository.isPlannedDayOff(java.time.LocalDate.now().toEpochDay())) return Result.success()
 
         // --- 1. Gap-predatory: has the user gone quiet beyond their own rhythm? ---
         val sessions = app.repository.getSessions() // newest first

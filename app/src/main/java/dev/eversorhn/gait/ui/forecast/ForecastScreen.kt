@@ -32,6 +32,7 @@ import dev.eversorhn.gait.ui.theme.Brass
 import dev.eversorhn.gait.ui.theme.ButtonKind
 import dev.eversorhn.gait.ui.theme.CorpoButton
 import dev.eversorhn.gait.ui.theme.CorpoPanel
+import dev.eversorhn.gait.ui.theme.ExitGuard
 import dev.eversorhn.gait.ui.theme.Cyan
 import dev.eversorhn.gait.ui.theme.FootNote
 import dev.eversorhn.gait.ui.theme.FormDots
@@ -86,6 +87,7 @@ fun ForecastScreen(
                 Text("Loading…", style = MaterialTheme.typography.bodyLarge)
             }
             is ForecastUiState.Ready -> {
+                ExitGuard(opponentName = if (s.isHorde) "The horde" else s.opponentName)
                 val twinColor = if (s.isHorde) Alert else Cyan
                 val them = if (s.isHorde) "the horde" else s.opponentName
 
@@ -158,7 +160,7 @@ fun ForecastScreen(
                     }
                 }
 
-                FootNote("${s.generationLabel} ${s.generation} · ${s.opponentLabel} · basis: ${s.totalSessions} sessions")
+                FootNote("${s.activityLabel} · ${s.generationLabel} ${s.generation} · ${s.opponentLabel} · basis: ${s.totalSessions} sessions")
 
                 CorpoButton(
                     text = when {
@@ -272,15 +274,21 @@ fun ForecastScreen(
 
                 // --- Last thing it said ---
                 s.lastMessage?.let { m ->
+                    val fromDivision = m.kind == dev.eversorhn.gait.data.db.entity.MessageKind.COMMENDATION
                     MessageCard(
-                        from = if (s.isHorde) "The Horde" else "${s.opponentName} (Twin-${s.generation})",
+                        from = when {
+                            fromDivision -> "Asset Performance Division"
+                            s.isHorde -> "The Horde"
+                            else -> "${s.opponentName} (Twin-${s.generation})"
+                        },
                         tag = (if (m.daysAgo == 0L) "today" else if (m.daysAgo == 1L) "yesterday" else "${m.daysAgo}d ago") +
-                            " · " + (m.state?.let { composureTag(it, s.isHorde) } ?: m.kind),
+                            " · " + (if (fromDivision) "commendation" else (m.state?.let { composureTag(it, s.isHorde) } ?: m.kind)),
                         body = m.line,
-                        tone = when (m.state) {
-                            ComposureState.COWED -> MessageTone.COWED
-                            ComposureState.PREDATORY -> MessageTone.PREDATORY
-                            ComposureState.WATCHFUL, null -> MessageTone.WATCHFUL
+                        tone = when {
+                            fromDivision -> MessageTone.COWED
+                            m.state == ComposureState.COWED -> MessageTone.COWED
+                            m.state == ComposureState.PREDATORY -> MessageTone.PREDATORY
+                            else -> MessageTone.WATCHFUL
                         },
                     )
                 }

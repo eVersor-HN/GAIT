@@ -198,7 +198,7 @@ class TrackViewModel(
             val stakeOpen = profile.wagerStake > 0 && profile.wagerEpochDay == today && forecast != null
             val stake = when {
                 _uiState.value.duel -> dev.eversorhn.gait.domain.ledger.Ledger.DUEL_STAKE
-                else -> dev.eversorhn.gait.domain.wager.WagerPolicy.roundStake(stakeOpen, profile.wagerCalled)
+                else -> dev.eversorhn.gait.domain.wager.WagerPolicy.roundStake(stakeOpen, profile.wagerCalled, profile.wagerStake)
             }
             _uiState.value = _uiState.value.copy(
                 opponent = LiveOpponent(

@@ -14,6 +14,17 @@ object WagerPolicy {
     const val STAKE = 2
     const val CALLED_STAKE = 4
 
+    /**
+     * Arcade rule: the model raises what it puts up as you pull ahead — 2 normally, 3 once you
+     * lead by 4+, 4 at 8+. Calling always doubles. Never more than that; pressure, not punishment.
+     */
+    fun stakeFor(userLead: Int): Int = when {
+        userLead >= 8 -> 4
+        userLead >= 4 -> 3
+        else -> STAKE
+    }
+    fun calledStakeFor(baseStake: Int): Int = baseStake * 2
+
     /** Minimum forecast confidence (%) and history depth before the opponent puts anything up. */
     const val MIN_CONFIDENCE = 55
     const val MIN_SESSIONS = 3
@@ -22,10 +33,10 @@ object WagerPolicy {
         !isRestPeriod && confidencePercent >= MIN_CONFIDENCE && basedOnSessions >= MIN_SESSIONS
 
     /** Points a round is worth given the profile's open wager state for that day. */
-    fun roundStake(hasOpenStake: Boolean, called: Boolean): Int = when {
+    fun roundStake(hasOpenStake: Boolean, called: Boolean, openStake: Int = STAKE): Int = when {
         !hasOpenStake -> 1
-        called -> CALLED_STAKE
-        else -> STAKE
+        called -> calledStakeFor(openStake)
+        else -> openStake
     }
 
     fun epochDay(epochMillis: Long, zoneOffsetMillis: Long): Long =

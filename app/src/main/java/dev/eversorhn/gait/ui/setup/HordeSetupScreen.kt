@@ -45,7 +45,7 @@ fun HordeSetupScreen(onConfirmed: () -> Unit) {
             .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        FootNote("Setup · step 2/2")
+        FootNote("Setup · step 3/3")
         ScreenTitle("Horde configuration", "Where the horde comes from")
 
         CorpoPanel {

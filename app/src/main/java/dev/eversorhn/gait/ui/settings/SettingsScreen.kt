@@ -2,6 +2,7 @@ package dev.eversorhn.gait.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +31,7 @@ import dev.eversorhn.gait.R
 import dev.eversorhn.gait.domain.horde.HordeIntensity
 import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.ui.gaitViewModel
+import kotlinx.coroutines.launch
 import dev.eversorhn.gait.ui.theme.ScreenTitle
 import dev.eversorhn.gait.ui.theme.CorpoButton
 import dev.eversorhn.gait.ui.theme.CorpoChip
@@ -140,6 +142,45 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+
+        // --- Activity: every activity has its own opponent profile; switching to one without a profile goes to setup ---
+        val appRepo = (androidx.compose.ui.platform.LocalContext.current.applicationContext as dev.eversorhn.gait.GaitApplication).repository
+        var activeActivity by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(appRepo.activeActivityType) }
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        Text("Activity", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            dev.eversorhn.gait.domain.activity.Activities.all.forEach { a ->
+                CorpoChip(label = a.label, active = a.key == activeActivity, onClick = {
+                    if (a.key == activeActivity) return@CorpoChip
+                    scope.launch {
+                        appRepo.activeActivityType = a.key
+                        activeActivity = a.key
+                        val hasProfile = appRepo.getTwinProfile(a.key) != null
+                        if (hasProfile) onDone() else onWiped()
+                    }
+                })
+            }
+        }
+        Text(
+            "Each activity keeps its own opponent, Fidelity, generation and ledger. Switching to a new one starts its setup.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        // --- Notifications: the exit dialog can mute them; this is where they come back ---
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        var muted by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.notification.NotificationPrefs.isMuted(ctx)) }
+        Text("Notifications", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CorpoChip(label = "On", active = !muted, onClick = { dev.eversorhn.gait.notification.NotificationPrefs.setMuted(ctx, false); muted = false })
+            CorpoChip(label = "Muted", active = muted, onClick = { dev.eversorhn.gait.notification.NotificationPrefs.setMuted(ctx, true); muted = true })
+        }
+        Text(
+            if (muted) "Muted: the opponent keeps writing to the Direct Channel, but nothing reaches your notifications."
+            else "On: same-day Predatory lines, stakes, and the occasional unprompted message reach you outside the app.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         CorpoButton("Save changes", onClick = viewModel::save, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
         if (showSaved) {

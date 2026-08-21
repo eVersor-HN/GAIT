@@ -1,6 +1,8 @@
 package dev.eversorhn.gait.data.repository
 
+import android.content.Context
 import dev.eversorhn.gait.data.db.GaitDatabase
+import dev.eversorhn.gait.data.db.entity.PlannedDayOffEntity
 import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.db.entity.SessionEntity
 import dev.eversorhn.gait.data.db.entity.TwinMessageEntity
@@ -9,18 +11,46 @@ import kotlinx.coroutines.flow.Flow
 
 const val ACTIVITY_RUNNING = "RUNNING"
 
-class GaitRepository(private val db: GaitDatabase) {
+class GaitRepository(private val db: GaitDatabase, private val appContext: Context? = null) {
 
-    fun observeTwinProfile(activityType: String = ACTIVITY_RUNNING): Flow<TwinProfileEntity?> =
+    private val prefs get() = appContext?.getSharedPreferences("gait_repository", Context.MODE_PRIVATE)
+
+    /**
+     * The activity whose profile/sessions every default-argument call below refers to. Chosen
+     * at setup (ActivityScreen), switchable in Settings; persisted so a relaunch keeps it.
+     */
+    var activeActivityType: String = prefs?.getString("active_activity", ACTIVITY_RUNNING) ?: ACTIVITY_RUNNING
+        set(value) {
+            field = value
+            prefs?.edit()?.putString("active_activity", value)?.apply()
+        }
+
+    /** Activities that already have an opponent profile. */
+    suspend fun activitiesWithProfile(): List<String> = db.twinProfileDao().getAllActivityTypes()
+
+    // --- Rest & Vacation calendar: days marked off in advance (local epoch-day) ---
+
+    suspend fun getPlannedDaysOff(): List<Long> = db.plannedDayOffDao().getAll().map { it.epochDay }
+
+    fun observePlannedDaysOff(): Flow<List<PlannedDayOffEntity>> = db.plannedDayOffDao().observeAll()
+
+    suspend fun isPlannedDayOff(epochDay: Long): Boolean = db.plannedDayOffDao().count(epochDay) > 0
+
+    suspend fun setPlannedDayOff(epochDay: Long, off: Boolean) {
+        if (off) db.plannedDayOffDao().upsert(PlannedDayOffEntity(epochDay, System.currentTimeMillis()))
+        else db.plannedDayOffDao().delete(epochDay)
+    }
+
+    fun observeTwinProfile(activityType: String = activeActivityType): Flow<TwinProfileEntity?> =
         db.twinProfileDao().observeProfile(activityType)
 
-    suspend fun getTwinProfile(activityType: String = ACTIVITY_RUNNING): TwinProfileEntity? =
+    suspend fun getTwinProfile(activityType: String = activeActivityType): TwinProfileEntity? =
         db.twinProfileDao().getProfile(activityType)
 
     suspend fun createTwinProfile(
         twinName: String,
         personaKey: String,
-        activityType: String = ACTIVITY_RUNNING,
+        activityType: String = activeActivityType,
     ) {
         db.twinProfileDao().insert(
             TwinProfileEntity(
@@ -38,7 +68,7 @@ class GaitRepository(private val db: GaitDatabase) {
 
     suspend fun createHordeProfile(
         hordeIntensity: String,
-        activityType: String = ACTIVITY_RUNNING,
+        activityType: String = activeActivityType,
     ) {
         db.twinProfileDao().insert(
             TwinProfileEntity(
@@ -58,13 +88,13 @@ class GaitRepository(private val db: GaitDatabase) {
         db.twinProfileDao().update(profile)
     }
 
-    suspend fun getSessions(activityType: String = ACTIVITY_RUNNING): List<SessionEntity> =
+    suspend fun getSessions(activityType: String = activeActivityType): List<SessionEntity> =
         db.sessionDao().getSessions(activityType)
 
-    suspend fun getRecentSessions(limit: Int, activityType: String = ACTIVITY_RUNNING): List<SessionEntity> =
+    suspend fun getRecentSessions(limit: Int, activityType: String = activeActivityType): List<SessionEntity> =
         db.sessionDao().getRecentSessions(activityType, limit)
 
-    fun observeSessions(activityType: String = ACTIVITY_RUNNING): Flow<List<SessionEntity>> =
+    fun observeSessions(activityType: String = activeActivityType): Flow<List<SessionEntity>> =
         db.sessionDao().observeSessions(activityType)
 
     suspend fun logSession(session: SessionEntity) {
@@ -89,6 +119,7 @@ class GaitRepository(private val db: GaitDatabase) {
     suspend fun wipeAll() {
         db.sessionDao().deleteAll()
         db.twinMessageDao().deleteAll()
+        db.plannedDayOffDao().deleteAll()
         db.twinProfileDao().deleteAll()
     }
 }
