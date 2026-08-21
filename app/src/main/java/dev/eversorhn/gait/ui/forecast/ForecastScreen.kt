@@ -49,6 +49,7 @@ import dev.eversorhn.gait.ui.theme.TextFaint
 
 @Composable
 fun ForecastScreen(
+    onBoard: () -> Unit,
     onStartActivity: () -> Unit,
     onStartDuel: () -> Unit,
     onLogSession: () -> Unit,
@@ -294,7 +295,10 @@ fun ForecastScreen(
                         CorpoButton("Statistics", onClick = onStats, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
                         CorpoButton("Rest & vacation", onClick = onRestDays, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
                     }
-                    CorpoButton("Settings", onClick = onSettings, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CorpoButton(if (s.isHorde) "Containment map" else "Asset board", onClick = onBoard, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
+                        CorpoButton("Settings", onClick = onSettings, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
             }

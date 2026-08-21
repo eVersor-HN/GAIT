@@ -4,6 +4,20 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.7.0] - 2026-08-21
+
+The division gets a roster. You are no longer one asset against one model — you are one of 1,001 assets the Asset Performance Division ranks, reviews, decommissions and replaces. Opening the app now lands on the **Asset Board** (Twin) or the **Containment Map** (Horde); a stock-style **ticker** of today's movers runs under the HUD on every screen.
+
+### Added
+- **Roster simulation** (`domain/roster/RosterEngine`): 1,000 simulated assets — women and men 50:50, ~4 % humanoid synths with designations and callsigns (`KR-78 “Ferrule”`, id `SX-0972`) — each with an archetype (grinder, metronome, sprinter, weekend warrior, comeback, fader, early bird, night owl, steady hand), talent, consistency, grit, a monthly trend, a training time of day, weekly rest days, leave periods (synths: maintenance windows), the occasional injury, and a unit. Their **Retention Index** moves day by day as a noisy mean-reverting draw around their level; results land at *their* training minute, so the board shifts through the day. Every 14 days the division reviews: under the floor (340) → **decommissioned**, slot rehired three days later with a new person. **The decommissioned are the horde.** Fully deterministic from (slot, hire, day) via hashing — no rows in the database, yesterday's board is the same function at day − 1, and the division has ~14 months of history before the user enrolled (≈ 70 decommissions on file at enrolment). ~0.3 s to simulate, cached per process per day.
+- **Asset Board** (first screen after launch, Twin): enrolled / under review / decommissioned-30d tiles; **your row pinned** (#rank, ▲▼ vs. yesterday, index, Δ, "2 places off the board"); the **top 15** with ▲ green / ▼ red rank arrows, index and Δ, status tags (NEW HIRE, ON LEAVE, MAINTENANCE, UNDER REVIEW, INJURED), synths in cyan; today's biggest movers; the most recent decommissions ("Folded into containment. They don't leave — they follow."); review countdown. Your own Retention Index lives in the same space: 500 at enrolment, up with ledger lead and streak, down with Fidelity (a well-modelled asset is a replaceable one), soft-clamped to 0–1000.
+- **Containment Map** (first screen, Horde): you at the centre, every decommissioned asset a red dot — newest closest, range set by Proximity — on 100 m rings, with the "joined the horde" list.
+- **Ticker strip** under the HUD on every screen: a continuously scrolling `▲ MATTEO N. KRÜGER #87 +21 · ▼ KOFI NYGAARD #982 −79 · · YOU #86 0 …` of today's movers, you in brass.
+- Forecast: "Asset board" / "Containment map" button. Unit tests for the roster (determinism, every asset ranked once, history with firings/rehires/synths, gender split, intraday movement, user index behaviour). 49 tests total, all green.
+
+### Verified
+- Emulator: launch → Asset Board with you at #17 (▲), top 15 with arrows/tags/synth, movers, decommissioned; ticker scrolling; switch to Horde in Settings → Containment Map with 72 dots and the recent-decommission list. First roster build ~3 s on the emulator before the hashing rewrite, now well under a second.
+
 ## [0.6.0] - 2026-08-21
 
 The competitive layer. v0.5.0 made the screens look like the demo; this release makes it feel like there's someone on the other side who wants you to lose — and a division that requires you not to. Everything is framed corpo: you are the asset, the Twin is your proposed replacement, the Asset Performance Division keeps score.

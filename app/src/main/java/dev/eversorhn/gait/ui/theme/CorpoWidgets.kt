@@ -26,6 +26,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -514,5 +521,66 @@ fun FormDots(form: List<Boolean>, twinColor: Color = Cyan) {
             Box(Modifier.size(8.dp).background(if (userWon) Brass else twinColor, CircleShape))
         }
         if (form.isEmpty()) Text("—", style = MaterialTheme.typography.labelSmall, color = TextFaint)
+    }
+}
+
+/** One entry on the ticker: who moved, by how much (index points), and whether it's you. */
+data class TickerItem(val label: String, val delta: Int, val isUser: Boolean = false)
+
+/**
+ * The stock-ticker strip: a continuously scrolling line of today's movers, ▲ green / ▼ red,
+ * with your own entry in brass. Pure animation, no per-frame allocation beyond the offset.
+ */
+@Composable
+fun TickerStrip(items: List<TickerItem>, modifier: Modifier = Modifier) {
+    if (items.isEmpty()) return
+    var contentWidth by androidx.compose.runtime.remember { mutableIntStateOf(0) }
+    val transition = rememberInfiniteTransition(label = "ticker")
+    val progress by transition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(durationMillis = (items.size * 2600).coerceAtLeast(9000), easing = LinearEasing)),
+        label = "tickerX",
+    )
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Ink2)
+            .border(BorderStroke(1.dp, LineSoft))
+            .clipToBounds()
+            .padding(vertical = 5.dp),
+    ) {
+        val x = if (contentWidth == 0) 0 else -(progress * contentWidth).toInt()
+        Row(
+            // unbounded: the marquee must be laid out at its natural width, wider than the screen.
+            modifier = Modifier.offset { IntOffset(x, 0) }.wrapContentWidth(align = Alignment.Start, unbounded = true),
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Two copies back to back → seamless loop once the first copy has scrolled out.
+            repeat(2) { copy ->
+                Row(
+                    modifier = if (copy == 0) Modifier.onSizeChanged { contentWidth = it.width } else Modifier,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    items.forEach { it ->
+                        val color = when {
+                            it.isUser -> Brass
+                            it.delta > 0 -> Good
+                            it.delta < 0 -> Alert
+                            else -> TextFaint
+                        }
+                        val glyph = when { it.delta > 0 -> "▲"; it.delta < 0 -> "▼"; else -> "·" }
+                        Text(
+                            "$glyph ${it.label.uppercase()} ${if (it.delta > 0) "+" else if (it.delta < 0) "−" else ""}${kotlin.math.abs(it.delta)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = color,
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 14.dp),
+                        )
+                        Text("·", style = MaterialTheme.typography.labelSmall, color = LineSoft)
+                    }
+                }
+            }
+        }
     }
 }

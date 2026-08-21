@@ -26,6 +26,15 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.eversorhn.gait.GaitApplication
 import dev.eversorhn.gait.ui.forecast.ForecastScreen
+import dev.eversorhn.gait.ui.board.BoardScreen
+import dev.eversorhn.gait.ui.theme.TickerStrip
+import dev.eversorhn.gait.ui.theme.TickerItem
+import dev.eversorhn.gait.domain.roster.RosterEngine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.runtime.produceState
+import java.time.Instant
+import java.time.ZoneId
 import dev.eversorhn.gait.ui.logsession.LogSessionScreen
 import dev.eversorhn.gait.ui.messages.MessagesScreen
 import dev.eversorhn.gait.ui.restdays.RestDaysScreen
@@ -51,6 +60,7 @@ private object Routes {
     const val OPPONENT_TYPE = "opponent_type"
     const val NAMING = "naming"
     const val HORDE_SETUP = "horde_setup"
+    const val BOARD = "board"
     const val FORECAST = "forecast"
     const val TRACK = "track"
     const val TRACK_PATTERN = "track?duel={duel}"
@@ -66,6 +76,7 @@ private val routeLabels = mapOf(
     Routes.OPPONENT_TYPE to "SETUP",
     Routes.NAMING to "SETUP",
     Routes.HORDE_SETUP to "SETUP",
+    Routes.BOARD to "ASSET BOARD",
     Routes.FORECAST to "PRE-SESSION",
     Routes.TRACK_PATTERN to "TRACK",
     Routes.LOG_SESSION to "LOG SESSION",
@@ -101,6 +112,20 @@ fun GaitNavGraph() {
             CorpoStatusBar(label = label)
             ledgerInfo?.let { (profile, ledger, standing) ->
                 if (!onSetup) {
+                    // The ticker: today's movers on the division board, you included.
+                    val ticker by produceState<List<TickerItem>>(initialValue = emptyList(), key1 = ledger.roundsPlayed, key2 = profile.fidelity) {
+                        value = withContext(Dispatchers.Default) {
+                            val now = Instant.now()
+                            val zoned = now.atZone(ZoneId.systemDefault())
+                            val offset = zoned.offset.totalSeconds * 1000L
+                            val today = RosterEngine.epochDay(now.toEpochMilli(), offset)
+                            val enrolled = RosterEngine.epochDay(profile.createdAtEpochMillis, offset)
+                            val snap = RosterEngine.snapshot(enrolled, today, zoned.hour * 60 + zoned.minute, ledger, (profile.fidelity * 100).toInt(), ledger)
+                            listOf(TickerItem("You #${snap.user.rank}", snap.user.delta, isUser = true)) +
+                                snap.movers.map { TickerItem("${it.asset.name} #${it.rank}", it.delta) }
+                        }
+                    }
+                    TickerStrip(items = ticker)
                     LedgerStrip(
                         userPoints = ledger.userPoints,
                         twinPoints = ledger.twinPoints,
@@ -117,7 +142,7 @@ fun GaitNavGraph() {
                     val app = LocalContext.current.applicationContext as GaitApplication
                     LaunchedEffect(Unit) {
                         val hasOpponent = app.repository.getTwinProfile() != null
-                        val destination = if (hasOpponent) Routes.FORECAST else Routes.OPPONENT_TYPE
+                        val destination = if (hasOpponent) Routes.BOARD else Routes.OPPONENT_TYPE
                         navController.navigate(destination) {
                             popUpTo(Routes.LOADING) { inclusive = true }
                         }
@@ -157,8 +182,17 @@ fun GaitNavGraph() {
                     })
                 }
 
+                composable(Routes.BOARD) {
+                    BoardScreen(onContinue = {
+                        navController.navigate(Routes.FORECAST) {
+                            popUpTo(Routes.BOARD) { inclusive = true }
+                        }
+                    })
+                }
+
                 composable(Routes.FORECAST) {
                     ForecastScreen(
+                        onBoard = { navController.navigate(Routes.BOARD) },
                         onStartActivity = { navController.navigate(Routes.TRACK) },
                         onStartDuel = { navController.navigate("${Routes.TRACK}?duel=true") },
                         onLogSession = { navController.navigate(Routes.LOG_SESSION) },
