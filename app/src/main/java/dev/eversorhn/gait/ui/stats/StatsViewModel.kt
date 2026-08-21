@@ -10,9 +10,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import dev.eversorhn.gait.domain.directive.Directive
+import dev.eversorhn.gait.domain.ledger.Ledger
+import java.time.DayOfWeek
+import java.time.format.TextStyle
+import java.util.Locale
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 import kotlin.math.abs
 
 enum class StatsPeriod(val label: String, val days: Int?) {
@@ -47,6 +51,16 @@ data class StatsUiState(
     val accuracyTrend: List<Float> = emptyList(),
     val rows: List<SessionRow> = emptyList(),
     val loaded: Boolean = false,
+    // --- ledger ---
+    val isHorde: Boolean = false,
+    val opponentName: String = "",
+    val userPoints: Int = 0,
+    val twinPoints: Int = 0,
+    val roundsPlayed: Int = 0,
+    val standing: String = "",
+    /** ISO weekday 1..7 → (user wins, twin wins), only weekdays with rounds. */
+    val weekdayRecord: List<Triple<Int, Int, Int>> = emptyList(),
+    val ownershipLine: String? = null,
 )
 
 class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
@@ -77,11 +91,13 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
                 period = period,
                 currentFidelity = profile?.fidelity ?: 0f,
                 metricLabel = if (profile?.isHorde == true) "Proximity" else "Fidelity",
+                isHorde = profile?.isHorde == true,
+                opponentName = profile?.twinName ?: "",
             )
         }
     }
 
-    private fun applyPeriod(period: StatsPeriod, currentFidelity: Float, metricLabel: String) {
+    private fun applyPeriod(period: StatsPeriod, currentFidelity: Float, metricLabel: String, isHorde: Boolean, opponentName: String) {
         val cutoff = period.days?.let { System.currentTimeMillis() - it * 86_400_000L }
         val filtered = if (cutoff == null) allSessions else allSessions.filter { it.startTimeEpochMillis >= cutoff }
 
@@ -93,7 +109,21 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
             s.forecastPaceSecPerKm?.let { fp -> (1.0 - abs(fp - s.avgPaceSecPerKm) / fp).toFloat().coerceIn(0f, 1f) }
         }
 
+        val ledger = Ledger.from(filtered)
+        val them = if (isHorde) "the horde" else opponentName
+        fun dayName(iso: Int) = DayOfWeek.of(iso).getDisplayName(TextStyle.FULL, Locale.ENGLISH)
+        val ownership = ledger.opponentStrongestWeekday()?.let { (d, v) -> "$them owns your ${dayName(d)}s, ${v.second}–${v.first}." }
+            ?: ledger.userStrongestWeekday()?.let { (d, v) -> "${dayName(d)}s are yours, ${v.first}–${v.second}." }
+
         _uiState.value = StatsUiState(
+            isHorde = isHorde,
+            opponentName = opponentName,
+            userPoints = ledger.userPoints,
+            twinPoints = ledger.twinPoints,
+            roundsPlayed = ledger.roundsPlayed,
+            standing = Directive.standing(ledger, opponentName, isHorde),
+            weekdayRecord = ledger.byWeekday().entries.sortedBy { it.key }.map { Triple(it.key, it.value.first, it.value.second) },
+            ownershipLine = ownership,
             period = period,
             totalSessions = filtered.size,
             totalDistanceLabel = "%.1f km".format(totalDistanceKm),

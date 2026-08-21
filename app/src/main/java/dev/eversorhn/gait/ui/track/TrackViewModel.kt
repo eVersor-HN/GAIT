@@ -8,6 +8,11 @@ import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.data.db.entity.isHorde
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.forecast.ForecastEngine
+import dev.eversorhn.gait.domain.horde.HordeSoundCues
+import dev.eversorhn.gait.domain.live.LiveCommentary
+import dev.eversorhn.gait.domain.live.LiveZone
+import dev.eversorhn.gait.domain.persona.Personas
+import dev.eversorhn.gait.ui.forecast.formatPace
 import dev.eversorhn.gait.domain.trial.DecommissionTrial
 import dev.eversorhn.gait.domain.session.DebriefResult
 import dev.eversorhn.gait.domain.session.SessionFinalizer
@@ -18,7 +23,9 @@ import dev.eversorhn.gait.tracking.TrackingSessionState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 import java.time.Instant
 import java.time.ZoneId
 
@@ -48,11 +55,19 @@ data class RecoverableSession(
  * today's forecast (pace/distance/finish) drive the live You-vs-Twin comparison, and a duel
  * target pace is set when this session is a Decommission Trial. See docs phase 02.
  */
+/** One mid-session callout, for the Track screen's comms feed. */
+data class LiveCallout(val atSeconds: Int, val text: String, val zone: LiveZone)
+
 data class LiveOpponent(
     val name: String,
     val isHorde: Boolean,
+    val personaKey: String?,
+    val hordeIntensity: String?,
     val generation: Int,
     val fidelity: Float,
+    /** Points riding on this round (1 / 2 staked / 4 called / 3 duel). */
+    val stake: Int,
+    val stakeCalled: Boolean,
     val forecastPaceSecPerKm: Double?,
     val forecastDistanceMeters: Double?,
     val forecastFinishSeconds: Int?,
@@ -64,6 +79,8 @@ data class TrackUiState(
     /** True when this session was opened as a Decommission/Outrun Trial from the Forecast screen. */
     val duel: Boolean = false,
     val opponent: LiveOpponent? = null,
+    /** Newest last. The opponent talking mid-session (text channel of docs/live-audio.md). */
+    val callouts: List<LiveCallout> = emptyList(),
     val finishing: Boolean = false,
     /** Indoor only: timer stopped, waiting for the user to type the distance off the machine. */
     val awaitingIndoorDistance: Boolean = false,
@@ -91,7 +108,10 @@ class TrackViewModel(
     private val _uiState = MutableStateFlow(TrackUiState())
     val uiState: StateFlow<TrackUiState> = _uiState.asStateFlow()
 
+    private var commentary = LiveCommentary()
+
     init {
+        observeLiveSession()
         // If we're already tracking (user came back to this screen mid-run), pick the mode up
         // from the live snapshot so the screen renders the right layout immediately.
         trackingSnapshot.value.mode?.let { live ->
@@ -101,6 +121,61 @@ class TrackViewModel(
         }
         checkForInterruptedSession()
         loadOpponent()
+    }
+
+    /**
+     * Every tracking tick runs through [LiveCommentary]; when it fires, a persona line for the
+     * zone is appended to the feed. Reset when a new session starts.
+     */
+    private fun observeLiveSession() {
+        viewModelScope.launch {
+            var wasTracking = false
+            trackingSnapshot.collect { snap ->
+                if (snap.isTracking && !wasTracking) {
+                    commentary = LiveCommentary()
+                    _uiState.value = _uiState.value.copy(callouts = emptyList())
+                }
+                wasTracking = snap.isTracking
+                if (!snap.isTracking || snap.mode != TrackingMode.OUTDOOR) return@collect
+                val opp = _uiState.value.opponent ?: return@collect
+                val reference = if (_uiState.value.duel) opp.duelTargetPaceSecPerKm ?: opp.forecastPaceSecPerKm else opp.forecastPaceSecPerKm
+                val gap = if (reference != null && snap.currentPaceSecPerKm != null) reference - snap.currentPaceSecPerKm else null
+                val trigger = commentary.onTick(snap.movingSeconds, snap.distanceMeters, gap) ?: return@collect
+                val text = lineFor(opp, trigger)
+                val zone = when (trigger) {
+                    is LiveCommentary.Trigger.KmMark -> trigger.zone
+                    is LiveCommentary.Trigger.LeadChange -> trigger.zone
+                }
+                _uiState.value = _uiState.value.copy(
+                    callouts = (_uiState.value.callouts + LiveCallout(snap.movingSeconds, text, zone)).takeLast(12)
+                )
+            }
+        }
+    }
+
+    private fun lineFor(opp: LiveOpponent, trigger: LiveCommentary.Trigger): String {
+        fun gapLabel(g: Double): String {
+            val t = kotlin.math.abs(g).toInt()
+            return "${t / 60}:${(t % 60).toString().padStart(2, '0')}/km"
+        }
+        val (zone, gap, km) = when (trigger) {
+            is LiveCommentary.Trigger.KmMark -> Triple(trigger.zone, trigger.gapSecPerKm, trigger.km)
+            is LiveCommentary.Trigger.LeadChange -> Triple(trigger.zone, trigger.gapSecPerKm, null)
+        }
+        if (opp.isHorde) {
+            return when (zone) {
+                LiveZone.AHEAD -> HordeSoundCues.liveAhead(gapLabel(gap))
+                LiveZone.BEHIND -> HordeSoundCues.liveBehind(gapLabel(gap))
+                LiveZone.LEVEL -> HordeSoundCues.liveLevel(km ?: 0)
+            }
+        }
+        val persona = Personas.byKey(opp.personaKey)
+        val prefix = if (km != null) "Km $km. " else ""
+        return when (zone) {
+            LiveZone.AHEAD -> prefix + persona.liveAheadLines.random(Random)(gapLabel(gap))
+            LiveZone.BEHIND -> prefix + persona.liveBehindLines.random(Random)(gapLabel(gap))
+            LiveZone.LEVEL -> persona.liveLevelLines.random(Random)(km ?: 0)
+        }
     }
 
     /** Called by the screen with its nav argument. Idempotent; re-resolves the duel target. */
@@ -118,12 +193,23 @@ class TrackViewModel(
             val forecast = ForecastEngine().forecast(
                 sessions, now.atZone(ZoneId.systemDefault()).dayOfWeek.value, now.toEpochMilli(),
             )
+            val zoned = now.atZone(ZoneId.systemDefault())
+            val today = dev.eversorhn.gait.domain.wager.WagerPolicy.epochDay(now.toEpochMilli(), zoned.offset.totalSeconds * 1000L)
+            val stakeOpen = profile.wagerStake > 0 && profile.wagerEpochDay == today && forecast != null
+            val stake = when {
+                _uiState.value.duel -> dev.eversorhn.gait.domain.ledger.Ledger.DUEL_STAKE
+                else -> dev.eversorhn.gait.domain.wager.WagerPolicy.roundStake(stakeOpen, profile.wagerCalled)
+            }
             _uiState.value = _uiState.value.copy(
                 opponent = LiveOpponent(
                     name = profile.twinName,
                     isHorde = profile.isHorde,
+                    personaKey = profile.personaKey,
+                    hordeIntensity = profile.hordeIntensity,
                     generation = profile.generation,
                     fidelity = profile.fidelity,
+                    stake = stake,
+                    stakeCalled = stakeOpen && profile.wagerCalled,
                     forecastPaceSecPerKm = forecast?.forecastPaceSecPerKm,
                     forecastDistanceMeters = forecast?.forecastDistanceMeters,
                     forecastFinishSeconds = forecast?.forecastFinishSeconds,

@@ -38,6 +38,15 @@ data class TwinProfileEntity(
     val vacationYear: Int = 0,
     /** Set and in the future while an active vacation period is running. */
     val vacationEndEpochMillis: Long? = null,
+    // --- The opponent's open stake on today's forecast (domain/wager) ---
+    /** Points currently staked; 0 = no open stake. Cleared by SessionFinalizer once a round resolves it. */
+    val wagerStake: Int = 0,
+    /** True once the user has called the stake (doubles it). */
+    val wagerCalled: Boolean = false,
+    /** Local epoch-day the stake was made for; one stake per day, consumed or not. -1 = never. */
+    val wagerEpochDay: Long = -1L,
+    /** The exact claim the opponent made, so the Forecast shows the same words all day. */
+    val wagerClaim: String? = null,
 )
 
 /** Extension rather than a member so Room never has to reason about a non-column property. */

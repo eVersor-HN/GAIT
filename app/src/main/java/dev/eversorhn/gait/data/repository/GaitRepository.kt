@@ -3,6 +3,7 @@ package dev.eversorhn.gait.data.repository
 import dev.eversorhn.gait.data.db.GaitDatabase
 import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.db.entity.SessionEntity
+import dev.eversorhn.gait.data.db.entity.TwinMessageEntity
 import dev.eversorhn.gait.data.db.entity.TwinProfileEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -74,9 +75,20 @@ class GaitRepository(private val db: GaitDatabase) {
         db.sessionDao().deleteById(id)
     }
 
-    /** Full reset: every session and the opponent profile. Used by Settings > Reset. */
+    // --- The opponent's inbox (everything said outside a Debrief) ---
+
+    suspend fun recordMessage(kind: String, line: String, composureState: String? = null, epochMillis: Long = System.currentTimeMillis()) {
+        db.twinMessageDao().insert(TwinMessageEntity(epochMillis = epochMillis, kind = kind, line = line, composureState = composureState))
+    }
+
+    suspend fun getMessages(): List<TwinMessageEntity> = db.twinMessageDao().getAll()
+
+    fun observeRecentMessages(limit: Int = 5): Flow<List<TwinMessageEntity>> = db.twinMessageDao().observeRecent(limit)
+
+    /** Full reset: every session, message, and the opponent profile. Used by Settings > Reset. */
     suspend fun wipeAll() {
         db.sessionDao().deleteAll()
+        db.twinMessageDao().deleteAll()
         db.twinProfileDao().deleteAll()
     }
 }

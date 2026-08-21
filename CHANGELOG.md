@@ -4,6 +4,28 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.6.0] - 2026-08-21
+
+The competitive layer. v0.5.0 made the screens look like the demo; this release makes it feel like there's someone on the other side who wants you to lose — and a division that requires you not to. Everything is framed corpo: you are the asset, the Twin is your proposed replacement, the Asset Performance Division keeps score.
+
+### Added
+- **Asset Ledger** (`domain/ledger`): every session with a forecast is a *round*. Beat the forecast pace → your point(s); match or miss it → the opponent's. Points sum the round's stake. Derived from stored sessions (never disagrees with history, survives a generation handoff). Exposed as a **tug-of-war strip under the HUD on every screen** — `YOU 6 ──●── 0 MARKUS K.` with the standing ("You lead by 6 · streak 3 you") — plus a ledger panel on the Forecast (score, last-5 form dots), a **Ruling** panel on the Debrief ("Round to asset · +4 pts", score before → after), per-round points in the Direct Channel, and a per-weekday record in Statistics ("Fridays are yours, 2–0" / "Markus K. owns your Mondays, 3–0").
+- **Model commitment (stakes)** (`domain/wager`): once per day, when the forecast is confident enough (≥ 55 %, ≥ 3 sessions, not a rest day), the opponent **puts 2 points on its own forecast** in its persona's voice ("You won't beat 5:30/km today. I'd put money on it — so I'm putting 2 points on it."). A **COUNTER-STAKE** button makes the round worth 4 either way; the opponent reacts ("Doubled. Remember you did that to yourself.") and the reaction lands in the inbox. The stake is consumed by the day's first scored session. The Track screen shows what's riding on the round; the Debrief ruling shows "called stake · 4 pts".
+- **Live comms** (`domain/live/LiveCommentary`): during an outdoor session the opponent talks — at every kilometre mark and on lead changes, never on a timer, 45 s cooldown, 12 lines per session max. Persona-voiced per zone ("Km 1. 2:26/km under my number. Enjoy it while it lasts." / "0:18/km behind. Exactly where I said you'd be."), horde equivalents as captions. Shown in a COMMS panel on the Track screen, newest first.
+- **Memos from the Asset Performance Division** (`domain/directive`): one memo per Forecast, picked from the ledger and Fidelity ("Asset trails its model by 3. The division does not fund assets that lose to their own forecast. Close the gap." / "Substitution review open. Model fidelity 96 % exceeds the 95 % retention ceiling…"). The company's voice — requirement, not taunt.
+- **Asset File** (`domain/intel`): one data-grounded observation per Forecast, chosen by how pointed it is — days since your last session, a streak against you, which weekday the opponent owns and whether today is it, your slow/fast weekdays by average pace, your best pace and how long ago it was. Every line cites a number from the log; nothing is invented.
+- **Inbox table** (`twin_messages`): idle taunts, gap-predatory pings, stakes and call reactions are now stored, not just notified. The Direct Channel merges them with the Debrief lines into one timeline with tags (stake / stake called / unprompted / you went quiet) and an "N unprompted" count.
+- Persona banks: `stakeLine`, `callLines`, `liveAheadLines`, `liveBehindLines`, `liveLevelLines` for all 5 personas; horde `stakeCaption` / `callCaption` / `liveAhead` / `liveBehind` / `liveLevel`.
+- Unit tests for Ledger (round rules, ties to the Twin, stakes sum, streak/form, weekday ownership), WagerPolicy (when it stakes, round stake 1/2/4, local epoch-day), LiveCommentary (km marks, lead changes with cooldown and level band, per-session cap, silence without pace). 45 tests total, all green.
+
+### Changed
+- **Database v7** with a real `Migration(6, 7)`: `sessions.stake`, `twin_profiles.wagerStake / wagerCalled / wagerEpochDay / wagerClaim`, new `twin_messages` table. Verified on the emulator that v6 data survives.
+- `SessionFinalizer` sets the round's stake (1 / 2 staked / 4 called / 3 duel), consumes the day's stake, and returns the round winner plus the ledger before/after.
+- Forecast `refresh()` is serialised with a mutex — it's called from both `init` and the screen's `LaunchedEffect`, and the stake must be made exactly once (caught live as a duplicated stake message).
+
+### Verified
+- Emulator, over the v0.5.0 data: ledger strip on every screen → memo + asset file on the Forecast → third session makes the opponent stake 2 pts → COUNTER-STAKE → Track shows "4 PTS · CALLED" → mocked-GPS run with "Km 1. 2:26/km under my number…" in COMMS → Debrief "Round to asset · +4 pts", 2–0 → 6–0 → Direct Channel shows stake / stake called / debrief with "ROUND TO YOU · +4 PTS" → Statistics weekday record. Screenshots reviewed for each.
+
 ## [0.5.0] - 2026-08-21
 
 The "the app is naked" release. v0.4.0 had the whole loop running underneath, but every screen was a few lines of text and a stack of Material buttons. This pass rebuilds the UI after `demo/asset-twin-demo.html` phase by phase, and wires in the two phases that were still only in the demo: Live Divergence and the Decommission Trial / Generational Handoff.

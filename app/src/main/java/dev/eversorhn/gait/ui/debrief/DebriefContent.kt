@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.domain.composure.ComposureState
+import dev.eversorhn.gait.domain.directive.Directive
+import dev.eversorhn.gait.domain.ledger.Side
+import dev.eversorhn.gait.ui.theme.FormDots
 import dev.eversorhn.gait.domain.session.DebriefResult
 import dev.eversorhn.gait.domain.trial.DecommissionTrial
 import dev.eversorhn.gait.ui.forecast.composureTag
@@ -71,6 +74,51 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
                 else -> MaterialTheme.colorScheme.onBackground
             },
         )
+
+        // --- The ruling: who took the round, and the ledger after it ---
+        result.roundWinner?.let { winner ->
+            val toUser = winner == Side.USER
+            val twinColor = if (isHorde) Alert else Cyan
+            CorpoPanel(tone = if (toUser) PanelTone.GOOD else PanelTone.WARN) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    SectionLabel("Ruling", color = if (toUser) Good else Alert)
+                    FootNote(
+                        when {
+                            duel != null -> "duel · ${result.stake} pts"
+                            result.stakeCalled -> "called stake · ${result.stake} pts"
+                            result.stakeWasOpen -> "staked · ${result.stake} pts"
+                            else -> "${result.stake} pt"
+                        },
+                    )
+                }
+                Text(
+                    Directive.ruling(toUser, result.stake, result.opponentName, isHorde),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = if (toUser) Good else Alert,
+                )
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Column {
+                        FootNote("You")
+                        Text("${result.ledger.userPoints}", style = MaterialTheme.typography.headlineLarge, color = Brass)
+                    }
+                    Text("—", style = MaterialTheme.typography.headlineLarge, color = TextFaint)
+                    Column {
+                        FootNote(if (isHorde) "horde" else result.opponentName)
+                        Text("${result.ledger.twinPoints}", style = MaterialTheme.typography.headlineLarge, color = twinColor)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Column(horizontalAlignment = Alignment.End) {
+                        FootNote("Form")
+                        FormDots(form = result.ledger.form().map { it == Side.USER }, twinColor = twinColor)
+                    }
+                }
+                FootNote(
+                    Directive.standing(result.ledger, result.opponentName, isHorde) +
+                        " · was ${result.ledgerBefore.userPoints}—${result.ledgerBefore.twinPoints}",
+                    color = if (toUser) Brass else twinColor,
+                )
+            }
+        }
 
         // --- Duel verdict, when there was one ---
         duel?.let { d ->

@@ -67,6 +67,30 @@ object HordeSoundCues {
     fun forecastCaption(basedOnSessions: Int): String =
         if (basedOnSessions <= 0) "[no signal yet]" else ambient.random()
 
+    /** The horde "stakes" by closing in: a non-verbal claim on today's pace. */
+    fun stakeCaption(paceLabel: String, points: Int): String =
+        "[they've matched your $paceLabel. $points points closer if you don't break it]"
+
+    fun callCaption(): String = listOf(
+        "[the murmur rises -- they heard that]",
+        "[a dozen heads turn your way]",
+    ).random()
+
+    fun liveAhead(gap: String): String = listOf(
+        "[$gap of open road. the groaning fades]",
+        "[footsteps falling back -- $gap]",
+    ).random()
+
+    fun liveBehind(gap: String): String = listOf(
+        "[$gap closer. breathing at your shoulder]",
+        "[they're $gap nearer than they should be]",
+    ).random()
+
+    fun liveLevel(km: Int): String = listOf(
+        "[km $km. the same distance. always the same distance]",
+        "[km $km. dragging footsteps, keeping pace]",
+    ).random()
+
     /** A won Outrun Trial: the wave breaks and a new one forms -- the Horde's generational handoff. */
     fun handoffCaption(newWave: Int): String =
         listOf(

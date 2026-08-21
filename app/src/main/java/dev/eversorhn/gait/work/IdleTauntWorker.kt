@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import dev.eversorhn.gait.GaitApplication
+import dev.eversorhn.gait.data.db.entity.MessageKind
 import dev.eversorhn.gait.data.db.entity.isHorde
 import dev.eversorhn.gait.domain.composure.ComposureEngine
 import dev.eversorhn.gait.domain.composure.ComposureState
@@ -69,6 +70,7 @@ class IdleTauntWorker(
                     Personas.byKey(profile.personaKey).predatoryLines.random(Random)
                 }
                 TwinNotifier.postTwinMessage(applicationContext, profile.twinName, body)
+                app.repository.recordMessage(MessageKind.GAP, body, ComposureState.PREDATORY.name, now)
                 prefs.edit().putLong(KEY_LAST_GAP_TAUNT_DAY, todayEpochDay).apply()
                 // A predatory ping counts as contact: push the next idle taunt out too.
                 prefs.edit().putLong(KEY_NEXT_DUE, now + randomGapMillis()).apply()
@@ -91,6 +93,7 @@ class IdleTauntWorker(
             Personas.byKey(profile.personaKey).idleLines.random(Random)
         }
         TwinNotifier.postTwinMessage(applicationContext, profile.twinName, body)
+        app.repository.recordMessage(MessageKind.IDLE, body, null, now)
         prefs.edit().putLong(KEY_NEXT_DUE, now + randomGapMillis()).apply()
         return Result.success()
     }

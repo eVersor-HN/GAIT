@@ -1,6 +1,6 @@
 # GAIT
 
-**Status:** v0.5.0 — a real Android app, verified on a physical device (v0.4.0) and emulator (v0.5.0). All six phases of the Asset Twin loop are in the app and laid out like the concept demo: Setup → Forecast → Live Divergence (you vs. the Twin, live) → Debrief → Decommission Trial → Generational Handoff, against either a Rival Twin or a Zombie Horde, plus a Direct Channel message log, Composure, Rest Days/Vacation, Statistics, Settings, crash-safe session recovery, unit-tested engines (35 tests), a signed + R8-shrunk release pipeline, and full cyberpunk-corpo visual chrome. A separate small `:simdemo` APK is a shareable teaser with no real data. Free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope, [`CHANGELOG.md`](CHANGELOG.md) for the detailed history, and `app/` for the source.
+**Status:** v0.6.0 — a real Android app, verified on a physical device and emulator. All six phases of the Asset Twin loop are in the app and laid out like the concept demo (Setup → Forecast → Live Divergence → Debrief → Decommission Trial → Generational Handoff), against either a Rival Twin or a Zombie Horde — plus the competitive layer: an **Asset Ledger** (you vs. the opponent, points per round, on every screen), the opponent **staking points on its own forecast** that you can counter, **live comms** mid-session, **memos from the Asset Performance Division**, the opponent's **Asset File** on you, and a real inbox. Composure, Rest Days/Vacation, Statistics, Settings, crash-safe session recovery, unit-tested engines (45 tests), a signed + R8-shrunk release pipeline, and full cyberpunk-corpo visual chrome. A separate small `:simdemo` APK is a shareable teaser with no real data. Free with optional donations, aiming at a real v1 release. See [`docs/scope-and-stack.md`](docs/scope-and-stack.md) for the tech stack and MVP scope, [`CHANGELOG.md`](CHANGELOG.md) for the detailed history, and `app/` for the source.
 
 GAIT is a concept for a GPS movement app (running, walking, cycling, e-scooter, ...) that deliberately avoids generic missions, achievements, or leaderboards against strangers. Everything is cyberpunk-corpo themed at its core: your movement data is a commodity that fictional corporations compete over.
 
@@ -22,6 +22,10 @@ The loop has six phases:
 | 5 · Generational Handoff | The Twin messages you in a personal tone, quoting your own data. A win spins up a new, sharper generation. |
 
 The central tension: you explicitly do **not** want your Twin to get better or to win.
+
+## The competitive layer: Asset Ledger, stakes, comms
+
+You are the asset; the Twin is your proposed replacement; the Asset Performance Division keeps score. Every forecasted session is a **round** on the **Asset Ledger** — beat the forecast pace and the point is yours, match or miss it and it's the Twin's — shown as a tug-of-war strip under the HUD on every screen. When the Twin is confident it **stakes 2 points on its own forecast**, in its own voice; you can **counter-stake** and make the round worth 4 either way. Mid-session it **talks** at kilometre marks and lead changes. The Division sends **memos** that read the standing back at you, and the Twin keeps an **Asset File** of data-grounded observations ("Markus K. owns your Mondays, 3–0"). Everything it says — prompted or not — lands in the **Direct Channel**.
 
 ## Composure: dominance-reactive tone
 

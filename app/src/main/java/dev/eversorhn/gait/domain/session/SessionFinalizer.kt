@@ -12,6 +12,10 @@ import dev.eversorhn.gait.domain.composure.ComposureState
 import dev.eversorhn.gait.domain.fidelity.FidelityReplay
 import dev.eversorhn.gait.domain.forecast.ForecastEngine
 import dev.eversorhn.gait.domain.horde.HordeSoundCues
+import dev.eversorhn.gait.domain.ledger.Ledger
+import dev.eversorhn.gait.domain.ledger.LedgerState
+import dev.eversorhn.gait.domain.ledger.Side
+import dev.eversorhn.gait.domain.wager.WagerPolicy
 import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.domain.restdays.RestDayPolicy
 import dev.eversorhn.gait.domain.trial.DecommissionTrial
@@ -64,6 +68,16 @@ data class DebriefResult(
     val generationLabel: String = "Generation",
     val trialThresholdPercent: Int = (DecommissionTrial.THRESHOLD * 100).toInt(),
     val duel: DuelOutcome? = null,
+    // --- v0.6.0: the round on the ledger ---
+    /** Who took this round; null when it wasn't scored (no forecast / rest day). */
+    val roundWinner: Side? = null,
+    /** Points this round moved. */
+    val stake: Int = 1,
+    /** True when the opponent had staked on today's forecast; [stakeCalled] when the user doubled it. */
+    val stakeWasOpen: Boolean = false,
+    val stakeCalled: Boolean = false,
+    val ledger: LedgerState = LedgerState(0, 0, emptyList()),
+    val ledgerBefore: LedgerState = LedgerState(0, 0, emptyList()),
 )
 
 /**
@@ -114,10 +128,21 @@ class SessionFinalizer(
         val metricLabel = if (isHorde) "Proximity" else "Fidelity"
         val generationLabel = if (isHorde) "Wave" else "Generation"
 
+        // --- Stake: the opponent's open commitment on today's forecast (domain/wager) ---
+        val zoneOffset = now.atZone(ZoneId.systemDefault()).offset.totalSeconds * 1000L
+        val todayEpochDay = WagerPolicy.epochDay(now.toEpochMilli(), zoneOffset)
+        val stakeOpen = profile != null && profile.wagerStake > 0 && profile.wagerEpochDay == todayEpochDay && forecast != null && !isRestPeriod
+        val stakeCalled = stakeOpen && profile!!.wagerCalled
+        val ledgerBefore = Ledger.from(priorSessions)
+
         // --- Decommission Trial verdict: judged against *prior* history, before Fidelity moves ---
         val duelTarget = if (duel && profile != null) DecommissionTrial.targetPaceSecPerKm(priorSessions) else null
         val verdict = duelTarget?.let { DecommissionTrial.judge(distanceMeters, avgPace, it) }
         val duelWon = verdict == DecommissionTrial.Verdict.WON
+        val roundStake = when {
+            verdict == DecommissionTrial.Verdict.WON || verdict == DecommissionTrial.Verdict.LOST -> Ledger.DUEL_STAKE
+            else -> WagerPolicy.roundStake(stakeOpen, stakeCalled)
+        }
 
         // On a rest day / vacation, Composure is deliberately neutral and Fidelity is frozen.
         // A decided duel overrides the z-score: losing one is Predatory by definition.
@@ -196,8 +221,16 @@ class SessionFinalizer(
                     DecommissionTrial.Verdict.LOST -> false
                     else -> null
                 },
+                stake = roundStake,
             )
         )
+
+        // The stake is consumed by this round whether it paid out or not; one per day.
+        if (stakeOpen) {
+            repository.getTwinProfile()?.let { fresh ->
+                repository.updateTwinProfile(fresh.copy(wagerStake = 0, wagerCalled = false))
+            }
+        }
 
         if (!isRestPeriod && composureState == ComposureState.PREDATORY && profile != null && opponentLine != null) {
             TwinNotifier.postTwinMessage(appContext, profile.twinName, opponentLine)
@@ -209,7 +242,9 @@ class SessionFinalizer(
             else -> null
         }
 
-        val history = FidelityReplay.history(repository.getSessions())
+        val allSessions = repository.getSessions()
+        val history = FidelityReplay.history(allSessions)
+        val ledgerAfter = Ledger.from(allSessions)
 
         return DebriefResult(
             hadForecast = forecast != null,
@@ -240,6 +275,12 @@ class SessionFinalizer(
                     handoffLine = handoffLine,
                 )
             },
+            roundWinner = if (forecast != null && !isRestPeriod) (if (avgPace < forecast.forecastPaceSecPerKm) Side.USER else Side.TWIN) else null,
+            stake = roundStake,
+            stakeWasOpen = stakeOpen,
+            stakeCalled = stakeCalled,
+            ledger = ledgerAfter,
+            ledgerBefore = ledgerBefore,
         )
     }
 

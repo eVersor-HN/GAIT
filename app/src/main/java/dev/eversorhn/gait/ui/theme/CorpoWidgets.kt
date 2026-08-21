@@ -457,3 +457,62 @@ fun formatSignedPoints(delta: Int): String = when {
     delta < 0 -> "−${-delta}%"
     else -> "±0%"
 }
+
+/**
+ * The Asset Ledger on every screen: YOU n ── tug-of-war ── n TWIN, marker at the user's share
+ * of all points, with the standing underneath. Brass = you, cyan/alert = the opponent. This
+ * is the one readout that says, at a glance, how far apart you are.
+ */
+@Composable
+fun LedgerStrip(
+    userPoints: Int,
+    twinPoints: Int,
+    userShare: Float,
+    opponentLabel: String,
+    standing: String,
+    twinColor: Color = Cyan,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("YOU $userPoints", style = MaterialTheme.typography.labelLarge, color = Brass, maxLines = 1)
+            Canvas(modifier = Modifier.weight(1f).height(10.dp)) {
+                val r = 2.dp.toPx()
+                val midY = size.height / 2
+                // Track, split at the centre: left half brass-tinted (retain), right half twin-tinted (replace).
+                drawLine(Brass.copy(alpha = 0.25f), Offset(0f, midY), Offset(size.width / 2, midY), strokeWidth = 3f)
+                drawLine(twinColor.copy(alpha = 0.25f), Offset(size.width / 2, midY), Offset(size.width, midY), strokeWidth = 3f)
+                drawLine(LineSoft, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), strokeWidth = 1f)
+                // Marker: user share → left is "you lead"; invert so a bigger user share pulls left.
+                val x = size.width * (1f - userShare.coerceIn(0f, 1f))
+                val markerColor = when {
+                    userShare > 0.5f -> Brass
+                    userShare < 0.5f -> twinColor
+                    else -> TextDim
+                }
+                drawCircle(markerColor.copy(alpha = 0.3f), radius = 7.dp.toPx(), center = Offset(x, midY))
+                drawCircle(markerColor, radius = 4.dp.toPx(), center = Offset(x, midY))
+                drawRoundRect(Color.Transparent, cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r))
+            }
+            Text("$twinPoints ${opponentLabel.uppercase()}", style = MaterialTheme.typography.labelLarge, color = twinColor, maxLines = 1)
+        }
+        Text(standing.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1)
+    }
+}
+
+/** W/L form dots, oldest first: filled brass = you, twin-coloured = the opponent. */
+@Composable
+fun FormDots(form: List<Boolean>, twinColor: Color = Cyan) {
+    Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+        form.forEach { userWon ->
+            Box(Modifier.size(8.dp).background(if (userWon) Brass else twinColor, CircleShape))
+        }
+        if (form.isEmpty()) Text("—", style = MaterialTheme.typography.labelSmall, color = TextFaint)
+    }
+}

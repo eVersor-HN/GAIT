@@ -36,4 +36,9 @@ data class SessionEntity(
     val isDuel: Boolean = false,
     /** Duel verdict: true = won (generation advanced), false = lost, null = not a duel / too short. */
     val duelWon: Boolean? = null,
+    /**
+     * Ledger points this round was worth (domain/ledger): 1 by default, 2 when the opponent
+     * staked on the forecast, 4 when the user called that stake, 3 for a duel.
+     */
+    val stake: Int = 1,
 )

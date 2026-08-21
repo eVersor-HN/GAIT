@@ -240,6 +240,7 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
                     mode = uiState.mode ?: TrackMode.OUTDOOR,
                     opponent = opponent,
                     isDuel = isDuel,
+                    callouts = uiState.callouts,
                 )
                 CorpoButton(
                     text = if (uiState.finishing) "Saving…" else "Stop",
@@ -307,6 +308,7 @@ private fun LiveSession(
     mode: TrackMode,
     opponent: LiveOpponent?,
     isDuel: Boolean,
+    callouts: List<LiveCallout>,
 ) {
     val name = opponent?.name ?: "Twin"
     val twinColor = if (opponent?.isHorde == true) Alert else Cyan
@@ -329,7 +331,20 @@ private fun LiveSession(
         Text(formatElapsed(snapshot.elapsedSeconds), style = MaterialTheme.typography.headlineLarge)
     }
 
-    SectionLabel("Live comparison")
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        SectionLabel("Live comparison")
+        if (opponent != null) {
+            FootNote(
+                when {
+                    isDuel -> "${opponent.stake} pts · duel"
+                    opponent.stakeCalled -> "${opponent.stake} pts · called"
+                    opponent.stake > 1 -> "${opponent.stake} pts staked"
+                    else -> "1 pt"
+                },
+                color = if (opponent.stake > 1) Alert else TextFaint,
+            )
+        }
+    }
 
     val youFraction: Float
     val twinFraction: Float
@@ -400,6 +415,35 @@ private fun LiveSession(
         } else if (!isDuel && opponent?.forecastPaceSecPerKm == null) {
             CorpoPanel {
                 Text("No forecast yet — $name is only watching this one.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
+        // --- Comms: the opponent talking mid-session, newest on top ---
+        if (callouts.isNotEmpty()) {
+            CorpoPanel {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    SectionLabel("Comms · $name", color = twinColor)
+                    FootNote("${callouts.size} callouts")
+                }
+                callouts.asReversed().take(3).forEach { c ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                        Text(
+                            formatElapsed(c.atSeconds),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextFaint,
+                            modifier = Modifier.padding(top = 3.dp),
+                        )
+                        Text(
+                            c.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = when (c.zone) {
+                                dev.eversorhn.gait.domain.live.LiveZone.BEHIND -> Alert
+                                dev.eversorhn.gait.domain.live.LiveZone.AHEAD -> MaterialTheme.colorScheme.onSurfaceVariant
+                                dev.eversorhn.gait.domain.live.LiveZone.LEVEL -> MaterialTheme.colorScheme.onSurface
+                            },
+                        )
+                    }
+                }
             }
         }
     } else {

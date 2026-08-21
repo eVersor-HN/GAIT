@@ -36,6 +36,11 @@ import dev.eversorhn.gait.ui.theme.ButtonKind
 import dev.eversorhn.gait.ui.theme.Brass
 import dev.eversorhn.gait.ui.theme.CorpoPanel
 import dev.eversorhn.gait.ui.theme.Good
+import dev.eversorhn.gait.ui.theme.Alert
+import dev.eversorhn.gait.ui.theme.Cyan
+import dev.eversorhn.gait.ui.theme.FootNote
+import dev.eversorhn.gait.ui.theme.SectionLabel
+import dev.eversorhn.gait.ui.theme.TextFaint
 
 @Composable
 fun StatsScreen(onDone: () -> Unit) {
@@ -90,6 +95,42 @@ fun StatsScreen(onDone: () -> Unit) {
                         ) { viewModel.selectPeriod(period) }
                         .padding(horizontal = 14.dp, vertical = 8.dp),
                 )
+            }
+        }
+
+        // --- Ledger for the period: totals and who owns which weekday ---
+        if (state.roundsPlayed > 0) {
+            val twinColor = if (state.isHorde) Alert else Cyan
+            CorpoPanel {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    SectionLabel("Asset ledger · ${state.period.label}")
+                    FootNote("${state.roundsPlayed} rounds")
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text("${state.userPoints}", style = MaterialTheme.typography.headlineLarge, color = Brass)
+                    Text("—", style = MaterialTheme.typography.headlineLarge, color = TextFaint)
+                    Text("${state.twinPoints}", style = MaterialTheme.typography.headlineLarge, color = twinColor)
+                }
+                FootNote(state.standing, color = TextFaint)
+                if (state.weekdayRecord.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        state.weekdayRecord.forEach { (d, u, t) ->
+                            Column(modifier = Modifier.weight(1f)) {
+                                FootNote(java.time.DayOfWeek.of(d).getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH))
+                                Text(
+                                    "$u–$t",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = when {
+                                        u > t -> Brass
+                                        t > u -> twinColor
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+                state.ownershipLine?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface) }
             }
         }
 

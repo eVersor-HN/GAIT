@@ -30,6 +30,16 @@ data class Persona(
     val handoffLine: (timesBeaten: Int, newGeneration: Int) -> String,
     /** Spoken after a *lost* Decommission Trial -- the Twin keeps its primary-asset status. */
     val duelLostLines: List<String>,
+    /** The stake it puts on today's forecast (domain/wager): [pace] = forecast pace label, [points] staked. */
+    val stakeLine: (pace: String, points: Int) -> String,
+    /** Its reaction when the user calls the stake and doubles it. */
+    val callLines: List<String>,
+    /** Mid-session, user ahead of its number: [gap] = "0:12/km". Sour, short. */
+    val liveAheadLines: List<(gap: String) -> String>,
+    /** Mid-session, user behind its number: [gap] = "0:12/km". Gloating, short. */
+    val liveBehindLines: List<(gap: String) -> String>,
+    /** Mid-session kilometre mark while level: [km]. */
+    val liveLevelLines: List<(km: Int) -> String>,
 )
 
 /** Grammar helpers for the forecast templates: "1 session" vs "12 sessions", "once" vs "12 times". */
@@ -77,6 +87,25 @@ object Personas {
             "That was your best shot? I'm staying. Obviously.",
             "You had one run to get rid of me and you paced it like a Sunday.",
         ),
+        stakeLine = { pace, pts ->
+            "You won't beat $pace today. I'd put money on it — so I'm putting $pts points on it."
+        },
+        callLines = listOf(
+            "Oh, you're calling it? Good. Makes it sweeter.",
+            "Doubled. Remember you did that to yourself.",
+        ),
+        liveAheadLines = listOf(
+            { gap -> "$gap under my number. Enjoy it while it lasts." },
+            { gap -> "Fine. $gap ahead. You'll give it back on the hill." },
+        ),
+        liveBehindLines = listOf(
+            { gap -> "$gap behind. Exactly where I said you'd be." },
+            { gap -> "$gap slow. Don't look at the watch, look at yourself." },
+        ),
+        liveLevelLines = listOf(
+            { km -> "Km $km. Right on my line. Predictable." },
+            { km -> "Km $km. You're running my forecast for me." },
+        ),
     )
 
     val betterSelf = Persona(
@@ -108,6 +137,25 @@ object Personas {
         duelLostLines = listOf(
             "Not today. That's allowed. The version of you that wins this is still in there.",
             "Close. Closer than last time. Again.",
+        ),
+        stakeLine = { pace, pts ->
+            "I'm staking $pts points that you stay slower than $pace. Prove I'm underestimating you."
+        },
+        callLines = listOf(
+            "Called. Now it matters. Good.",
+            "That's the version of you I'm betting against. Show me the other one.",
+        ),
+        liveAheadLines = listOf(
+            { gap -> "$gap ahead. This is the one I knew was in there." },
+            { gap -> "$gap under. Hold it — don't celebrate it." },
+        ),
+        liveBehindLines = listOf(
+            { gap -> "$gap behind. You've closed worse than this." },
+            { gap -> "$gap back. Decide now, not at the finish." },
+        ),
+        liveLevelLines = listOf(
+            { km -> "Km $km. Level. The next one decides who you are today." },
+            { km -> "Km $km. On the line. Step off it." },
         ),
     )
 
@@ -141,6 +189,25 @@ object Personas {
             "Trial failed. Primary asset status retained.",
             "Target pace not met. No generation change.",
         ),
+        stakeLine = { pace, pts ->
+            "Confidence sufficient. $pts points staked: actual pace will not beat $pace."
+        },
+        callLines = listOf(
+            "Stake doubled by asset. Logged.",
+            "Acknowledged. Outcome unchanged.",
+        ),
+        liveAheadLines = listOf(
+            { gap -> "Deviation: $gap faster than model." },
+            { gap -> "$gap ahead of projection. Monitoring." },
+        ),
+        liveBehindLines = listOf(
+            { gap -> "Deviation: $gap slower than model." },
+            { gap -> "$gap behind projection. Consistent with history." },
+        ),
+        liveLevelLines = listOf(
+            { km -> "Km $km. Within tolerance." },
+            { km -> "Km $km. Variance nominal." },
+        ),
     )
 
     val theEx = Persona(
@@ -173,6 +240,25 @@ object Personas {
             "You wanted me gone that badly and still couldn't. That's very us.",
             "I knew you'd fade at the end. I always knew.",
         ),
+        stakeLine = { pace, pts ->
+            "$pts points say you don't beat $pace today. I know you. I always did."
+        },
+        callLines = listOf(
+            "Calling it? You always did get loud right before you folded.",
+            "Doubled. Fine. I've seen this movie.",
+        ),
+        liveAheadLines = listOf(
+            { gap -> "$gap ahead. Huh. New." },
+            { gap -> "$gap under. Don't make it weird." },
+        ),
+        liveBehindLines = listOf(
+            { gap -> "$gap behind. There you are." },
+            { gap -> "$gap slow. Same as always. I'd know." },
+        ),
+        liveLevelLines = listOf(
+            { km -> "Km $km. Level. Very you." },
+            { km -> "Km $km. Right where I left you." },
+        ),
     )
 
     val theAuditor = Persona(
@@ -204,6 +290,25 @@ object Personas {
         duelLostLines = listOf(
             "Trial outcome: asset below target. Substitution upheld.",
             "Asset failed to exceed reference session. Status unchanged. Filed.",
+        ),
+        stakeLine = { pace, pts ->
+            "Projection confidence exceeds threshold. $pts points committed: asset will not beat $pace."
+        },
+        callLines = listOf(
+            "Asset has escalated the stake. Noted for review.",
+            "Counter-position recorded. Exposure doubled.",
+        ),
+        liveAheadLines = listOf(
+            { gap -> "Asset $gap ahead of projection. Flag raised." },
+            { gap -> "Positive variance: $gap. Pending confirmation." },
+        ),
+        liveBehindLines = listOf(
+            { gap -> "Asset $gap below projection. As filed." },
+            { gap -> "Negative variance: $gap. No surprise logged." },
+        ),
+        liveLevelLines = listOf(
+            { km -> "Km $km. Asset within projected band." },
+            { km -> "Km $km. No variance to report." },
         ),
     )
 

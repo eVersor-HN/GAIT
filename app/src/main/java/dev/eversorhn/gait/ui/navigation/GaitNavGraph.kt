@@ -9,6 +9,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.flow.combine
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -35,6 +38,12 @@ import dev.eversorhn.gait.ui.theme.Brass
 import dev.eversorhn.gait.ui.theme.CorpoBackground
 import dev.eversorhn.gait.ui.theme.CorpoStatusBar
 import dev.eversorhn.gait.ui.theme.FootNote
+import dev.eversorhn.gait.ui.theme.LedgerStrip
+import dev.eversorhn.gait.ui.theme.Alert
+import dev.eversorhn.gait.ui.theme.Cyan
+import dev.eversorhn.gait.domain.directive.Directive
+import dev.eversorhn.gait.domain.ledger.Ledger
+import dev.eversorhn.gait.data.db.entity.isHorde
 import dev.eversorhn.gait.ui.track.TrackScreen
 
 private object Routes {
@@ -76,9 +85,32 @@ fun GaitNavGraph() {
         else -> routeLabels[route] ?: "GAIT"
     }
 
+    // The Asset Ledger rides under the HUD on every screen once there's an opponent —
+    // the score is never more than a glance away.
+    val app = LocalContext.current.applicationContext as GaitApplication
+    val ledgerFlow = remember {
+        combine(app.repository.observeTwinProfile(), app.repository.observeSessions()) { profile, sessions ->
+            profile?.let { Triple(it, Ledger.from(sessions), Directive.standing(Ledger.from(sessions), it.twinName, it.isHorde)) }
+        }
+    }
+    val ledgerInfo by ledgerFlow.collectAsState(initial = null)
+    val onSetup = route == Routes.LOADING || route == Routes.OPPONENT_TYPE || route == Routes.NAMING || route == Routes.HORDE_SETUP
+
     CorpoBackground {
         Column(modifier = Modifier.fillMaxSize()) {
             CorpoStatusBar(label = label)
+            ledgerInfo?.let { (profile, ledger, standing) ->
+                if (!onSetup) {
+                    LedgerStrip(
+                        userPoints = ledger.userPoints,
+                        twinPoints = ledger.twinPoints,
+                        userShare = ledger.userShare,
+                        opponentLabel = if (profile.isHorde) "HORDE" else profile.twinName,
+                        standing = standing,
+                        twinColor = if (profile.isHorde) Alert else Cyan,
+                    )
+                }
+            }
 
             NavHost(navController = navController, startDestination = Routes.LOADING) {
                 composable(Routes.LOADING) {

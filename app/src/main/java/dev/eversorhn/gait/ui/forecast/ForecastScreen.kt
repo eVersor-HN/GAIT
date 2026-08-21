@@ -26,12 +26,15 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.R
 import dev.eversorhn.gait.domain.composure.ComposureState
+import dev.eversorhn.gait.domain.ledger.Side
 import dev.eversorhn.gait.ui.theme.Alert
 import dev.eversorhn.gait.ui.theme.Brass
 import dev.eversorhn.gait.ui.theme.ButtonKind
 import dev.eversorhn.gait.ui.theme.CorpoButton
 import dev.eversorhn.gait.ui.theme.CorpoPanel
+import dev.eversorhn.gait.ui.theme.Cyan
 import dev.eversorhn.gait.ui.theme.FootNote
+import dev.eversorhn.gait.ui.theme.FormDots
 import dev.eversorhn.gait.ui.theme.MessageCard
 import dev.eversorhn.gait.ui.theme.MessageTone
 import dev.eversorhn.gait.ui.theme.Meter
@@ -43,7 +46,6 @@ import dev.eversorhn.gait.ui.theme.SectionLabel
 import dev.eversorhn.gait.ui.theme.Sparkline
 import dev.eversorhn.gait.ui.theme.StatTile
 import dev.eversorhn.gait.ui.theme.TextFaint
-import dev.eversorhn.gait.ui.theme.Cyan
 
 @Composable
 fun ForecastScreen(
@@ -83,11 +85,23 @@ fun ForecastScreen(
                 Text("Loading…", style = MaterialTheme.typography.bodyLarge)
             }
             is ForecastUiState.Ready -> {
+                val twinColor = if (s.isHorde) Alert else Cyan
+                val them = if (s.isHorde) "the horde" else s.opponentName
+
                 PhaseTrack(current = 1)
                 ScreenTitle(
                     eyebrow = "Pre-Session Forecast",
                     headline = if (s.isHorde) "What the horde expects of you" else "What ${s.opponentName} expects today",
                 )
+
+                // --- The division's memo: the company forcing the comparison ---
+                CorpoPanel {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        SectionLabel("Memo · Asset Performance Division", color = Brass)
+                        FootNote(s.memo.ref)
+                    }
+                    Text(s.memo.body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                }
 
                 if (s.restStateLabel != null) {
                     Text(s.restStateLabel, style = MaterialTheme.typography.bodyMedium, color = Cyan)
@@ -102,9 +116,9 @@ fun ForecastScreen(
                     if (!s.coldStart) {
                         Spacer(Modifier.height(4.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            StatTile("Pace", s.forecastPaceLabel, accent = Cyan)
-                            StatTile("Distance", s.forecastDistanceLabel, accent = Cyan)
-                            StatTile("Finish", s.forecastFinishLabel, accent = Cyan)
+                            StatTile("Pace", s.forecastPaceLabel, accent = twinColor)
+                            StatTile("Distance", s.forecastDistanceLabel, accent = twinColor)
+                            StatTile("Finish", s.forecastFinishLabel, accent = twinColor)
                         }
                         Spacer(Modifier.height(2.dp))
                         FootNote(
@@ -116,11 +130,39 @@ fun ForecastScreen(
                     }
                 }
 
+                // --- The stake: the opponent commits points against you ---
+                s.stake?.let { st ->
+                    CorpoPanel(tone = if (st.called) PanelTone.WARN else PanelTone.TWIN) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            SectionLabel(if (s.isHorde) "Containment commitment" else "Model commitment", color = if (st.called) Alert else twinColor)
+                            Text(
+                                (if (st.called) "${st.calledPoints} pts · called" else "${st.points} pts at stake").uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (st.called) Alert else twinColor,
+                            )
+                        }
+                        Text(st.claim, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                        if (!st.called) {
+                            Spacer(Modifier.height(2.dp))
+                            CorpoButton(
+                                text = "Counter-stake · make it ${st.calledPoints} pts",
+                                onClick = viewModel::callStake,
+                                kind = ButtonKind.RISK,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            FootNote("Beat the forecast pace today and the points are yours. Miss it and they're ${if (s.isHorde) "theirs" else "${s.opponentName}'s"}.")
+                        } else {
+                            FootNote("Exposure doubled both ways · ${st.calledPoints} pts ride on today's pace")
+                        }
+                    }
+                }
+
                 FootNote("${s.generationLabel} ${s.generation} · ${s.opponentLabel} · basis: ${s.totalSessions} sessions")
 
                 CorpoButton(
                     text = when {
                         s.coldStart -> "Start first session"
+                        s.stake != null -> "Start route — take the points"
                         s.isHorde -> "Start route — outrun them"
                         else -> "Start route — refute it"
                     },
@@ -141,20 +183,60 @@ fun ForecastScreen(
                         Meter(fraction = s.metricPercent / 100f, color = Alert, threshold = s.trialThresholdPercent / 100f)
                         Text(
                             if (s.isHorde) {
-                                "They've learned your pace. One run, faster than your own strongest session, " +
-                                    "and the wave breaks."
+                                "They've learned your pace. One run, faster than your own strongest session, and the wave breaks."
                             } else {
-                                "${s.opponentName} predicts you well enough to replace you. Win a single duel " +
-                                    "against its strongest session to reset it."
+                                "${s.opponentName} predicts you well enough to replace you. Win a single duel against its strongest session to reset it."
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.height(4.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CorpoButton("Start duel", onClick = onStartDuel, kind = ButtonKind.RISK, modifier = Modifier.weight(1f))
-                        }
+                        CorpoButton("Start duel · 3 pts", onClick = onStartDuel, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth())
                         FootNote("${s.trialLabel} · min. 1 km · judged on average pace")
+                    }
+                }
+
+                // --- The ledger: how far apart you are ---
+                CorpoPanel {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        SectionLabel("Asset ledger")
+                        FootNote("${s.ledger.roundsPlayed} rounds")
+                    }
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Column {
+                            FootNote("You")
+                            Text("${s.ledger.userPoints}", style = MaterialTheme.typography.headlineLarge, color = Brass)
+                        }
+                        Text("—", style = MaterialTheme.typography.headlineLarge, color = TextFaint)
+                        Column {
+                            FootNote(them)
+                            Text("${s.ledger.twinPoints}", style = MaterialTheme.typography.headlineLarge, color = twinColor)
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Column(horizontalAlignment = Alignment.End) {
+                            FootNote("Last ${s.ledger.form().size.coerceAtLeast(1)}")
+                            FormDots(form = s.ledger.form().map { it == Side.USER }, twinColor = twinColor)
+                        }
+                    }
+                    Text(
+                        s.standing.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when (s.ledger.leader) {
+                            Side.USER -> Brass
+                            Side.TWIN -> twinColor
+                            null -> TextFaint
+                        },
+                    )
+                }
+
+                // --- The file the opponent keeps on you ---
+                s.intel?.let { i ->
+                    CorpoPanel {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            SectionLabel("Asset file")
+                            FootNote(i.tag)
+                        }
+                        Text(i.line, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
 
@@ -192,12 +274,12 @@ fun ForecastScreen(
                     MessageCard(
                         from = if (s.isHorde) "The Horde" else "${s.opponentName} (Twin-${s.generation})",
                         tag = (if (m.daysAgo == 0L) "today" else if (m.daysAgo == 1L) "yesterday" else "${m.daysAgo}d ago") +
-                            " · " + composureTag(m.state, s.isHorde),
+                            " · " + (m.state?.let { composureTag(it, s.isHorde) } ?: m.kind),
                         body = m.line,
                         tone = when (m.state) {
                             ComposureState.COWED -> MessageTone.COWED
-                            ComposureState.WATCHFUL -> MessageTone.WATCHFUL
                             ComposureState.PREDATORY -> MessageTone.PREDATORY
+                            ComposureState.WATCHFUL, null -> MessageTone.WATCHFUL
                         },
                     )
                 }
