@@ -2,6 +2,7 @@ package dev.eversorhn.gait.data.repository
 
 import android.content.Context
 import dev.eversorhn.gait.data.db.GaitDatabase
+import dev.eversorhn.gait.data.db.entity.ImportedAssetEntity
 import dev.eversorhn.gait.data.db.entity.PlannedDayOffEntity
 import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.db.entity.SessionEntity
@@ -30,6 +31,16 @@ class GaitRepository(private val db: GaitDatabase, private val appContext: Conte
 
     /** Activities that already have an opponent profile. */
     suspend fun activitiesWithProfile(): List<String> = db.twinProfileDao().getAllActivityTypes()
+
+    // --- Asset transfer: assets imported from other divisions ---
+
+    suspend fun getImportedAssets(): List<ImportedAssetEntity> = db.importedAssetDao().getAll()
+
+    suspend fun importAsset(id: String, name: String, payload: String, importedEpochDay: Long) {
+        db.importedAssetDao().upsert(ImportedAssetEntity(id, name, payload, importedEpochDay, System.currentTimeMillis()))
+    }
+
+    suspend fun deleteImportedAsset(id: String) = db.importedAssetDao().delete(id)
 
     // --- Rest & Vacation calendar: days marked off in advance (local epoch-day) ---
 
@@ -123,6 +134,7 @@ class GaitRepository(private val db: GaitDatabase, private val appContext: Conte
         db.sessionDao().deleteAll()
         db.twinMessageDao().deleteAll()
         db.plannedDayOffDao().deleteAll()
+        db.importedAssetDao().deleteAll()
         db.twinProfileDao().deleteAll()
     }
 }

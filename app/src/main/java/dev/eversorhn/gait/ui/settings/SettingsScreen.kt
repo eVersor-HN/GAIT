@@ -167,6 +167,76 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
+        // --- Asset transfer: export the division's file on you; import someone else's asset ---
+        val appCtx = androidx.compose.ui.platform.LocalContext.current
+        Text("Asset transfer", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            "Export the division's assessment of you as a text block. Another GAIT can import it: your asset then lives on in their division — climbs, gets reviewed, can be culled. Import someone's block below to take their asset into yours.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        var exportName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+        OutlinedTextField(
+            value = exportName,
+            onValueChange = { exportName = it },
+            label = { Text("Your name on the transfer") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        var importText by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+        var importNote by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+        var importedList by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<dev.eversorhn.gait.data.db.entity.ImportedAssetEntity>>(emptyList()) }
+        androidx.compose.runtime.LaunchedEffect(Unit) { importedList = appRepo.getImportedAssets() }
+        CorpoButton("Export my asset · share", onClick = {
+            scope.launch {
+                val profile = appRepo.getTwinProfile() ?: return@launch
+                val sessions = appRepo.getSessions()
+                val zone = java.time.ZoneId.systemDefault()
+                val today = java.time.LocalDate.now(zone).toEpochDay()
+                val enrolled = java.time.Instant.ofEpochMilli(appRepo.earliestEnrolmentEpochMillis() ?: profile.createdAtEpochMillis).atZone(zone).toLocalDate().toEpochDay()
+                val asset = dev.eversorhn.gait.domain.transfer.AssetTransfer.assess(
+                    sessions, dev.eversorhn.gait.domain.ledger.Ledger.from(sessions), (profile.fidelity * 100).toInt(),
+                    exportName.ifBlank { "Asset vs. ${profile.twinName}" },
+                    dev.eversorhn.gait.domain.roster.AssetKind.HUMAN_M, enrolled, today, profile.restDayMask, zone,
+                )
+                val text = dev.eversorhn.gait.domain.transfer.AssetTransfer.encode(asset)
+                val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(android.content.Intent.EXTRA_SUBJECT, "GAIT asset transfer · ${asset.id}")
+                    putExtra(android.content.Intent.EXTRA_TEXT, text)
+                }
+                appCtx.startActivity(android.content.Intent.createChooser(send, "Send your asset").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+        }, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            value = importText,
+            onValueChange = { importText = it },
+            label = { Text("Paste a GAIT-ASSET block") },
+            minLines = 3,
+            maxLines = 6,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        CorpoButton("Import asset", onClick = {
+            val parsed = dev.eversorhn.gait.domain.transfer.AssetTransfer.decode(importText)
+            if (parsed == null) { importNote = "That isn't a GAIT-ASSET block."; return@CorpoButton }
+            scope.launch {
+                appRepo.importAsset(parsed.id, parsed.name, importText, java.time.LocalDate.now().toEpochDay())
+                importedList = appRepo.getImportedAssets()
+                importText = ""
+                importNote = "${parsed.name} joined your division as ${parsed.id}. ${parsed.assessment}"
+            }
+        }, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth(), enabled = importText.isNotBlank())
+        importNote?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface) }
+        if (importedList.isNotEmpty()) {
+            Text("In your division", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            importedList.forEach { row ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("${row.id} · ${row.name}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    CorpoChip(label = "Remove", active = false, onClick = { scope.launch { appRepo.deleteImportedAsset(row.id); importedList = appRepo.getImportedAssets() } })
+                }
+            }
+        }
+
         // --- Notifications: the exit dialog can mute them; this is where they come back ---
         val ctx = androidx.compose.ui.platform.LocalContext.current
         var muted by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.notification.NotificationPrefs.isMuted(ctx)) }

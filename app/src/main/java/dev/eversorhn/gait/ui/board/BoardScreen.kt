@@ -252,6 +252,7 @@ private fun StandingRow(row: Standing, onClick: () -> Unit) {
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 statusTag(row.status)?.let { (t, c) -> Text(t, style = MaterialTheme.typography.labelSmall, color = c) }
+                if (row.asset.transferId != null) Text("TRANSFER", style = MaterialTheme.typography.labelSmall, color = Brass)
             }
             FootNote("${row.asset.id} · ${row.asset.unit}")
         }

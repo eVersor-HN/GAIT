@@ -4,6 +4,11 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.10.0] - 2026-08-21
+
+### Added
+- **Asset transfer.** Settings → "Export my asset · share" writes the division's assessment of *you* as a readable `GAIT-ASSET/1` text block — archetype ("reads as the comeback"), talent, consistency, grit, drift, training time, rest days, index, tenure, rounds, strengths/weaknesses and a two-line assessment — all derived from your real sessions and ledger (`domain/transfer/AssetTransfer`). Share it any way you like. Another GAIT pastes it under "Import asset": your asset then occupies a slot in *their* division with those fixed traits, simulated from the import day — it climbs, gets reviewed, shows as TRANSFER on their board with its own dossier, and can be decommissioned or culled there (transfer slots are never rehired). Imported assets are listed in Settings and can be removed. Stored in `imported_assets` (DB v9, `Migration(8, 9)`). 3 new unit tests (round-trip, assessment reads the data, garbage rejected) — 52 total.
+
 ## [0.9.0] - 2026-08-21
 
 ### Changed

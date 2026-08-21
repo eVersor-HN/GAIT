@@ -99,8 +99,18 @@ class BoardViewModel(private val repository: GaitRepository) : ViewModel() {
             val ledgerYesterday = Ledger.from(sessions.filter { it.startTimeEpochMillis < startOfToday })
             val fidelity = (profile.fidelity * 100).toInt()
 
+            val imported = repository.getImportedAssets().mapNotNull { row ->
+                dev.eversorhn.gait.domain.transfer.AssetTransfer.decode(row.payload)?.let { t ->
+                    dev.eversorhn.gait.domain.roster.ImportedSpec(
+                        id = t.id, name = t.name, kind = t.kind, archetype = t.archetype, talent = t.talent,
+                        consistency = t.consistency, grit = t.grit, trend = t.trend, trainingMinute = t.trainingMinute,
+                        restMask = t.restMask, startIndex = t.indexAtExport.toDouble().coerceIn(0.0, RosterEngine.CEILING),
+                        importedDay = row.importedEpochDay,
+                    )
+                }
+            }
             val snapshot = withContext(Dispatchers.Default) {
-                RosterEngine.snapshot(enrolled, today, zoned.hour * 60 + zoned.minute, ledger, fidelity, ledgerYesterday, includeTwin = !profile.isHorde)
+                RosterEngine.snapshot(enrolled, today, zoned.hour * 60 + zoned.minute, ledger, fidelity, ledgerYesterday, includeTwin = !profile.isHorde, imported = imported)
             }
 
             // --- Quarterly culls since enrolment: was the user ever in the bottom 400? ---

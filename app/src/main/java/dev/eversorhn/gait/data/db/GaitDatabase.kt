@@ -6,18 +6,20 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import dev.eversorhn.gait.data.db.dao.ImportedAssetDao
 import dev.eversorhn.gait.data.db.dao.PlannedDayOffDao
 import dev.eversorhn.gait.data.db.dao.SessionDao
 import dev.eversorhn.gait.data.db.dao.TwinMessageDao
 import dev.eversorhn.gait.data.db.dao.TwinProfileDao
+import dev.eversorhn.gait.data.db.entity.ImportedAssetEntity
 import dev.eversorhn.gait.data.db.entity.PlannedDayOffEntity
 import dev.eversorhn.gait.data.db.entity.SessionEntity
 import dev.eversorhn.gait.data.db.entity.TwinMessageEntity
 import dev.eversorhn.gait.data.db.entity.TwinProfileEntity
 
 @Database(
-    entities = [SessionEntity::class, TwinProfileEntity::class, TwinMessageEntity::class, PlannedDayOffEntity::class],
-    version = 8,
+    entities = [SessionEntity::class, TwinProfileEntity::class, TwinMessageEntity::class, PlannedDayOffEntity::class, ImportedAssetEntity::class],
+    version = 9,
     exportSchema = true,
 )
 abstract class GaitDatabase : RoomDatabase() {
@@ -25,6 +27,7 @@ abstract class GaitDatabase : RoomDatabase() {
     abstract fun twinProfileDao(): TwinProfileDao
     abstract fun twinMessageDao(): TwinMessageDao
     abstract fun plannedDayOffDao(): PlannedDayOffDao
+    abstract fun importedAssetDao(): ImportedAssetDao
 
     companion object {
         @Volatile private var instance: GaitDatabase? = null
@@ -38,7 +41,7 @@ abstract class GaitDatabase : RoomDatabase() {
                 )
                     // Real migrations from v5 on -- there is installed data on real devices
                     // now. Destructive fallback stays only for pre-v5 leftovers nobody has.
-                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .fallbackToDestructiveMigration()
                     .build().also { instance = it }
             }
@@ -50,6 +53,17 @@ abstract class GaitDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE sessions ADD COLUMN composureState TEXT")
                 db.execSQL("ALTER TABLE sessions ADD COLUMN isDuel INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE sessions ADD COLUMN duelWon INTEGER")
+            }
+        }
+
+        /** v0.10.0: assets imported from other users' divisions. */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS imported_assets (" +
+                        "id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, payload TEXT NOT NULL, " +
+                        "importedEpochDay INTEGER NOT NULL, importedAtEpochMillis INTEGER NOT NULL)"
+                )
             }
         }
 

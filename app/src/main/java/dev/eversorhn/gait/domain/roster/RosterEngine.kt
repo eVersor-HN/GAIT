@@ -35,6 +35,22 @@ enum class Archetype(val label: String) {
 
 enum class AssetStatus { ACTIVE, NEW_HIRE, ON_LEAVE, UNDER_REVIEW, INJURED, MAINTENANCE }
 
+/** An asset taken in from another user's division (domain/transfer): fixed traits, simulated from its import day. */
+data class ImportedSpec(
+    val id: String,
+    val name: String,
+    val kind: AssetKind,
+    val archetype: Archetype,
+    val talent: Double,
+    val consistency: Double,
+    val grit: Double,
+    val trend: Double,
+    val trainingMinute: Int,
+    val restMask: Int,
+    val startIndex: Double,
+    val importedDay: Long,
+)
+
 /** A simulated person (or synth) occupying a roster slot for one stretch of employment. */
 data class SimAsset(
     val slot: Int,
@@ -57,6 +73,8 @@ data class SimAsset(
     /** Bit (isoDay−1) set = rests that weekday. */
     val restMask: Int,
     val hiredDay: Long,
+    /** Set for assets imported from another division (slot >= ROSTER_SIZE). */
+    val transferId: String? = null,
 )
 
 data class Standing(
@@ -214,8 +232,11 @@ object RosterEngine {
         // Vacant slot waiting for a rehire.
         if (st.rehireAt > day) return DayResult(Double.NaN, AssetStatus.ACTIVE)
         if (st.rehireAt == day) {
-            st.asset = asset(st.asset.slot, st.asset.hireIndex + 1, day)
-            st.index = st.asset.talent - 40 + n(st.asset.slot.toLong(), st.asset.hireIndex.toLong(), 30) * 30
+            if (st.asset.transferId == null) {
+                st.asset = asset(st.asset.slot, st.asset.hireIndex + 1, day)
+                st.index = st.asset.talent - 40 + n(st.asset.slot.toLong(), st.asset.hireIndex.toLong(), 30) * 30
+            }
+            // imported: keep the fixed asset and its start index (set when the slot was created)
             st.injuryUntil = -1; st.leaveUntil = -1; st.rehireAt = -1
         }
         val a = st.asset
@@ -262,7 +283,7 @@ object RosterEngine {
         val reviewDay = ((day - foundingDay) % REVIEW_EVERY_DAYS) == 0L
         if (reviewDay && tenure > 30 && st.index < FLOOR) {
             fired += Decommissioned(a, day, st.index.roundToInt())
-            st.rehireAt = day + REHIRE_GAP_DAYS
+            st.rehireAt = if (a.transferId != null) Long.MAX_VALUE else day + REHIRE_GAP_DAYS
             return DayResult(Double.NaN, AssetStatus.ACTIVE)
         }
         val status = when {
@@ -288,6 +309,8 @@ object RosterEngine {
         val history: Array<DoubleArray>,
         /** For every cull day since founding: the closes of every slot that day (NaN = vacant). */
         val cullCloses: Map<Long, DoubleArray>,
+        val importKey: String,
+        val slotCount: Int,
     )
     @Volatile private var cache: Cache? = null
 
@@ -295,15 +318,17 @@ object RosterEngine {
      * Local epoch-day helpers: the roster lives in the user's local days so "today" matches
      * what they see on the clock. [enrolledEpochDay] is the user's profile creation day.
      */
-    fun snapshot(enrolledEpochDay: Long, todayEpochDay: Long, minuteOfDay: Int, ledger: LedgerState, fidelityPercent: Int, ledgerYesterday: LedgerState, includeTwin: Boolean = true): RosterSnapshot {
+    fun snapshot(enrolledEpochDay: Long, todayEpochDay: Long, minuteOfDay: Int, ledger: LedgerState, fidelityPercent: Int, ledgerYesterday: LedgerState, includeTwin: Boolean = true, imported: List<ImportedSpec> = emptyList()): RosterSnapshot {
         val foundingDay = enrolledEpochDay - PREHISTORY_DAYS
+        val importKey = imported.joinToString("|") { "${it.id}@${it.importedDay}" }
         val c = synchronized(this) {
-            cache?.takeIf { it.foundingDay == foundingDay && it.day == todayEpochDay } ?: build(foundingDay, todayEpochDay).also { cache = it }
+            cache?.takeIf { it.foundingDay == foundingDay && it.day == todayEpochDay && it.importKey == importKey }
+                ?: build(foundingDay, todayEpochDay, imported).also { cache = it }
         }
 
         // Intraday: an asset's today result only lands at its training minute; before that, yesterday's close shows.
-        val rows = ArrayList<Triple<SimAsset, Double, Pair<Double, AssetStatus>>>(ROSTER_SIZE)
-        for (i in 0 until ROSTER_SIZE) {
+        val rows = ArrayList<Triple<SimAsset, Double, Pair<Double, AssetStatus>>>(c.slotCount)
+        for (i in 0 until c.slotCount) {
             val a = c.assets[i]
             val t = c.today[i]; val y = c.yesterday[i]
             if (t.index.isNaN() && y.index.isNaN()) continue // vacant both days
@@ -326,7 +351,7 @@ object RosterEngine {
         // Ties between you and the model (both at 500 on day one) go to you: it has to earn the place.
         val twinRank = 1 + todaySorted.count { it.second > twinIndex } + (if (userIndex >= twinIndex) 1 else 0)
         val yesterdaySorted = rows.map { it.first.slot to it.third.first }.sortedByDescending { it.second }
-        val prevRankBySlot = HashMap<Int, Int>(ROSTER_SIZE)
+        val prevRankBySlot = HashMap<Int, Int>(c.slotCount)
         yesterdaySorted.forEachIndexed { i, (slot, v) -> prevRankBySlot[slot] = i + 1 + extra(v, userPrev, twinPrev) }
         val userPrevRank = 1 + yesterdaySorted.count { it.second > userPrev } + (if (twinPrev > userPrev) 1 else 0)
         val twinPrevRank = 1 + yesterdaySorted.count { it.second > twinPrev } + (if (userPrev >= twinPrev) 1 else 0)
@@ -402,28 +427,43 @@ object RosterEngine {
         )
     }
 
-    private fun build(foundingDay: Long, todayEpochDay: Long): Cache {
+    /** Slots >= ROSTER_SIZE are imported assets: fixed traits, hired on their import day, never rehired. */
+    private fun importedAsset(slot: Int, spec: ImportedSpec): SimAsset = SimAsset(
+        slot = slot, hireIndex = 0, id = spec.id, name = spec.name, kind = spec.kind, unit = "Transfer · external division",
+        archetype = spec.archetype, talent = spec.talent, consistency = spec.consistency, grit = spec.grit, trend = spec.trend,
+        trainingMinute = spec.trainingMinute, restMask = spec.restMask, hiredDay = spec.importedDay, transferId = spec.id,
+    )
+
+    private fun build(foundingDay: Long, todayEpochDay: Long, imported: List<ImportedSpec> = emptyList()): Cache {
+        val slotCount = ROSTER_SIZE + imported.size
         // Slots below INITIAL_HEADCOUNT are staffed at founding; the rest are hired into at
         // HIRES_PER_DAY, so the division grows toward ROSTER_SIZE until the first cull.
-        val states = Array(ROSTER_SIZE) { slot ->
-            val a = asset(slot, 0, foundingDay)
-            val st = SlotState(a, a.talent + n(slot.toLong(), 0, 30) * 40, -1, -1, -1)
-            if (slot >= INITIAL_HEADCOUNT) st.rehireAt = foundingDay + 1 + ((slot - INITIAL_HEADCOUNT) / HIRES_PER_DAY).toLong()
-            st
+        // Slots from ROSTER_SIZE up are imported assets, hired on their import day.
+        val states = Array(slotCount) { slot ->
+            if (slot >= ROSTER_SIZE) {
+                val spec = imported[slot - ROSTER_SIZE]
+                val a = importedAsset(slot, spec)
+                SlotState(a, spec.startIndex, -1, -1, spec.importedDay)
+            } else {
+                val a = asset(slot, 0, foundingDay)
+                val st = SlotState(a, a.talent + n(slot.toLong(), 0, 30) * 40, -1, -1, -1)
+                if (slot >= INITIAL_HEADCOUNT) st.rehireAt = foundingDay + 1 + ((slot - INITIAL_HEADCOUNT) / HIRES_PER_DAY).toLong()
+                st
+            }
         }
         val fired = ArrayList<Decommissioned>()
         var yesterday: List<DayResult> = emptyList()
         var today: List<DayResult> = emptyList()
-        val history = Array(ROSTER_SIZE) { DoubleArray(HISTORY_DAYS) { Double.NaN } }
+        val history = Array(slotCount) { DoubleArray(HISTORY_DAYS) { Double.NaN } }
         val cullCloses = HashMap<Long, DoubleArray>()
         var day = foundingDay
         while (day <= todayEpochDay) {
-            val res = ArrayList<DayResult>(ROSTER_SIZE)
+            val res = ArrayList<DayResult>(slotCount)
             for (st in states) res += step(st, day, foundingDay, fired)
             // Quarterly cull: the bottom CULL_COUNT by close (tenure ≥ grace) are decommissioned;
             // their slots are refilled gradually over the next quarter.
             if (day > foundingDay && (day - foundingDay) % CULL_EVERY_DAYS == 0L) {
-                cullCloses[day] = DoubleArray(ROSTER_SIZE) { res[it].index }
+                cullCloses[day] = DoubleArray(slotCount) { res[it].index }
                 val eligible = states.indices.filter { i ->
                     !res[i].index.isNaN() && states[i].rehireAt < 0 && day - states[i].asset.hiredDay >= CULL_GRACE_DAYS
                 }.sortedBy { res[it].index }
@@ -431,18 +471,18 @@ object RosterEngine {
                 culled.forEachIndexed { k, i ->
                     val st = states[i]
                     fired += Decommissioned(st.asset, day, st.index.roundToInt())
-                    st.rehireAt = day + REHIRE_GAP_DAYS + (k / HIRES_PER_DAY).toLong()
+                    st.rehireAt = if (st.asset.transferId != null) Long.MAX_VALUE else day + REHIRE_GAP_DAYS + (k / HIRES_PER_DAY).toLong()
                     res[i] = DayResult(Double.NaN, AssetStatus.ACTIVE)
                 }
             }
             val back = (todayEpochDay - day).toInt()
-            if (back < HISTORY_DAYS) for (i in 0 until ROSTER_SIZE) history[i][HISTORY_DAYS - 1 - back] = res[i].index
+            if (back < HISTORY_DAYS) for (i in 0 until slotCount) history[i][HISTORY_DAYS - 1 - back] = res[i].index
             if (day == todayEpochDay - 1) yesterday = res
             if (day == todayEpochDay) today = res
             day++
         }
         if (yesterday.isEmpty()) yesterday = today
-        return Cache(foundingDay, todayEpochDay, today, yesterday, states.map { it.asset }, fired, history, cullCloses)
+        return Cache(foundingDay, todayEpochDay, today, yesterday, states.map { it.asset }, fired, history, cullCloses, importKey = imported.joinToString("|") { "${it.id}@${it.importedDay}" }, slotCount = slotCount)
     }
 
     /** Where a new asset (and its model) starts: under the floor, i.e. last place. Everything above is earned. */
