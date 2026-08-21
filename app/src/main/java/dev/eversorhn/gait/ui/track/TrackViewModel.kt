@@ -494,7 +494,12 @@ class TrackViewModel(
         _uiState.value = _uiState.value.copy(finishing = true)
         viewModelScope.launch {
             // Pace and the session's duration are based on moving time, not wall time.
-            val result = finalizer.finalize(distanceMeters, movingSeconds, dataSource = SessionSource.GPS, duel = _uiState.value.duel)
+            val result = finalizer.finalize(
+                distanceMeters, movingSeconds, dataSource = SessionSource.GPS, duel = _uiState.value.duel,
+                route = snapshot.routePolyline.takeIf { it.isNotBlank() },
+                elevationGainMeters = snapshot.elevationGainMeters.takeIf { snapshot.gpsFixCount > 0 },
+                splitSeconds = snapshot.splitSeconds,
+            )
             _uiState.value = _uiState.value.copy(finishing = false, result = result)
         }
     }

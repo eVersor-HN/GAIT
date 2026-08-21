@@ -74,6 +74,13 @@ class LocationTrackingService : Service() {
     /** (cumulative distance m, cumulative moving s) after each moving fix — the rolling-pace window. */
     private val paceSamples = ArrayDeque<Pair<Double, Int>>()
     private val rollingWindowMeters = 200.0
+    // Route trace / climb / splits (domain/route/RouteMetrics)
+    private val routePoints = ArrayList<dev.eversorhn.gait.domain.route.RouteMetrics.Point>()
+    private var lastAltitude: Double? = null
+    private var elevationGain = 0.0
+    private var lastKmSplit = 0
+    private var lastKmMoving = 0
+    private val splits = ArrayList<Int>()
     private var locationUpdatesActive = false
 
     private val locationCallback = object : LocationCallback() {
@@ -108,6 +115,7 @@ class LocationTrackingService : Service() {
         lastAcceptedLocation = null
         lastAcceptedRealtime = 0L
         paceSamples.clear()
+        routePoints.clear(); lastAltitude = null; elevationGain = 0.0; lastKmSplit = 0; lastKmMoving = 0; splits.clear()
         val nowReal = SystemClock.elapsedRealtime()
         val nowEpoch = System.currentTimeMillis()
 
@@ -274,11 +282,30 @@ class LocationTrackingService : Service() {
             val rolling = if (oldest != null && newDistance - oldest.first >= rollingWindowMeters && newMoving - oldest.second > 0) {
                 (newMoving - oldest.second) / ((newDistance - oldest.first) / 1000.0)
             } else avgPace
+            // Route trace: keep a point every ~25 m of movement. Climb: altitude steps >= 3 m.
+            if (moved || previous == null) {
+                val p = dev.eversorhn.gait.domain.route.RouteMetrics.Point(location.latitude, location.longitude)
+                if (dev.eversorhn.gait.domain.route.RouteMetrics.shouldKeep(routePoints.lastOrNull(), p)) routePoints += p
+                if (location.hasAltitude()) {
+                    val alt = location.altitude
+                    val la = lastAltitude
+                    if (la == null) lastAltitude = alt
+                    else if (kotlin.math.abs(alt - la) >= dev.eversorhn.gait.domain.route.RouteMetrics.CLIMB_STEP_METERS) { if (alt > la) elevationGain += alt - la; lastAltitude = alt }
+                }
+            }
+            val km = (newDistance / 1000.0).toInt()
+            if (km > lastKmSplit) {
+                for (k in (lastKmSplit + 1)..km) { splits += newMoving - lastKmMoving; lastKmMoving = newMoving }
+                lastKmSplit = km
+            }
             s.copy(
                 distanceMeters = newDistance,
                 movingSeconds = newMoving,
                 currentPaceSecPerKm = rolling,
                 avgPaceSecPerKm = avgPace,
+                routePolyline = if (routePoints.size % 4 == 0 || s.routePolyline.isEmpty()) dev.eversorhn.gait.domain.route.RouteMetrics.encode(routePoints) else s.routePolyline,
+                elevationGainMeters = elevationGain,
+                splitSeconds = splits.toList(),
                 gpsFixCount = s.gpsFixCount + 1,
                 autoPaused = previous != null && !moved,
             )

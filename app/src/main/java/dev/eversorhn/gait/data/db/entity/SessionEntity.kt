@@ -41,4 +41,15 @@ data class SessionEntity(
      * staked on the forecast, 4 when the user called that stake, 3 for a duel.
      */
     val stake: Int = 1,
+    // --- v0.14.0: the dimensions beyond pace (domain/route/RouteMetrics) ---
+    /** Downsampled GPS trace, "lat,lon;…" (~25 m steps). Null for indoor/manual sessions. */
+    val route: String? = null,
+    /** Positive altitude gain in metres, from GPS altitude. Null if unknown. */
+    val elevationGainMeters: Double? = null,
+    /** Steadiness 0..1 (1 − CV of km splits). Null if < 2 splits. */
+    val consistency: Double? = null,
+    /** 0..1 vs. every earlier route; null for the first route / no route. */
+    val routeNovelty: Double? = null,
+    /** The model's expected steadiness for this session (EWMA of your prior ones). */
+    val forecastConsistency: Double? = null,
 )

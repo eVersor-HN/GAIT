@@ -28,6 +28,12 @@ data class TrackingSnapshot(
     val currentPaceSecPerKm: Double? = null,
     /** Outdoor only: whole-session moving pace — what the Debrief will judge. */
     val avgPaceSecPerKm: Double? = null,
+    /** Outdoor only: downsampled trace "lat,lon;…" (~25 m steps), grows as you go. */
+    val routePolyline: String = "",
+    /** Outdoor only: positive altitude gain so far, metres (GPS altitude, 3 m step filter). */
+    val elevationGainMeters: Double = 0.0,
+    /** Outdoor only: moving seconds per completed kilometre. */
+    val splitSeconds: List<Int> = emptyList(),
     val gpsFixCount: Int = 0,
     /** Outdoor only: the last GPS interval showed effectively no movement. */
     val autoPaused: Boolean = false,

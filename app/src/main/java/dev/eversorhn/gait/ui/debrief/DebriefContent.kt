@@ -156,12 +156,23 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
         if (result.hadForecast) {
             CorpoPanel {
                 CompareGrid(
-                    rows = listOf(
-                        CompareRow(result.paceWord, result.forecastPaceLabel, result.actualPaceLabel, actualGood = result.beatForecast),
-                        CompareRow("Distance", result.forecastDistanceLabel, result.actualDistanceLabel),
-                        CompareRow("Finish", result.forecastFinishLabel, result.actualFinishLabel),
-                    )
+                    rows = buildList {
+                        if (result.scoredOnDimensions) {
+                            add(CompareRow("Route", "usual", result.routeNoveltyPercent?.let { if (it >= 40) "new · $it%" else "usual · $it% new" } ?: "no trace", actualGood = result.routeNoveltyPercent?.let { it >= 40 }))
+                            add(CompareRow("Steadiness", result.forecastConsistencyPercent?.let { "$it%" } ?: "—", result.consistencyPercent?.let { "$it%" } ?: "—",
+                                actualGood = if (result.consistencyPercent != null && result.forecastConsistencyPercent != null) result.consistencyPercent >= result.forecastConsistencyPercent + 2 else null))
+                            add(CompareRow(result.paceWord, result.forecastPaceLabel, result.actualPaceLabel))
+                        } else {
+                            add(CompareRow(result.paceWord, result.forecastPaceLabel, result.actualPaceLabel, actualGood = result.beatForecast))
+                            result.consistencyPercent?.let { add(CompareRow("Steadiness", result.forecastConsistencyPercent?.let { f -> "$f%" } ?: "—", "$it%")) }
+                        }
+                        add(CompareRow("Distance", result.forecastDistanceLabel, result.actualDistanceLabel))
+                        if (result.elevationGainLabel != null) add(CompareRow("Climb", result.forecastElevationLabel ?: "—", result.elevationGainLabel))
+                        add(CompareRow("Finish", result.forecastFinishLabel, result.actualFinishLabel))
+                        if (!result.scoredOnDimensions && result.routeNoveltyPercent != null) add(CompareRow("Route", "usual", if (result.routeNoveltyPercent >= 40) "new · ${result.routeNoveltyPercent}%" else "usual"))
+                    }
                 )
+                if (result.scoredOnDimensions) FootNote("Motor-assisted: judged on route novelty (≥ 40 % new) or steadiness above the model's expectation — not on speed")
                 if (result.dataSource == SessionSource.MANUAL) {
                     Spacer(Modifier.height(2.dp))
                     FootNote("Self-reported · not GPS-verified")

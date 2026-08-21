@@ -84,6 +84,13 @@ data class DebriefResult(
     val commendation: String? = null,
     /** "Pace" or "Speed", per the active activity. */
     val paceWord: String = "Pace",
+    /** Motor-assisted activities: the round was judged on novelty/steadiness, not on pace. */
+    val scoredOnDimensions: Boolean = false,
+    val routeNoveltyPercent: Int? = null,
+    val consistencyPercent: Int? = null,
+    val forecastConsistencyPercent: Int? = null,
+    val elevationGainLabel: String? = null,
+    val forecastElevationLabel: String? = null,
 )
 
 /**
@@ -114,6 +121,9 @@ class SessionFinalizer(
         durationSeconds: Int,
         dataSource: String = SessionSource.GPS,
         duel: Boolean = false,
+        route: String? = null,
+        elevationGainMeters: Double? = null,
+        splitSeconds: List<Int> = emptyList(),
     ): DebriefResult {
         require(distanceMeters > 0.0 && durationSeconds > 0) { "finalize() needs a positive distance and duration" }
 
@@ -131,6 +141,17 @@ class SessionFinalizer(
 
         val priorSessions = repository.getSessions()
         val forecast = forecastEngine.forecast(priorSessions, dayOfWeek, now.toEpochMilli())
+
+        // --- The dimensions beyond pace: route novelty, steadiness, climb ---
+        val activity = dev.eversorhn.gait.domain.activity.Activities.byKey(repository.activeActivityType)
+        val routePoints = dev.eversorhn.gait.domain.route.RouteMetrics.decode(route)
+        val priorRoutes = priorSessions.mapNotNull { it.route }.take(60).map { dev.eversorhn.gait.domain.route.RouteMetrics.decode(it) }
+        val novelty = dev.eversorhn.gait.domain.route.RouteMetrics.novelty(routePoints, priorRoutes)
+        val consistency = dev.eversorhn.gait.domain.route.RouteMetrics.consistency(splitSeconds)
+        // The model's expected steadiness: EWMA of your last steady sessions (newest weighs most).
+        val priorCons = priorSessions.mapNotNull { it.consistency }.take(8)
+        val forecastConsistency = if (priorCons.size >= 2) priorCons.asReversed().fold(priorCons.last()) { acc, c -> acc * 0.7 + c * 0.3 } else null
+        val forecastClimb = priorSessions.mapNotNull { it.elevationGainMeters }.take(8).takeIf { it.isNotEmpty() }?.average()
 
         val isHorde = profile?.isHorde == true
         val persona = if (profile != null && !isHorde) Personas.byKey(profile.personaKey) else null
@@ -196,7 +217,9 @@ class SessionFinalizer(
             }
         }
 
-        val opponentLine: String? = when {
+        fun speedWords(line: String?): String? =
+            if (line != null && activity.usesSpeed) line.replace("pace", "speed").replace("Pace", "Speed") else line
+        val opponentLine: String? = speedWords(when {
             isRestPeriod -> null
             verdict == DecommissionTrial.Verdict.LOST ->
                 if (isHorde) HordeSoundCues.duelLostCaption() else persona?.duelLostLines?.random(Random)
@@ -208,7 +231,7 @@ class SessionFinalizer(
                 ComposureState.PREDATORY -> persona.predatoryLines.random(Random)
             }
             else -> null
-        }
+        })
 
         repository.logSession(
             SessionEntity(
@@ -231,6 +254,11 @@ class SessionFinalizer(
                     else -> null
                 },
                 stake = roundStake,
+                route = route,
+                elevationGainMeters = elevationGainMeters,
+                consistency = consistency,
+                routeNovelty = novelty,
+                forecastConsistency = forecastConsistency,
             )
         )
 
@@ -268,6 +296,12 @@ class SessionFinalizer(
             actualPaceLabel = dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(avgPace, repository.activeActivityType),
             paceWord = dev.eversorhn.gait.domain.activity.Activities.paceWord(repository.activeActivityType),
             composureState = composureState,
+            scoredOnDimensions = !activity.paceMeaningful,
+            routeNoveltyPercent = novelty?.let { (it * 100).toInt() },
+            consistencyPercent = consistency?.let { (it * 100).toInt() },
+            forecastConsistencyPercent = forecastConsistency?.let { (it * 100).toInt() },
+            elevationGainLabel = elevationGainMeters?.let { "${it.toInt()} m" },
+            forecastElevationLabel = forecastClimb?.let { "~${it.toInt()} m" },
             twinLine = opponentLine,
             newFidelityPercent = (newFidelity * 100).toInt(),
             dataSource = dataSource,
@@ -292,7 +326,12 @@ class SessionFinalizer(
                     handoffLine = handoffLine,
                 )
             },
-            roundWinner = if (forecast != null && !isRestPeriod) (if (avgPace < forecast.forecastPaceSecPerKm) Side.USER else Side.TWIN) else null,
+            roundWinner = Ledger.winnerOf(
+                stubForComposure(avgPace, forecast?.forecastPaceSecPerKm).copy(
+                    activityType = repository.activeActivityType, isRestDay = isRestPeriod,
+                    routeNovelty = novelty, consistency = consistency, forecastConsistency = forecastConsistency,
+                )
+            ),
             stake = roundStake,
             stakeWasOpen = stakeOpen,
             stakeCalled = stakeCalled,

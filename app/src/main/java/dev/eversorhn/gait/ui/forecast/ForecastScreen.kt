@@ -108,9 +108,16 @@ fun ForecastScreen(
                     if (!s.coldStart) {
                         Spacer(Modifier.height(4.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            StatTile(s.paceWord, s.forecastPaceLabel, accent = twinColor)
-                            StatTile("Distance", s.forecastDistanceLabel, accent = twinColor)
-                            StatTile("Finish", s.forecastFinishLabel, accent = twinColor)
+                            if (s.scoredOnDimensions) {
+                                StatTile("Route", s.usualRouteShare?.let { "$it% usual" } ?: "—", accent = twinColor, sub = "new route = round")
+                                StatTile("Steadiness", s.forecastConsistencyPercent?.let { "$it%" } ?: "—", accent = twinColor, sub = "beat it = round")
+                                StatTile("Distance", s.forecastDistanceLabel, accent = twinColor)
+                            } else {
+                                StatTile(s.paceWord, s.forecastPaceLabel, accent = twinColor)
+                                StatTile("Distance", s.forecastDistanceLabel, accent = twinColor)
+                                if (s.forecastClimbLabel != null && (s.activityLabel == "Hiking" || s.activityLabel == "Cycling")) StatTile("Climb", s.forecastClimbLabel, accent = twinColor)
+                                else StatTile("Finish", s.forecastFinishLabel, accent = twinColor)
+                            }
                         }
                         Spacer(Modifier.height(2.dp))
                         FootNote(

@@ -120,8 +120,12 @@ fun RestDaysScreen(onDone: () -> Unit) {
             )
         }
 
-        // --- Vacation bank ---
-        CorpoPanel {
+        // --- Vacation bank (folded unless you're on one) ---
+        dev.eversorhn.gait.ui.theme.CollapsiblePanel(
+            title = if (state.onVacationUntilLabel != null) "On vacation" else "Vacation bank",
+            summary = state.onVacationUntilLabel?.let { "Until $it" } ?: "${state.vacationDaysRemaining} days left this year · tap to book a block",
+            initiallyExpanded = state.onVacationUntilLabel != null,
+        ) {
             if (state.onVacationUntilLabel != null) {
                 SectionLabel("On vacation", color = Cyan)
                 Text("Until ${state.onVacationUntilLabel}", style = MaterialTheme.typography.bodyLarge)

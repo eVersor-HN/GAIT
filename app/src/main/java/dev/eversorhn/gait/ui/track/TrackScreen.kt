@@ -173,7 +173,11 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
             uiState.awaitingIndoorDistance -> {
                 ScreenTitle(screenEyebrow, "What did the machine say?")
                 Text(
-                    "Timed at ${formatElapsed(uiState.indoorElapsedSeconds)}. Enter the distance shown on the console.",
+                    "Timed at ${formatElapsed(uiState.indoorElapsedSeconds)}. " + when (dev.eversorhn.gait.domain.activity.Activities.byKey((LocalContext.current.applicationContext as dev.eversorhn.gait.GaitApplication).repository.activeActivityType).key) {
+                        "WHEELCHAIR", "HAND_CYCLE" -> "Enter the distance from your roller or trainer display — or your best estimate."
+                        "E_SCOOTER", "E_BIKE" -> "Enter the trip distance from the display."
+                        else -> "Enter the distance shown on the console."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -448,6 +452,9 @@ private fun LiveSession(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatTile("Distance", "%.2f km".format(snapshot.distanceMeters / 1000.0), sub = referenceDistance?.let { "of %.2f km".format(it / 1000.0) })
             StatTile("Moving", formatElapsed(snapshot.movingSeconds), sub = referenceFinish?.let { "${if (isDuel) "target" else "forecast"} ${formatDuration(it)}" })
+            if (activity.key == "HIKING" || activity.key == "CYCLING" || activity.key == "E_BIKE" || activity.key == "HAND_CYCLE" || snapshot.elevationGainMeters >= 20) {
+                StatTile("Climb", "${snapshot.elevationGainMeters.toInt()} m", sub = snapshot.splitSeconds.takeIf { it.size >= 2 }?.let { sp -> dev.eversorhn.gait.domain.route.RouteMetrics.consistency(sp)?.let { "steady ${(it * 100).toInt()}%" } })
+            }
         }
         if (snapshot.gpsFixCount == 0) {
             Text("Waiting for a GPS fix…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -541,11 +548,23 @@ private fun LiveSession(
             }
         }
     } else {
+        // Indoor: no distance live — so the clock against the model is the instrument.
+        val remaining = referenceFinish?.let { it - snapshot.elapsedSeconds }
+        if (remaining != null) {
+            CorpoPanel(tone = if (remaining > 0) PanelTone.NEUTRAL else PanelTone.WARN) {
+                SectionLabel(if (remaining > 0) "$name finishes in" else "$name has finished", color = if (remaining > 0) MaterialTheme.colorScheme.onSurfaceVariant else Alert)
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(if (remaining > 0) formatElapsed(remaining) else "+" + formatElapsed(-remaining), style = MaterialTheme.typography.headlineLarge, color = if (remaining > 0) Brass else Alert)
+                    Text((if (remaining > 0) "until its ${formatDuration(referenceFinish)} · be done by then" else "over its time — distance decides now").uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, modifier = Modifier.padding(bottom = 6.dp))
+                }
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatTile("Elapsed", formatElapsed(snapshot.elapsedSeconds), accent = Brass)
             StatTile("$name finish", referenceFinish?.let { formatDuration(it) } ?: "—", accent = twinColor)
+            StatTile("Riding", "${opponent?.stake ?: 1} pt${if ((opponent?.stake ?: 1) == 1) "" else "s"}")
         }
-        Text("Indoor session — distance logged on stop.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Indoor · timed. Distance is entered when you stop; the round is judged on it.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     snapshot.error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error) }
 }

@@ -132,7 +132,8 @@ fun RowScope.StatTile(label: String, value: String, accent: Color = MaterialThem
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1)
-        Text(value, style = MaterialTheme.typography.titleLarge, color = accent, maxLines = 1)
+        // Long values (e.g. "27.1km/h") step down a size instead of clipping in a third-width tile.
+        Text(value, style = if (value.length > 7) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge, color = accent, maxLines = 1, softWrap = false)
         if (sub != null) Text(sub, style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1)
     }
 }

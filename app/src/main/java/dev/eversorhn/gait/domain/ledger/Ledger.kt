@@ -78,11 +78,32 @@ object Ledger {
     /** A duel is worth this many points to whoever takes it. */
     const val DUEL_STAKE = 3
 
-    /** A round goes to the user only if they actually beat the forecast pace; a tie is a correct prediction. */
+    /** New route beyond this → the model didn't see it coming. */
+    const val NOVELTY_WIN = 0.4
+    /** Steadier than the model's expectation by at least this. */
+    const val CONSISTENCY_MARGIN = 0.02
+
+    /**
+     * Pace activities: a round goes to the user only if they beat the forecast pace (a tie is a
+     * correct prediction). Motor-assisted activities (e-scooter, e-bike — docs/activities-and-
+     * dimensions.md): pace says nothing, so the round is judged on what the model can't script —
+     * a genuinely new route, or a steadier ride than it expected. Needs a prior steadiness
+     * expectation or a route to compare; otherwise the session is baseline, not a round.
+     */
     fun winnerOf(session: SessionEntity): Side? {
-        val forecast = session.forecastPaceSecPerKm ?: return null
         if (session.isRestDay) return null
-        return if (session.avgPaceSecPerKm < forecast) Side.USER else Side.TWIN
+        val paceBased = dev.eversorhn.gait.domain.activity.Activities.byKey(session.activityType).paceMeaningful
+        if (paceBased) {
+            val forecast = session.forecastPaceSecPerKm ?: return null
+            return if (session.avgPaceSecPerKm < forecast) Side.USER else Side.TWIN
+        }
+        val novelty = session.routeNovelty
+        val cons = session.consistency
+        val expected = session.forecastConsistency
+        if (novelty == null && (cons == null || expected == null)) return null
+        val newRoute = novelty != null && novelty >= NOVELTY_WIN
+        val steadier = cons != null && expected != null && cons >= expected + CONSISTENCY_MARGIN
+        return if (newRoute || steadier) Side.USER else Side.TWIN
     }
 
     fun from(sessionsNewestFirst: List<SessionEntity>): LedgerState {

@@ -4,6 +4,21 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.14.0] - 2026-08-21
+
+The dimensions beyond pace — the part that makes cycling, hiking and the motor-assisted activities real.
+
+### Added
+- **Routes are stored** (`domain/route/RouteMetrics`): the outdoor service keeps a downsampled GPS trace (~25 m steps, "lat,lon;…") per session, plus **climb** (positive altitude gain with a 3 m noise filter) and **per-km splits**. DB v10 (`route`, `elevationGainMeters`, `consistency`, `routeNovelty`, `forecastConsistency`).
+- **Route novelty**: each new route is compared on a ~55 m grid against everything before (Jaccard overlap); novelty = 1 − best overlap. **Steadiness**: 1 − CV of the km splits. The model's expected steadiness is an EWMA of your recent ones.
+- **Motor-assisted activities are judged on the dimensions, not speed** (E-Scooter, E-Bike): the round goes to you for a genuinely new route (≥ 40 % new) or a ride steadier than the model expected (+2 pp); otherwise to the model. Forecast tiles become Route (usual-route share) · Steadiness · Distance, with a forecast line that says so ("A new route or a steadier ride takes the round — speed doesn't"). Debrief rows: Route (usual → new · 62 %), Steadiness (expected → actual), then speed for information. Pace activities keep the pace rule and additionally show Steadiness, Climb and Route rows when data exists.
+- **Hiking / Cycling**: Climb tile on the Forecast (average of recent climbs), a live **Climb** tile with steadiness underneath, Climb row on the Debrief.
+- **Indoor live screen** gets an instrument: "**Model finishes in** 12:30" counting down against the model's forecast finish; turns red with "+0:42 over its time — distance decides now" once past it; points riding shown.
+
+### Changed
+- Persona quotes say "speed" instead of "pace" for wheeled activities (Debrief, handoff, stake lines); indoor distance prompt is activity-aware (roller/trainer display, trip display, console); the vacation bank folds away unless a vacation is running.
+- 4 new unit tests for RouteMetrics (round-trip, novelty on same loop vs. elsewhere, consistency/climb, downsampling) — 56 total.
+
 ## [0.13.0] - 2026-08-21
 
 Speedrun pass through every activity, as a multi-sport user would: what's harmonious, what's reachable fast, what can't be chosen, where space is wasted, does the loop (before / during / after) hold.

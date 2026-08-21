@@ -72,6 +72,11 @@ sealed interface ForecastUiState {
         val stake: OpenStake?,
         val activityLabel: String,
         val paceWord: String,
+        /** Motor-assisted: the round is judged on route novelty / steadiness, not pace. */
+        val scoredOnDimensions: Boolean,
+        val forecastConsistencyPercent: Int?,
+        val forecastClimbLabel: String?,
+        val usualRouteShare: Int?,
     ) : ForecastUiState
 }
 
@@ -197,8 +202,22 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
             )
             val intel = Intel.observe(sessions, ledger, now.toEpochMilli(), todayIso, if (isHorde) "the horde" else profile.twinName) { dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(it, activityKey) }
 
+            val activityObj = dev.eversorhn.gait.domain.activity.Activities.byKey(activityKey)
+            val priorCons = sessions.mapNotNull { it.consistency }.take(8)
+            val expectedCons = if (priorCons.size >= 2) priorCons.asReversed().fold(priorCons.last()) { acc, c -> acc * 0.7 + c * 0.3 } else null
+            val climbAvg = sessions.mapNotNull { it.elevationGainMeters }.take(8).takeIf { it.isNotEmpty() }?.average()
+            // "Usual route": share of past routes that overlap ≥ 60 % with the most recent one.
+            val routes = sessions.mapNotNull { it.route }.take(20).map { dev.eversorhn.gait.domain.route.RouteMetrics.decode(it) }.filter { it.isNotEmpty() }
+            val usualShare = if (routes.size >= 2) (routes.drop(1).count { dev.eversorhn.gait.domain.route.RouteMetrics.similarity(routes.first(), it) >= 0.6 } * 100 / (routes.size - 1)) else null
             val line = when {
                 forecast == null -> "No baseline on you yet. Log a session first."
+                !activityObj.paceMeaningful -> {
+                    val who = if (isHorde) "The horde" else profile.twinName
+                    "$who expects the usual ${activityObj.verb}: " +
+                        (usualShare?.let { "the same route as $it% of your rides, " } ?: "") +
+                        (expectedCons?.let { "steadiness around ${(it * 100).toInt()}%" } ?: "nothing steady on file yet") +
+                        ". A new route or a steadier ride takes the round — speed doesn't."
+                }
                 isHorde -> "Projected: pace $paceLabel, finish around $finishLabel."
                 else -> persona!!.forecastLine(forecast.basedOnSessions, paceLabel, finishLabel)
                     .let { if (dev.eversorhn.gait.domain.activity.Activities.byKey(activityKey).usesSpeed) it.replace("pace ", "speed ").replace("Pace ", "Speed ") else it }
@@ -235,6 +254,10 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                 stake = openStake,
                 activityLabel = dev.eversorhn.gait.domain.activity.Activities.byKey(repository.activeActivityType).label,
                 paceWord = dev.eversorhn.gait.domain.activity.Activities.paceWord(repository.activeActivityType),
+                scoredOnDimensions = !activityObj.paceMeaningful,
+                forecastConsistencyPercent = expectedCons?.let { (it * 100).toInt() },
+                forecastClimbLabel = climbAvg?.let { "~${it.toInt()} m" },
+                usualRouteShare = usualShare,
             )
         }
     }
