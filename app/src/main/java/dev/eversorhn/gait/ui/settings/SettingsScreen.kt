@@ -174,6 +174,36 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
 
         // --- Asset transfer: export the division's file on you; import someone else's asset ---
         val appCtx = androidx.compose.ui.platform.LocalContext.current
+        // --- Health Connect: import recordings other apps made ---
+        if (dev.eversorhn.gait.health.HealthImport.isAvailable(appCtx)) {
+            var hcNote by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+            val hcPermLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()
+            ) { granted ->
+                if (granted.containsAll(dev.eversorhn.gait.health.HealthImport.PERMISSIONS)) {
+                    scope.launch {
+                        val r = dev.eversorhn.gait.health.HealthImport.importRecent(appCtx, appRepo)
+                        hcNote = r.error?.let { "Import failed: $it" } ?: "${r.imported} imported · ${r.skipped} skipped (already known / no distance)"
+                    }
+                } else hcNote = "Permission not granted."
+            }
+            dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Health Connect", summary = "Import last 30 days of ${dev.eversorhn.gait.domain.activity.Activities.byKey(appRepo.activeActivityType).label.lowercase()} from other apps") {
+                Text(
+                    "Reads exercise sessions and distance from Health Connect (watch, other tracker apps) and adds the ones GAIT doesn't have — as baseline material, tagged HEALTH. Nothing is written back.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                CorpoButton("Import from Health Connect", onClick = {
+                    scope.launch {
+                        if (dev.eversorhn.gait.health.HealthImport.hasPermissions(appCtx)) {
+                            val r = dev.eversorhn.gait.health.HealthImport.importRecent(appCtx, appRepo)
+                            hcNote = r.error?.let { "Import failed: $it" } ?: "${r.imported} imported · ${r.skipped} skipped"
+                        } else hcPermLauncher.launch(dev.eversorhn.gait.health.HealthImport.PERMISSIONS)
+                    }
+                }, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
+                hcNote?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface) }
+            }
+        }
+
         dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Asset transfer", summary = "Export the division's file on you · import someone else's asset") {
         Text(
             "Export the division's assessment of you as a text block. Another GAIT can import it: your asset then lives on in their division — climbs, gets reviewed, can be culled. Import someone's block below to take their asset into yours.",

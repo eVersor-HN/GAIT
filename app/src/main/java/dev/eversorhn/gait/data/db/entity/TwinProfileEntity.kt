@@ -47,6 +47,12 @@ data class TwinProfileEntity(
     val wagerEpochDay: Long = -1L,
     /** The exact claim the opponent made, so the Forecast shows the same words all day. */
     val wagerClaim: String? = null,
+    /**
+     * Substitution review deadline (local epoch-day): set when Fidelity first crosses the
+     * threshold; if it lapses with Fidelity still eligible, the model is ratified a generation
+     * (domain/trial) and a new deadline starts. -1 = no open review.
+     */
+    val trialDeadlineEpochDay: Long = -1L,
 )
 
 /** Extension rather than a member so Room never has to reason about a non-column property. */

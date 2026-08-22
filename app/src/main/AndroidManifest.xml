@@ -21,6 +21,9 @@
       flow entirely. See docs/scope-and-stack.md.
     -->
 
+    <uses-permission android:name="android.permission.health.READ_EXERCISE" />
+    <uses-permission android:name="android.permission.health.READ_DISTANCE" />
+
     <application
         android:name=".GaitApplication"
         android:allowBackup="false"

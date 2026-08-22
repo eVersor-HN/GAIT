@@ -4,6 +4,15 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.16.0] - 2026-08-22
+
+The last three open items from the roadmap.
+
+### Added
+- **Trial deadline** (the demo's "AUTO-REVIEW IN…"). When Fidelity first crosses 95 % a 7-day substitution review opens (DB v11, `trialDeadlineEpochDay`): the panel counts down ("auto-review in 5 d — uncontested, the model is ratified", red from 2 days), the opponent announces it in the channel. Lapse without a won duel → the model is **ratified a generation** (its generation rises against you), a division notice goes out, a new 7-day window opens. A won duel — or Fidelity dropping back under the threshold — closes the review.
+- **Health Connect import** (Settings → Health Connect, shown only where the device has it): reads the last 30 days of exercise sessions + distance for the active activity (running/treadmill, walking/hiking, biking, wheelchair), permission flow included, and adds the ones GAIT doesn't already have (5-minute dedupe window; sessions without distance skipped) — as baseline material, tagged `HEALTH`, never scored as rounds retroactively. Read-only; GAIT writes nothing back.
+- **The voice gets its timbre** (docs/voice-design.md, first real pass): commentary lines are synthesized to WAV, run through `VoiceFx` — high-pass 80 Hz, cut ~270 Hz, presence +3 dB @ 3.2 kHz, air +3.5 dB @ 9.5 kHz, ~11 ms micro-double with a slow wobble, soft tanh saturation + limiter — and played via AudioTrack. Any failure falls back to the plain engine mid-line, so commentary never goes missing.
+
 ## [0.15.1] - 2026-08-22
 
 Findings from the 30-run speedrun (new user / explorer / seasoned; 0 crashes, 232 screens reviewed), fixed:

@@ -33,6 +33,7 @@ data class SessionRow(
     val deltaLabel: String?,
     val deltaIsGood: Boolean,
     val isVerified: Boolean,
+    val isHealthImport: Boolean = false,
     val isRestDay: Boolean,
 )
 
@@ -151,6 +152,7 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
             },
             deltaIsGood = (delta ?: 0.0) >= 0,
             isVerified = dataSource == SessionSource.GPS,
+            isHealthImport = dataSource == dev.eversorhn.gait.data.db.entity.SessionSource.HEALTH,
             isRestDay = isRestDay,
         )
     }

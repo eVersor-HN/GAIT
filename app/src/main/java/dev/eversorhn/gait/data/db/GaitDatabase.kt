@@ -19,7 +19,7 @@ import dev.eversorhn.gait.data.db.entity.TwinProfileEntity
 
 @Database(
     entities = [SessionEntity::class, TwinProfileEntity::class, TwinMessageEntity::class, PlannedDayOffEntity::class, ImportedAssetEntity::class],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 abstract class GaitDatabase : RoomDatabase() {
@@ -41,7 +41,7 @@ abstract class GaitDatabase : RoomDatabase() {
                 )
                     // Real migrations from v5 on -- there is installed data on real devices
                     // now. Destructive fallback stays only for pre-v5 leftovers nobody has.
-                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                     .fallbackToDestructiveMigration()
                     .build().also { instance = it }
             }
@@ -53,6 +53,13 @@ abstract class GaitDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE sessions ADD COLUMN composureState TEXT")
                 db.execSQL("ALTER TABLE sessions ADD COLUMN isDuel INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE sessions ADD COLUMN duelWon INTEGER")
+            }
+        }
+
+        /** v0.16.0: the Decommission Trial deadline. */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE twin_profiles ADD COLUMN trialDeadlineEpochDay INTEGER NOT NULL DEFAULT -1")
             }
         }
 

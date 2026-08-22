@@ -15,6 +15,9 @@ object DecommissionTrial {
     /** Fidelity at or above this makes the opponent eligible for a Trial. */
     const val THRESHOLD = 0.95f
 
+    /** Days to contest once the review opens; lapse ratifies the model a generation. */
+    const val REVIEW_WINDOW_DAYS = 7
+
     /** A won Trial resets Fidelity here -- the new generation starts sharper than 0.5, not from zero. */
     const val RESET_FIDELITY = 0.61f
 

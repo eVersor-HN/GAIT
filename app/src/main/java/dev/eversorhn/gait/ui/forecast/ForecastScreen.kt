@@ -191,7 +191,12 @@ fun ForecastScreen(
                         )
                         Spacer(Modifier.height(4.dp))
                         CorpoButton("Start duel · 3 pts", onClick = onStartDuel, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth())
-                        FootNote("${s.trialLabel} · min. 1 km · judged on average pace")
+                        FootNote(
+                            "${s.trialLabel} · min. 1 km · " + (s.trialDeadlineDays?.let { d ->
+                                if (d == 0) "auto-review TODAY — uncontested, the model is ratified" else "auto-review in $d d — uncontested, the model is ratified"
+                            } ?: "judged on average pace"),
+                            color = if ((s.trialDeadlineDays ?: 9) <= 2) Alert else TextFaint,
+                        )
                     }
                 }
 

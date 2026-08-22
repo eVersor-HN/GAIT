@@ -63,6 +63,8 @@ sealed interface ForecastUiState {
         val trialThresholdPercent: Int,
         /** "Decommission Trial" for a Twin, "Outrun Trial" for a Horde. */
         val trialLabel: String,
+        /** Days until the review lapses; null when no Trial is open. 0 = today. */
+        val trialDeadlineDays: Int?,
         val lastMessage: LastMessage?,
         // --- v0.6.0: the competitive layer ---
         val ledger: LedgerState,
@@ -191,7 +193,29 @@ class ForecastViewModel(private val repository: GaitRepository, private val appC
             ).maxByOrNull { it.second }?.first
 
             val ledger = Ledger.from(sessions)
-            val trialEligible = DecommissionTrial.isEligible(profile.fidelity) && forecast != null
+            var trialEligible = DecommissionTrial.isEligible(profile.fidelity) && forecast != null
+            // --- Trial deadline lifecycle: open on first eligibility, ratify the model on lapse ---
+            var deadlineDays: Int? = null
+            if (trialEligible) {
+                if (profile.trialDeadlineEpochDay < 0) {
+                    profile = profile.copy(trialDeadlineEpochDay = todayEpochDay + DecommissionTrial.REVIEW_WINDOW_DAYS)
+                    repository.updateTwinProfile(profile)
+                    repository.recordMessage(MessageKind.STAKE, "Substitution review opened. ${DecommissionTrial.REVIEW_WINDOW_DAYS} days to contest, or the model is ratified.", ComposureState.PREDATORY.name, now.toEpochMilli())
+                } else if (todayEpochDay > profile.trialDeadlineEpochDay) {
+                    // Lapsed: the replacement candidate is ratified a generation. Fidelity stays; pressure rises.
+                    val newGen = profile.generation + 1
+                    profile = profile.copy(generation = newGen, trialDeadlineEpochDay = todayEpochDay + DecommissionTrial.REVIEW_WINDOW_DAYS)
+                    repository.updateTwinProfile(profile)
+                    repository.recordMessage(dev.eversorhn.gait.data.db.entity.MessageKind.COMMENDATION,
+                        "APD-RAT · Review lapsed uncontested. ${profile.twinName} ratified — generation $newGen. A new ${DecommissionTrial.REVIEW_WINDOW_DAYS}-day window is open.", null, now.toEpochMilli())
+                    appContextForNotifications?.let { dev.eversorhn.gait.notification.TwinNotifier.postDivisionNotice(it, "Asset Performance Division", "Substitution review lapsed. ${profile.twinName} has been ratified as your replacement candidate — generation $newGen.") }
+                }
+                deadlineDays = (profile.trialDeadlineEpochDay - todayEpochDay).toInt().coerceAtLeast(0)
+            } else if (profile.trialDeadlineEpochDay >= 0) {
+                // Fidelity dropped back under the threshold (a won duel or a wild session): review closes.
+                profile = profile.copy(trialDeadlineEpochDay = -1L)
+                repository.updateTwinProfile(profile)
+            }
             val memo = Directive.forForecast(
                 ledger = ledger,
                 fidelityPercent = (profile.fidelity * 100).toInt(),
@@ -247,6 +271,7 @@ class ForecastViewModel(private val repository: GaitRepository, private val appC
                 trialProgressPercent = DecommissionTrial.progressPercent(profile.fidelity),
                 trialThresholdPercent = (DecommissionTrial.THRESHOLD * 100).toInt(),
                 trialLabel = if (isHorde) "Outrun Trial" else "Decommission Trial",
+                trialDeadlineDays = deadlineDays,
                 lastMessage = lastMessage,
                 ledger = ledger,
                 standing = Directive.standing(ledger, profile.twinName, isHorde),

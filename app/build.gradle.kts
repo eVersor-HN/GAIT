@@ -24,8 +24,8 @@ android {
         applicationId = "dev.eversorhn.gait"
         minSdk = 26
         targetSdk = 35
-        versionCode = 20
-        versionName = "0.15.1"
+        versionCode = 21
+        versionName = "0.16.0"
     }
 
     signingConfigs {
@@ -88,6 +88,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
 
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.health.connect)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

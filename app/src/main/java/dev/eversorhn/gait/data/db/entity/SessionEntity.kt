@@ -8,6 +8,8 @@ object SessionSource {
     const val GPS = "gps"
     /** Self-reported — typed in, e.g. off a treadmill or ergometer console. Not verifiable. */
     const val MANUAL = "manual"
+    /** Imported from Health Connect (another app's recording). Treated as verified-ish, tagged. */
+    const val HEALTH = "health"
 }
 
 /**

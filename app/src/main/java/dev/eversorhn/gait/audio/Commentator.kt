@@ -4,8 +4,11 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.media.AudioFormat
+import android.media.AudioTrack
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import java.io.File
 import java.util.Locale
 
 /** One switch for the spoken commentator (Settings → Voice). */
@@ -70,12 +73,6 @@ class Commentator(context: Context) {
         if (voice != null) runCatching { t.voice = voice }
         t.setPitch(1.08f)
         t.setSpeechRate(1.0f)
-        t.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {}
-            override fun onDone(utteranceId: String?) { audio.abandonAudioFocusRequest(focusRequest) }
-            @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?) { audio.abandonAudioFocusRequest(focusRequest) }
-        })
     }
 
     /** Speaks [text]; a line arriving while another is playing replaces it — commentary is live, not a queue. */
@@ -85,14 +82,71 @@ class Commentator(context: Context) {
         speakNow(text)
     }
 
+    private var track: AudioTrack? = null
+    @Volatile private var fxBusy = false
+
+    /**
+     * The voice-design chain (docs/voice-design.md): synthesize to WAV, run VoiceFx (high-pass,
+     * presence, air, micro-doubling, soft limiter), play via AudioTrack. Any failure or overlap
+     * falls back to the plain engine so a line is never lost.
+     */
     private fun speakNow(text: String) {
         val t = tts ?: return
         audio.requestAudioFocus(focusRequest)
-        t.speak(text, TextToSpeech.QUEUE_FLUSH, null, "gait-${System.nanoTime()}")
+        if (fxBusy) { t.speak(text, TextToSpeech.QUEUE_FLUSH, null, "gait-${System.nanoTime()}"); return }
+        fxBusy = true
+        val file = File(appContext.cacheDir, "gait_tts.wav")
+        val id = "gaitfx-${System.nanoTime()}"
+        t.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {}
+            override fun onDone(utteranceId: String?) {
+                if (utteranceId != id) { audio.abandonAudioFocusRequest(focusRequest); return }
+                Thread {
+                    try {
+                        val wav = VoiceFx.readWav(file.readBytes())
+                        if (wav != null) {
+                            val (rate, pcm) = wav
+                            val processed = VoiceFx.process(pcm, rate)
+                            track?.release()
+                            val at = AudioTrack.Builder()
+                                .setAudioAttributes(attrs)
+                                .setAudioFormat(AudioFormat.Builder().setSampleRate(rate).setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+                                .setBufferSizeInBytes(processed.size * 2)
+                                .setTransferMode(AudioTrack.MODE_STATIC)
+                                .build()
+                            at.write(processed, 0, processed.size)
+                            at.play()
+                            track = at
+                            // Give focus back when the clip has played out.
+                            val ms = processed.size * 1000L / rate + 150
+                            Thread.sleep(ms)
+                        }
+                    } catch (e: Exception) {
+                        // fall through — focus is released below either way
+                    } finally {
+                        fxBusy = false
+                        audio.abandonAudioFocusRequest(focusRequest)
+                    }
+                }.start()
+            }
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) {
+                fxBusy = false
+                audio.abandonAudioFocusRequest(focusRequest)
+                runCatching { t.speak(text, TextToSpeech.QUEUE_FLUSH, null, "gait-${System.nanoTime()}") }
+            }
+        })
+        val ok = t.synthesizeToFile(text, null, file, id)
+        if (ok != TextToSpeech.SUCCESS) {
+            fxBusy = false
+            t.speak(text, TextToSpeech.QUEUE_FLUSH, null, "gait-${System.nanoTime()}")
+        }
     }
 
     fun stop() {
         runCatching { tts?.stop() }
+        runCatching { track?.stop() }
+        fxBusy = false
         audio.abandonAudioFocusRequest(focusRequest)
     }
 

@@ -205,7 +205,7 @@ class SessionFinalizer(
                     } else {
                         persona!!.handoffLine(timesBeaten, newGeneration)
                     }
-                    repository.updateTwinProfile(profile.copy(fidelity = newFidelity, generation = newGeneration))
+                    repository.updateTwinProfile(profile.copy(fidelity = newFidelity, generation = newGeneration, trialDeadlineEpochDay = -1L))
                 }
                 forecast != null && !isRestPeriod -> {
                     newFidelity = FidelityReplay.step(
