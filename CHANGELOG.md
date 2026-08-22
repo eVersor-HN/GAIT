@@ -4,6 +4,11 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.16.1] - 2026-08-22
+
+### Added
+- **Settings → Demo data → "Load demo data"**: six deterministic weeks of sample history in one tap — ~26 sessions (GPS/manual/one Health import, forecasts from session 2, wins, losses, a losing streak and the recovery, staked and called rounds, two rest-day sessions, three route variants with novelty/steadiness/climb, one won duel → generation 2) plus a filled Direct Channel (stakes, a called stake, idle jabs, a gap ping, two commendations) and a lived-in profile (Fidelity 72 %, 4 vacation days used). For seeing every screen with data; "Erase all data" removes it.
+
 ## [0.16.0] - 2026-08-22
 
 The last three open items from the roadmap.

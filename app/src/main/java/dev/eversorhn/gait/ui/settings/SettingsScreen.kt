@@ -334,6 +334,22 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
 
         CorpoButton(if (state.isHorde) "Switch to Rival Twin" else "Switch to Zombie Horde", onClick = { confirmSwitch = true }, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
 
+        // --- Demo data: see the app lived-in without six weeks of running ---
+        var demoNote by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+        dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Demo data", summary = "Load six weeks of sample history") {
+            Text(
+                "Adds ~26 sample sessions (rounds, stakes, a won duel, routes, rest days) and a filled Direct Channel — so you can see every screen with data. Best on a fresh profile; Erase all data removes it again.",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            CorpoButton("Load demo data", onClick = {
+                scope.launch {
+                    dev.eversorhn.gait.domain.demo.DemoSeeder.seed(appRepo)
+                    demoNote = "Loaded. Swipe to the Board and Forecast."
+                }
+            }, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
+            demoNote?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface) }
+        }
+
         dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Danger zone", summary = "Erase everything on this device", tone = dev.eversorhn.gait.ui.theme.PanelTone.WARN) {
             CorpoButton("Erase all data", onClick = { confirmWipe = true }, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth())
         }
