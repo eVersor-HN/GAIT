@@ -80,7 +80,7 @@ sealed interface ForecastUiState {
     ) : ForecastUiState
 }
 
-class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
+class ForecastViewModel(private val repository: GaitRepository, private val appContextForNotifications: android.content.Context? = null) : ViewModel() {
 
     private val engine = ForecastEngine()
 
@@ -158,6 +158,7 @@ class ForecastViewModel(private val repository: GaitRepository) : ViewModel() {
                 profile = profile.copy(wagerStake = stakePts, wagerCalled = false, wagerEpochDay = todayEpochDay, wagerClaim = claim)
                 repository.updateTwinProfile(profile)
                 repository.recordMessage(MessageKind.STAKE, claim, ComposureState.WATCHFUL.name, now.toEpochMilli())
+                dev.eversorhn.gait.notification.TwinNotifier.postTwinMessage(appContextForNotifications ?: return@run, profile.twinName, claim, dev.eversorhn.gait.notification.TwinNotifier.Kind.STAKE)
             } else if (unevaluatedToday) {
                 // No stake today, but mark the day so we don't re-evaluate on every refresh.
                 profile = profile.copy(wagerStake = 0, wagerCalled = false, wagerEpochDay = todayEpochDay, wagerClaim = null)

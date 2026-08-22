@@ -270,7 +270,7 @@ class SessionFinalizer(
         }
 
         if (!isRestPeriod && composureState == ComposureState.PREDATORY && profile != null && opponentLine != null) {
-            TwinNotifier.postTwinMessage(appContext, profile.twinName, opponentLine)
+            TwinNotifier.postTwinMessage(appContext, profile.twinName, opponentLine, TwinNotifier.Kind.REACTION)
         }
 
         val restNote = when {
@@ -287,7 +287,10 @@ class SessionFinalizer(
         var commendation: Commendation.Note? = null
         if (forecast != null && !isRestPeriod && profile != null) {
             commendation = Commendation.afterRound(ledgerBefore, ledgerAfter, forecast.forecastPaceSecPerKm - avgPace, profile.twinName, isHorde)
-            commendation?.let { repository.recordMessage(MessageKind.COMMENDATION, "${it.code} · ${it.body}", null, now.toEpochMilli()) }
+            commendation?.let {
+                repository.recordMessage(MessageKind.COMMENDATION, "${it.code} · ${it.body}", null, now.toEpochMilli())
+                TwinNotifier.postDivisionNotice(appContext, "Commendation ${it.code}", it.body, TwinNotifier.Kind.COMMENDATION)
+            }
         }
 
         return DebriefResult(

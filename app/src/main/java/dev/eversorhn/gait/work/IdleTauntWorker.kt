@@ -55,6 +55,27 @@ class IdleTauntWorker(
         if (RestDayPolicy.isOnVacation(profile, now)) return Result.success()
         if (app.repository.isPlannedDayOff(java.time.LocalDate.now().toEpochDay())) return Result.success()
 
+        // --- 0. Division notices: cull in 7 / 1 days, and the cull day itself (once each). ---
+        runCatching {
+            val zoned = java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault())
+            val offset = zoned.offset.totalSeconds * 1000L
+            val today = dev.eversorhn.gait.domain.roster.RosterEngine.epochDay(now, offset)
+            val enrolled = dev.eversorhn.gait.domain.roster.RosterEngine.epochDay(app.repository.earliestEnrolmentEpochMillis() ?: profile.createdAtEpochMillis, offset)
+            val founding = enrolled - dev.eversorhn.gait.domain.roster.RosterEngine.PREHISTORY_DAYS
+            val since = ((today - founding) % dev.eversorhn.gait.domain.roster.RosterEngine.CULL_EVERY_DAYS).toInt()
+            val untilCull = if (since == 0) 0 else dev.eversorhn.gait.domain.roster.RosterEngine.CULL_EVERY_DAYS - since
+            val key = "cull_notice_day"
+            if (untilCull in listOf(7, 1, 0) && prefs.getLong(key, -1L) != today) {
+                val body = when (untilCull) {
+                    7 -> "Quarterly cull in 7 days. The bottom ${dev.eversorhn.gait.domain.roster.RosterEngine.CULL_COUNT} assets by Retention Index will be released. Check your position on the board."
+                    1 -> "Quarterly cull tomorrow. Positions close at midnight."
+                    else -> "Quarterly cull today. The board has been re-ranked; see the notice if you were affected."
+                }
+                TwinNotifier.postDivisionNotice(applicationContext, "Asset Performance Division", body, TwinNotifier.Kind.NOTICE)
+                prefs.edit().putLong(key, today).apply()
+            }
+        }
+
         // --- 1. Gap-predatory: has the user gone quiet beyond their own rhythm? ---
         val sessions = app.repository.getSessions() // newest first
         if (sessions.size >= 4) {
@@ -70,7 +91,7 @@ class IdleTauntWorker(
                 } else {
                     Personas.byKey(profile.personaKey).predatoryLines.random(Random)
                 }
-                TwinNotifier.postTwinMessage(applicationContext, profile.twinName, body)
+                TwinNotifier.postTwinMessage(applicationContext, profile.twinName, body, TwinNotifier.Kind.GAP)
                 app.repository.recordMessage(MessageKind.GAP, body, ComposureState.PREDATORY.name, now)
                 prefs.edit().putLong(KEY_LAST_GAP_TAUNT_DAY, todayEpochDay).apply()
                 // A predatory ping counts as contact: push the next idle taunt out too.
@@ -93,7 +114,7 @@ class IdleTauntWorker(
         } else {
             Personas.byKey(profile.personaKey).idleLines.random(Random)
         }
-        TwinNotifier.postTwinMessage(applicationContext, profile.twinName, body)
+        TwinNotifier.postTwinMessage(applicationContext, profile.twinName, body, TwinNotifier.Kind.IDLE)
         app.repository.recordMessage(MessageKind.IDLE, body, null, now)
         prefs.edit().putLong(KEY_NEXT_DUE, now + randomGapMillis()).apply()
         return Result.success()

@@ -443,6 +443,12 @@ class TrackViewModel(
 
     fun start() {
         val mode = _uiState.value.mode ?: return
+        _uiState.value.opponent?.let { o ->
+            val ref = if (_uiState.value.duel) o.duelTargetPaceSecPerKm ?: o.forecastPaceSecPerKm else o.forecastPaceSecPerKm
+            dev.eversorhn.gait.tracking.LiveOpponentInfo.current = dev.eversorhn.gait.tracking.LiveOpponentInfo(
+                name = if (o.isHorde) "Horde" else o.name, referencePaceSecPerKm = ref, forecastFinishSeconds = o.forecastFinishSeconds, stake = o.stake,
+            )
+        }
         _uiState.value = _uiState.value.copy(stopMessage = null)
         TrackingSessionState.update { it.copy(error = null) }
         val action = when (mode.toTracking()) {

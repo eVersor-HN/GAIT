@@ -97,7 +97,7 @@ fun NamingScreen(onConfirmed: () -> Unit) {
         }
 
         CorpoButton(
-            text = "Confirm",
+            text = "Enrol with this twin",
             onClick = viewModel::confirm,
             enabled = state.twinName.isNotBlank(),
             kind = ButtonKind.PRIMARY,

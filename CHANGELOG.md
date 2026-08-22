@@ -4,6 +4,19 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.15.0] - 2026-08-22
+
+Consistency pass after a 30-run speedrun (new user / explorer / seasoned), notifications, lock screen.
+
+### Changed
+- **Level rows, real controls.** Buttons have fixed heights per kind (primary 52 · safe/risk 46 · ghost 40) and never wrap — a row of three is always level. Stat tiles are always three lines (label / value / sub-or-blank), so tiles in a row match. Every tappable console element has **press feedback** (2 % shrink + dim, 90 ms). Chips are pill-shaped with an animated fill and a selected dot; a **segmented control** with a sliding thumb replaces loose chip rows (Statistics period, Horde intensity); yes/no settings are **switches** (Voice, Notifications); option cards carry a radio mark and animate selection. One **CorpoDialog** replaces every Material AlertDialog (Track leave/recover, Statistics delete, Settings switch/erase) — console panel, level console buttons.
+- Labels: "Enrol with this twin" / "Release the horde" instead of "Confirm"; "Indoor / outdoor" instead of "Change mode"; Settings headline no longer duplicates the opponent screen's.
+- `docs/information-architecture.md`: what goes where, in which priority, on every screen.
+
+### Added
+- **Lock-screen live card.** The recording notification is now a live instrument, public on the lock screen: `GAIT · 12:40 · 2.31 km` / `You 5:12/km · Markus K. 5:30/km · +0:41 ahead` / `2 pts riding`, refreshed every ~5 s; indoor shows the model's finish countdown. No unlock needed to see where you stand.
+- **Notifications reworked.** Own status-bar icon (the three strides), three channels — *Opponent* (default: same-day reaction · stake on today · unprompted · you went quiet; subtext says which), *Division* (low: commendations, cull in 7 d / tomorrow / today), *Tracking* (the live card). Grouped per sender, every one opens the app. Stakes and commendations now reach the shade (they only lived in the inbox before). Mute silences Opponent + Division at the source.
+
 ## [0.14.0] - 2026-08-21
 
 The dimensions beyond pace — the part that makes cycling, hiking and the motor-assisted activities real.

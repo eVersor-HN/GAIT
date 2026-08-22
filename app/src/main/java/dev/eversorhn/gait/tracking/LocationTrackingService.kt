@@ -161,19 +161,56 @@ class LocationTrackingService : Service() {
         startTicker()
     }
 
-    /** Returns false (and leaves an error in the snapshot) if the FGS couldn't be started. */
-    private fun enterForeground(mode: TrackingMode): Boolean {
-        val (title, text) = when (mode) {
-            TrackingMode.OUTDOOR -> "GAIT is tracking" to "Recording your session in the background."
-            TrackingMode.INDOOR -> "GAIT is timing" to "Timing your indoor session."
+    /**
+     * The live session notification — built to be read on the lock screen without unlocking:
+     * title = elapsed · distance, text = your pace/speed vs the model's and the gap, subtext =
+     * what's riding. Refreshed from the ticker every few seconds. VISIBILITY_PUBLIC so the
+     * lock screen shows the numbers, not "content hidden".
+     */
+    private fun liveNotification(mode: TrackingMode, s: TrackingSnapshot? = null): android.app.Notification {
+        val ctx = this
+        val live = s ?: TrackingSessionState.snapshot.value
+        val opp = LiveOpponentInfo.current
+        val activityKey = (applicationContext as? dev.eversorhn.gait.GaitApplication)?.repository?.activeActivityType
+        fun fmt(p: Double) = dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(p, activityKey)
+        fun mmss(sec: Int) = if (sec >= 3600) "%d:%02d:%02d".format(sec / 3600, (sec % 3600) / 60, sec % 60) else "%d:%02d".format(sec / 60, sec % 60)
+        val title: String
+        val text: String
+        if (!live.isTracking) {
+            title = if (mode == TrackingMode.OUTDOOR) "GAIT · waiting for GPS" else "GAIT · timing"
+            text = if (mode == TrackingMode.OUTDOOR) "Recording starts with the first fix." else "Indoor session running."
+        } else if (mode == TrackingMode.INDOOR) {
+            title = "GAIT · ${mmss(live.elapsedSeconds)}"
+            text = opp?.let { o -> o.forecastFinishSeconds?.let { f -> val r = f - live.elapsedSeconds; if (r > 0) "${o.name} finishes in ${mmss(r)}" else "${o.name} finished ${mmss(-r)} ago — distance decides" } } ?: "Indoor · distance on stop"
+        } else {
+            title = "GAIT · ${mmss(live.movingSeconds)} · %.2f km".format(live.distanceMeters / 1000.0)
+            val mine = live.currentPaceSecPerKm?.let { fmt(it) } ?: "—"
+            val ref = opp?.referencePaceSecPerKm
+            val gap = if (ref != null) (ref * live.distanceMeters / 1000.0).toInt() - live.movingSeconds else null
+            text = buildString {
+                append("You $mine")
+                if (ref != null) append(" · ${opp.name} ${fmt(ref)}")
+                if (gap != null) append(if (gap >= 0) " · +${mmss(gap)} ahead" else " · −${mmss(-gap)} behind")
+            }
         }
-        val notification = NotificationCompat.Builder(this, TwinNotifier.trackingChannelId(this))
+        return NotificationCompat.Builder(ctx, TwinNotifier.trackingChannelId(ctx))
             .setContentTitle(title)
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setContentIntent(TwinNotifier.openAppIntent(this))
+            .setSubText(opp?.let { "${it.stake} pt${if (it.stake == 1) "" else "s"} riding" } ?: "GAIT session")
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setSmallIcon(dev.eversorhn.gait.R.drawable.ic_notification)
+            .setContentIntent(TwinNotifier.openAppIntent(ctx))
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            .setOnlyAlertOnce(true)
+            .setShowWhen(false)
             .setOngoing(true)
             .build()
+    }
+
+    /** Returns false (and leaves an error in the snapshot) if the FGS couldn't be started. */
+    private fun enterForeground(mode: TrackingMode): Boolean {
+        val notification = liveNotification(mode)
 
         val type = when (mode) {
             TrackingMode.OUTDOOR -> ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
@@ -226,6 +263,19 @@ class LocationTrackingService : Service() {
         }
     }
 
+    private var lastNotifRefresh = 0L
+
+    private fun refreshLiveNotification() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastNotifRefresh < 4_500L) return
+        lastNotifRefresh = now
+        val s = TrackingSessionState.snapshot.value
+        val mode = s.mode ?: return
+        runCatching {
+            (getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager).notify(NOTIFICATION_ID, liveNotification(mode, s))
+        }
+    }
+
     private fun startTicker() {
         tickerJob?.cancel()
         tickerJob = serviceScope.launch {
@@ -239,6 +289,7 @@ class LocationTrackingService : Service() {
                     val moving = if (s.mode == TrackingMode.INDOOR) elapsed else s.movingSeconds
                     s.copy(elapsedSeconds = elapsed, movingSeconds = moving)
                 }
+                refreshLiveNotification()
                 if (++secondsSincePersist >= PERSIST_EVERY_SECONDS) {
                     persist()
                     secondsSincePersist = 0

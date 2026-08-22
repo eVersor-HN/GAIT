@@ -58,11 +58,11 @@ fun HordeSetupScreen(onConfirmed: () -> Unit) {
         }
 
         SectionLabel("Intensity")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            HordeIntensity.all.forEach { key ->
-                CorpoChip(label = HordeIntensity.label(key), active = state.intensityKey == key, onClick = { viewModel.selectIntensity(key) })
-            }
-        }
+        dev.eversorhn.gait.ui.theme.Segmented(
+            options = HordeIntensity.all.map { HordeIntensity.label(it) },
+            selected = HordeIntensity.all.indexOf(state.intensityKey).coerceAtLeast(0),
+            onSelect = { viewModel.selectIntensity(HordeIntensity.all[it]) },
+        )
         Text(
             "Only changes how the horde sounds when it's closing in — everything else about it stays the same.",
             style = MaterialTheme.typography.bodyMedium,
@@ -78,6 +78,6 @@ fun HordeSetupScreen(onConfirmed: () -> Unit) {
             FootNote("Proximity · wave · aggression replace fidelity · generation · composure")
         }
 
-        CorpoButton("Confirm", onClick = viewModel::confirm, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
+        CorpoButton("Release the horde", onClick = viewModel::confirm, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
     }
 }

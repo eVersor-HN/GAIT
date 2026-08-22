@@ -17,11 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -96,56 +94,40 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
 
     if (showLeaveConfirmation) {
         if (snapshot.isTracking) {
-            AlertDialog(
-                onDismissRequest = { showLeaveConfirmation = false },
-                title = { Text("Still tracking") },
-                text = { Text("Your session is still recording. Stop it before leaving, or keep going.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showLeaveConfirmation = false
-                        viewModel.stop()
-                    }) { Text("STOP TRACKING") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showLeaveConfirmation = false }) { Text("KEEP TRACKING") }
-                },
+            dev.eversorhn.gait.ui.theme.CorpoDialog(
+                title = "Still recording",
+                body = "Your session is still running. Stop it before leaving, or keep going.",
+                onDismiss = { showLeaveConfirmation = false },
+                confirmText = "Stop and save",
+                onConfirm = { showLeaveConfirmation = false; viewModel.stop() },
+                confirmKind = ButtonKind.RISK,
+                dismissText = "Keep recording",
             )
         } else {
-            AlertDialog(
-                onDismissRequest = { showLeaveConfirmation = false },
-                title = { Text("Discard this session?") },
-                text = { Text("You timed a session but haven't entered a distance yet. Leaving now discards it.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showLeaveConfirmation = false
-                        viewModel.discardIndoor()
-                        viewModel.reset()
-                        onDone()
-                    }) { Text("DISCARD") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showLeaveConfirmation = false }) { Text("KEEP EDITING") }
-                },
+            dev.eversorhn.gait.ui.theme.CorpoDialog(
+                title = "Discard this session?",
+                body = "You timed a session but haven't entered a distance yet. Leaving now discards it.",
+                onDismiss = { showLeaveConfirmation = false },
+                confirmText = "Discard",
+                onConfirm = { showLeaveConfirmation = false; viewModel.discardIndoor(); viewModel.reset(); onDone() },
+                confirmKind = ButtonKind.RISK,
+                dismissText = "Keep editing",
             )
         }
     }
 
     uiState.recoverable?.let { r ->
-        AlertDialog(
-            onDismissRequest = { /* force a choice */ },
-            title = { Text("Interrupted session found") },
-            text = {
-                Text(
-                    when (r.mode) {
-                        TrackMode.OUTDOOR -> "GAIT was stopped mid-run. Captured so far: " +
-                            "${"%.2f".format(r.distanceMeters / 1000.0)} km over ${formatElapsed(r.movingSeconds)} moving. Save it?"
-                        TrackMode.INDOOR -> "GAIT was stopped mid-session. ${formatElapsed(r.durationSeconds)} were timed. " +
-                            "Save it? You'll be asked for the distance next."
-                    }
-                )
+        dev.eversorhn.gait.ui.theme.CorpoDialog(
+            title = "Interrupted session found",
+            body = when (r.mode) {
+                TrackMode.OUTDOOR -> "GAIT was stopped mid-session. Captured so far: ${"%.2f".format(r.distanceMeters / 1000.0)} km over ${formatElapsed(r.movingSeconds)} moving. Save it?"
+                TrackMode.INDOOR -> "GAIT was stopped mid-session. ${formatElapsed(r.durationSeconds)} were timed. Save it? You'll be asked for the distance next."
             },
-            confirmButton = { TextButton(onClick = viewModel::saveRecovered) { Text("SAVE") } },
-            dismissButton = { TextButton(onClick = viewModel::discardRecovered) { Text("DISCARD") } },
+            onDismiss = viewModel::discardRecovered,
+            confirmText = "Save",
+            onConfirm = viewModel::saveRecovered,
+            dismissText = "Discard",
+            dismissible = false,
         )
     }
 
@@ -295,7 +277,7 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CorpoButton("Change mode", onClick = { viewModel.chooseMode(TrackMode.OUTDOOR).also { viewModel.reset() } }, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
+                    CorpoButton("Indoor / outdoor", onClick = { viewModel.chooseMode(TrackMode.OUTDOOR).also { viewModel.reset() } }, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
                     CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
                 }
             }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -46,14 +48,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.hypot
+
+/**
+ * Press feedback for every tappable console element: a 2 % shrink and a slight dim while
+ * pressed, 90 ms in/out — felt, not seen. No ripple (the console has no material surface).
+ */
+@Composable
+fun Modifier.pressable(enabled: Boolean = true, onClick: () -> Unit): Modifier {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.98f else 1f, androidx.compose.animation.core.tween(90), label = "pressScale")
+    val dim by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.82f else 1f, androidx.compose.animation.core.tween(90), label = "pressDim")
+    return this
+        .graphicsLayer { scaleX = scale; scaleY = scale; alpha = dim }
+        .clickable(enabled = enabled, interactionSource = interaction, indication = null, onClick = onClick)
+}
 
 /*
  * The instrument panel every phone mockup in demo/asset-twin-demo.html is built from,
@@ -123,6 +142,8 @@ fun FootNote(text: String, color: Color = TextFaint) {
 /** `.stat`: a small key/value tile; `accent` colours the value (brass = you, cyan = twin). */
 @Composable
 fun RowScope.StatTile(label: String, value: String, accent: Color = MaterialTheme.colorScheme.onSurface, sub: String? = null) {
+    // Always three lines (label / value / sub) so every tile in a row is the same height — a
+    // missing sub is an empty line, never a shorter tile. Values are one line, stepping down a size when long.
     Column(
         modifier = Modifier
             .weight(1f)
@@ -131,10 +152,9 @@ fun RowScope.StatTile(label: String, value: String, accent: Color = MaterialThem
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1)
-        // Long values (e.g. "27.1km/h") step down a size instead of clipping in a third-width tile.
-        Text(value, style = if (value.length > 7) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge, color = accent, maxLines = 1, softWrap = false)
-        if (sub != null) Text(sub, style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1)
+        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+        Text(value, style = if (value.length > 7) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge, color = accent, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+        Text(sub ?: " ", style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -378,17 +398,91 @@ fun TrackLegend(youLabel: String, twinLabel: String, twinColor: Color = Cyan) {
 
 /** `.preset`: a small mono chip, brass-outlined when active. Replaces Material FilterChip. */
 @Composable
-fun CorpoChip(label: String, active: Boolean, onClick: () -> Unit) {
-    Text(
-        label.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
-        color = if (active) Brass else TextFaint,
-        modifier = Modifier
-            .background(if (active) Brass.copy(alpha = 0.1f) else Color.Transparent, RoundedCornerShape(4.dp))
-            .border(BorderStroke(1.dp, if (active) BrassDim else LineSoft), RoundedCornerShape(4.dp))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-    )
+fun CorpoChip(label: String, active: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    // Animated fill/border/colour so a selection change is seen, not just redrawn; press feedback.
+    val fill by androidx.compose.animation.animateColorAsState(if (active) Brass.copy(alpha = 0.14f) else Color.Transparent, androidx.compose.animation.core.tween(140), label = "chipFill")
+    val border by androidx.compose.animation.animateColorAsState(if (active) Brass else LineSoft, androidx.compose.animation.core.tween(140), label = "chipBorder")
+    val fg by androidx.compose.animation.animateColorAsState(if (active) Brass else TextFaint, androidx.compose.animation.core.tween(140), label = "chipFg")
+    Box(
+        modifier = modifier
+            .height(32.dp)
+            .background(fill, RoundedCornerShape(16.dp))
+            .border(BorderStroke(1.dp, border), RoundedCornerShape(16.dp))
+            .pressable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (active) Box(Modifier.size(6.dp).background(Brass, CircleShape))
+            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = fg, maxLines = 1, softWrap = false)
+        }
+    }
+}
+
+/**
+ * A segmented control: N options, one active, equal widths, sliding thumb. For binary and
+ * small enumerated settings (On/Off, periods, intensity) — replaces loose rows of chips.
+ */
+@Composable
+fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    var widthPx by remember { mutableIntStateOf(0) }
+    val count = options.size.coerceAtLeast(1)
+    val thumbX by androidx.compose.animation.core.animateIntAsState((widthPx / count) * selected.coerceIn(0, count - 1), androidx.compose.animation.core.tween(160), label = "segThumb")
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(36.dp)
+            .background(Ink2, RoundedCornerShape(6.dp))
+            .border(BorderStroke(1.dp, LineSoft), RoundedCornerShape(6.dp))
+            .onSizeChanged { widthPx = it.width }
+            .padding(3.dp),
+    ) {
+        if (widthPx > 0) {
+            Box(
+                Modifier
+                    .offset { IntOffset(thumbX, 0) }
+                    .width(with(androidx.compose.ui.platform.LocalDensity.current) { ((widthPx / count) - 0).toDp() })
+                    .fillMaxHeight()
+                    .background(Brass.copy(alpha = 0.16f), RoundedCornerShape(4.dp))
+                    .border(BorderStroke(1.dp, BrassDim), RoundedCornerShape(4.dp))
+            )
+        }
+        Row(Modifier.fillMaxSize()) {
+            options.forEachIndexed { i, label ->
+                val active = i == selected
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .pressable(onClick = { onSelect(i) }),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = if (active) Brass else TextFaint, maxLines = 1, softWrap = false)
+                }
+            }
+        }
+    }
+}
+
+/** Two-state switch for yes/no settings: a labelled track with a sliding knob. */
+@Composable
+fun CorpoSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit, description: String? = null) {
+    Row(
+        modifier = Modifier.fillMaxWidth().pressable(onClick = { onChange(!checked) }).padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+            if (description != null) Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        val track by androidx.compose.animation.animateColorAsState(if (checked) Brass.copy(alpha = 0.35f) else LineSoft, androidx.compose.animation.core.tween(140), label = "swTrack")
+        val knob by androidx.compose.animation.animateColorAsState(if (checked) Brass else TextFaint, androidx.compose.animation.core.tween(140), label = "swKnob")
+        val x by androidx.compose.animation.core.animateDpAsState(if (checked) 18.dp else 2.dp, androidx.compose.animation.core.tween(140), label = "swX")
+        Box(Modifier.width(38.dp).height(22.dp).background(track, RoundedCornerShape(11.dp)).border(BorderStroke(1.dp, if (checked) BrassDim else LineSoft), RoundedCornerShape(11.dp))) {
+            Box(Modifier.padding(start = x, top = 2.dp).size(18.dp).background(knob, CircleShape))
+        }
+    }
 }
 
 enum class ButtonKind { PRIMARY, SAFE, RISK, GHOST }
@@ -411,13 +505,16 @@ fun CorpoButton(
         ButtonKind.RISK -> Triple(Alert.copy(alpha = 0.06f), Alert.copy(alpha = 0.6f), Alert)
         ButtonKind.GHOST -> Triple(Color.Transparent, LineSoft, TextDim)
     }
+    // Fixed heights per kind: a row of buttons is always level, whatever the labels.
+    val h = when (kind) { ButtonKind.PRIMARY -> 52.dp; ButtonKind.GHOST -> 40.dp; else -> 46.dp }
     Box(
         modifier = modifier
+            .height(h)
             .alpha(if (enabled) 1f else 0.45f)
             .background(bg, RoundedCornerShape(4.dp))
             .border(BorderStroke(1.dp, border), RoundedCornerShape(4.dp))
-            .clickable(enabled = enabled, interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = if (kind == ButtonKind.PRIMARY) 15.dp else 12.dp),
+            .pressable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -429,6 +526,8 @@ fun CorpoButton(
             color = fg,
             textAlign = TextAlign.Center,
             maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -440,13 +539,18 @@ fun SelectCard(title: String, description: String, selected: Boolean, onClick: (
         modifier = Modifier
             .fillMaxWidth()
             .background(if (selected) Brass.copy(alpha = 0.07f) else MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
-            .border(BorderStroke(1.dp, if (selected) BrassDim else MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(6.dp))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+            .border(BorderStroke(1.dp, if (selected) Brass else MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(6.dp))
+            .pressable(onClick = onClick)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(title, style = MaterialTheme.typography.titleLarge, color = if (selected) Brass else MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f, fill = false))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f, fill = false)) {
+                Box(Modifier.size(14.dp).border(BorderStroke(1.dp, if (selected) Brass else LineSoft), CircleShape), contentAlignment = Alignment.Center) {
+                    if (selected) Box(Modifier.size(8.dp).background(Brass, CircleShape))
+                }
+                Text(title, style = MaterialTheme.typography.titleLarge, color = if (selected) Brass else MaterialTheme.colorScheme.onSurface)
+            }
             if (badge != null) Text(badge.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1, modifier = Modifier.padding(start = 8.dp))
         }
         Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -625,7 +729,7 @@ fun CollapsiblePanel(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { expanded = !expanded },
+                .pressable(onClick = { expanded = !expanded }),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -641,5 +745,39 @@ fun CollapsiblePanel(
             }
         }
         if (expanded) content()
+    }
+}
+
+/**
+ * The app's dialog: console panel on the ink, mono title, body, and a column of console
+ * buttons. Replaces Material AlertDialog + TextButton everywhere, so confirmations look like
+ * the rest of the app (and buttons are level).
+ */
+@Composable
+fun CorpoDialog(
+    title: String,
+    body: String,
+    onDismiss: () -> Unit,
+    confirmText: String,
+    onConfirm: () -> Unit,
+    confirmKind: ButtonKind = ButtonKind.PRIMARY,
+    dismissText: String? = "Cancel",
+    dismissible: Boolean = true,
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = { if (dismissible) onDismiss() }) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Ink2, RoundedCornerShape(8.dp))
+                .border(BorderStroke(1.dp, Line), RoundedCornerShape(8.dp))
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = TextPrimary)
+            Text(body, style = MaterialTheme.typography.bodyMedium, color = TextDim)
+            Spacer(Modifier.height(2.dp))
+            CorpoButton(confirmText, onClick = onConfirm, kind = confirmKind, modifier = Modifier.fillMaxWidth())
+            if (dismissText != null) CorpoButton(dismissText, onClick = onDismiss, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
+        }
     }
 }

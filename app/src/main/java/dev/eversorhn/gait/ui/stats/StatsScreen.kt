@@ -14,10 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,23 +48,13 @@ fun StatsScreen(onDone: () -> Unit) {
     androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.refresh() }
 
     pendingDelete?.let { row ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = { Text("Delete this session?") },
-            text = {
-                Text(
-                    "${row.dateLabel} · ${row.distanceLabel} · ${row.paceLabel}\n\n" +
-                        "It's removed from your history and from future forecasts. " +
-                        "${state.metricLabel} isn't recomputed — it already moved when this was logged."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deleteSession(row.id)
-                    pendingDelete = null
-                }) { Text("DELETE") }
-            },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("CANCEL") } },
+        dev.eversorhn.gait.ui.theme.CorpoDialog(
+            title = "Delete this session?",
+            body = "${row.dateLabel} · ${row.distanceLabel} · ${row.paceLabel}. It leaves the ledger and the forecast history. This can't be undone.",
+            onDismiss = { pendingDelete = null },
+            confirmText = "Delete",
+            onConfirm = { viewModel.deleteSession(row.id); pendingDelete = null },
+            confirmKind = ButtonKind.RISK,
         )
     }
 
@@ -78,26 +66,11 @@ fun StatsScreen(onDone: () -> Unit) {
     ) {
         ScreenTitle("Statistics", "What actually happened")
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatsPeriod.entries.forEach { period ->
-                val active = state.period == period
-                Text(
-                    period.label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .background(
-                            if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                            RoundedCornerShape(4.dp),
-                        )
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                        ) { viewModel.selectPeriod(period) }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                )
-            }
-        }
+        dev.eversorhn.gait.ui.theme.Segmented(
+            options = StatsPeriod.entries.map { it.label },
+            selected = StatsPeriod.entries.indexOf(state.period),
+            onSelect = { viewModel.selectPeriod(StatsPeriod.entries[it]) },
+        )
 
         // --- Ledger for the period: totals and who owns which weekday ---
         if (state.roundsPlayed > 0) {

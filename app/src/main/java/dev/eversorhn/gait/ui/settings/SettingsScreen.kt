@@ -11,11 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,42 +49,24 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
     LaunchedEffect(state.savedTick) { if (state.savedTick > 0) showSaved = true }
 
     if (confirmSwitch) {
-        AlertDialog(
-            onDismissRequest = { confirmSwitch = false },
-            title = { Text(if (state.isHorde) "Switch to a Rival Twin?" else "Release the Horde?") },
-            text = {
-                Text(
-                    "This is a new opponent: ${if (state.isHorde) "Fidelity and Generation" else "Proximity and Wave"} " +
-                        "start over at 50% / 1. Your session history is untouched — it's still yours."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmSwitch = false
-                    viewModel.switchOpponentType()
-                }) { Text("SWITCH") }
-            },
-            dismissButton = { TextButton(onClick = { confirmSwitch = false }) { Text("CANCEL") } },
+        dev.eversorhn.gait.ui.theme.CorpoDialog(
+            title = if (state.isHorde) "Switch to a Rival Twin?" else "Release the Horde?",
+            body = "This is a new opponent: ${if (state.isHorde) "Fidelity and Generation" else "Proximity and Wave"} start over. Your session history is untouched — it's still yours.",
+            onDismiss = { confirmSwitch = false },
+            confirmText = "Switch opponent",
+            onConfirm = { confirmSwitch = false; viewModel.switchOpponentType() },
+            confirmKind = dev.eversorhn.gait.ui.theme.ButtonKind.RISK,
         )
     }
 
     if (confirmWipe) {
-        AlertDialog(
-            onDismissRequest = { confirmWipe = false },
-            title = { Text("Erase everything?") },
-            text = {
-                Text(
-                    "Deletes all ${state.sessionCount} sessions and your opponent, and sends you back to setup. " +
-                        "There is no undo and nothing is backed up anywhere."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmWipe = false
-                    viewModel.wipeEverything()
-                }) { Text("ERASE ALL") }
-            },
-            dismissButton = { TextButton(onClick = { confirmWipe = false }) { Text("CANCEL") } },
+        dev.eversorhn.gait.ui.theme.CorpoDialog(
+            title = "Erase everything?",
+            body = "Every session, message, planned day and the opponent profile on this device. The division's roster stays (it's a simulation); your asset is gone. This can't be undone.",
+            onDismiss = { confirmWipe = false },
+            confirmText = "Erase all data",
+            onConfirm = { confirmWipe = false; viewModel.wipeEverything() },
+            confirmKind = dev.eversorhn.gait.ui.theme.ButtonKind.RISK,
         )
     }
 
@@ -97,7 +77,7 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        ScreenTitle("Settings", "Who's coming after you")
+        ScreenTitle("Settings", "Your opponent, your terms")
 
         if (!state.loaded) {
             Text("Loading…", style = MaterialTheme.typography.bodyLarge)
@@ -122,9 +102,11 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
         if (state.isHorde) {
             Text("Intensity", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                HordeIntensity.all.forEach { key ->
-                    CorpoChip(label = HordeIntensity.label(key), active = state.hordeIntensity == key, onClick = { viewModel.selectIntensity(key) })
-                }
+                dev.eversorhn.gait.ui.theme.Segmented(
+                    options = HordeIntensity.all.map { HordeIntensity.label(it) },
+                    selected = HordeIntensity.all.indexOf(state.hordeIntensity).coerceAtLeast(0),
+                    onSelect = { viewModel.selectIntensity(HordeIntensity.all[it]) },
+                )
             }
         } else {
             Text("Voice", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -240,10 +222,11 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
         // --- Voice: the spoken commentator during a session ---
         var voiceOn by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.audio.VoicePrefs.isEnabled(appCtx)) }
         Text("Voice · live commentator", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CorpoChip(label = "On", active = voiceOn, onClick = { dev.eversorhn.gait.audio.VoicePrefs.setEnabled(appCtx, true); voiceOn = true })
-            CorpoChip(label = "Off", active = !voiceOn, onClick = { dev.eversorhn.gait.audio.VoicePrefs.setEnabled(appCtx, false); voiceOn = false })
-        }
+        dev.eversorhn.gait.ui.theme.CorpoSwitch(
+            label = "Live commentator",
+            checked = voiceOn,
+            onChange = { dev.eversorhn.gait.audio.VoicePrefs.setEnabled(appCtx, it); voiceOn = it },
+        )
         Text(
             "One voice, the division's: kilometre marks, lead changes and a status line every couple of minutes — \"Markus K. is 40 metres behind you\", \"the horde is catching up\". Ducks your music. Uses the phone's text-to-speech engine (a female English voice if the device has one).",
             style = MaterialTheme.typography.bodyMedium,
@@ -254,10 +237,11 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
         val ctx = androidx.compose.ui.platform.LocalContext.current
         var muted by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.notification.NotificationPrefs.isMuted(ctx)) }
         Text("Notifications", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CorpoChip(label = "On", active = !muted, onClick = { dev.eversorhn.gait.notification.NotificationPrefs.setMuted(ctx, false); muted = false })
-            CorpoChip(label = "Muted", active = muted, onClick = { dev.eversorhn.gait.notification.NotificationPrefs.setMuted(ctx, true); muted = true })
-        }
+        dev.eversorhn.gait.ui.theme.CorpoSwitch(
+            label = "Opponent notifications",
+            checked = !muted,
+            onChange = { dev.eversorhn.gait.notification.NotificationPrefs.setMuted(ctx, !it); muted = !it },
+        )
         Text(
             if (muted) "Muted: the opponent keeps writing to the Direct Channel, but nothing reaches your notifications."
             else "On: same-day Predatory lines, stakes, and the occasional unprompted message reach you outside the app.",

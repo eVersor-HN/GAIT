@@ -106,10 +106,10 @@ fun RestDaysScreen(onDone: () -> Unit) {
         // --- Weekly pattern ---
         CorpoPanel {
             SectionLabel("Weekly rest days")
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 (1..7).forEach { dow ->
                     val on = (state.restDayMask shr (dow - 1)) and 1 == 1
-                    CorpoChip(label = dayLabels[dow - 1], active = on, onClick = { viewModel.toggleDay(dow) })
+                    CorpoChip(label = dayLabels[dow - 1], active = on, onClick = { viewModel.toggleDay(dow) }, modifier = Modifier.weight(1f))
                 }
             }
             val count = RestDayPolicy.declaredRestDayCountFromMask(state.restDayMask)
