@@ -29,6 +29,13 @@ import dev.eversorhn.gait.R
 import dev.eversorhn.gait.domain.horde.HordeIntensity
 import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.ui.gaitViewModel
+import dev.eversorhn.gait.ui.theme.pressable
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+import dev.eversorhn.gait.ui.theme.FootNote
+import dev.eversorhn.gait.ui.theme.SectionLabel
 import kotlinx.coroutines.launch
 import dev.eversorhn.gait.ui.theme.ScreenTitle
 import dev.eversorhn.gait.ui.theme.CorpoButton
@@ -100,58 +107,74 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
         }
 
         if (state.isHorde) {
-            Text("Intensity", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Intensity", summary = HordeIntensity.label(state.hordeIntensity)) {
                 dev.eversorhn.gait.ui.theme.Segmented(
                     options = HordeIntensity.all.map { HordeIntensity.label(it) },
                     selected = HordeIntensity.all.indexOf(state.hordeIntensity).coerceAtLeast(0),
                     onSelect = { viewModel.selectIntensity(HordeIntensity.all[it]) },
                 )
+                FootNote("Only changes how the horde sounds when it's closing in")
             }
         } else {
-            Text("Voice", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val currentPersona = Personas.byKey(state.personaKey)
+            dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Name & voice", summary = "${state.twinName} · ${currentPersona.label}") {
+                OutlinedTextField(
+                    value = state.twinName,
+                    onValueChange = viewModel::updateName,
+                    label = { Text("Twin name") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SectionLabel("Voice · 17 personas")
+                // A list with a radio mark, not a cloud of chips: the eye scans top-down, the selected one is obvious.
                 Personas.mvpRoster.forEach { persona ->
-                    CorpoChip(label = persona.label, active = state.personaKey == persona.key, onClick = { viewModel.selectPersona(persona.key) })
+                    val selected = state.personaKey == persona.key
+                    Row(
+                        modifier = Modifier.fillMaxWidth().pressable(onClick = { viewModel.selectPersona(persona.key) }).padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        androidx.compose.foundation.layout.Box(Modifier.size(14.dp).border(androidx.compose.foundation.BorderStroke(1.dp, if (selected) dev.eversorhn.gait.ui.theme.Brass else dev.eversorhn.gait.ui.theme.LineSoft), androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+                            if (selected) androidx.compose.foundation.layout.Box(Modifier.size(8.dp).background(dev.eversorhn.gait.ui.theme.Brass, androidx.compose.foundation.shape.CircleShape))
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(persona.label, style = MaterialTheme.typography.titleMedium, color = if (selected) dev.eversorhn.gait.ui.theme.Brass else MaterialTheme.colorScheme.onSurface)
+                            Text(persona.predatoryLines.first(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        }
+                    }
                 }
             }
-            OutlinedTextField(
-                value = state.twinName,
-                onValueChange = viewModel::updateName,
-                label = { Text("Twin name") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
 
         // --- Activity: every activity has its own opponent profile; switching to one without a profile goes to setup ---
         val appRepo = (androidx.compose.ui.platform.LocalContext.current.applicationContext as dev.eversorhn.gait.GaitApplication).repository
         var activeActivity by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(appRepo.activeActivityType) }
         val scope = androidx.compose.runtime.rememberCoroutineScope()
-        Text("Activity", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            dev.eversorhn.gait.domain.activity.Activities.all.forEach { a ->
-                CorpoChip(label = a.label, active = a.key == activeActivity, onClick = {
-                    if (a.key == activeActivity) return@CorpoChip
-                    scope.launch {
-                        appRepo.activeActivityType = a.key
-                        activeActivity = a.key
-                        val hasProfile = appRepo.getTwinProfile(a.key) != null
-                        if (hasProfile) onDone() else onWiped()
+        dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Activity", summary = dev.eversorhn.gait.domain.activity.Activities.byKey(activeActivity).label + " · own opponent, ledger and history per activity") {
+            // 2 × 4 grid of equal chips.
+            dev.eversorhn.gait.domain.activity.Activities.all.chunked(4).forEach { rowActs ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    rowActs.forEach { a ->
+                        CorpoChip(label = a.label, active = a.key == activeActivity, modifier = Modifier.weight(1f), onClick = {
+                            if (a.key == activeActivity) return@CorpoChip
+                            scope.launch {
+                                appRepo.activeActivityType = a.key
+                                activeActivity = a.key
+                                val hasProfile = appRepo.getTwinProfile(a.key) != null
+                                if (hasProfile) onDone() else onWiped()
+                            }
+                        })
                     }
-                })
+                    repeat(4 - rowActs.size) { androidx.compose.foundation.layout.Spacer(Modifier.weight(1f)) }
+                }
             }
+            FootNote("Switching to an activity without a profile starts its setup")
         }
-        Text(
-            "Each activity keeps its own opponent, Fidelity, generation and ledger. Switching to a new one starts its setup.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
 
         // --- Asset transfer: export the division's file on you; import someone else's asset ---
         val appCtx = androidx.compose.ui.platform.LocalContext.current
-        Text("Asset transfer", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Asset transfer", summary = "Export the division's file on you · import someone else's asset") {
         Text(
             "Export the division's assessment of you as a text block. Another GAIT can import it: your asset then lives on in their division — climbs, gets reviewed, can be culled. Import someone's block below to take their asset into yours.",
             style = MaterialTheme.typography.bodyMedium,
@@ -219,35 +242,29 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
             }
         }
 
+        }
+
         // --- Voice: the spoken commentator during a session ---
         var voiceOn by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.audio.VoicePrefs.isEnabled(appCtx)) }
-        Text("Voice · live commentator", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        dev.eversorhn.gait.ui.theme.CorpoSwitch(
-            label = "Live commentator",
-            checked = voiceOn,
-            onChange = { dev.eversorhn.gait.audio.VoicePrefs.setEnabled(appCtx, it); voiceOn = it },
-        )
-        Text(
-            "One voice, the division's: kilometre marks, lead changes and a status line every couple of minutes — \"Markus K. is 40 metres behind you\", \"the horde is catching up\". Ducks your music. Uses the phone's text-to-speech engine (a female English voice if the device has one).",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        CorpoPanel {
+            SectionLabel("Sound & notifications")
+            dev.eversorhn.gait.ui.theme.CorpoSwitch(
+                label = "Live commentator",
+                description = "Kilometre marks, lead changes, a status line every couple of minutes. Ducks your music.",
+                checked = voiceOn,
+                onChange = { dev.eversorhn.gait.audio.VoicePrefs.setEnabled(appCtx, it); voiceOn = it },
+            )
 
         // --- Notifications: the exit dialog can mute them; this is where they come back ---
         val ctx = androidx.compose.ui.platform.LocalContext.current
         var muted by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.notification.NotificationPrefs.isMuted(ctx)) }
-        Text("Notifications", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        dev.eversorhn.gait.ui.theme.CorpoSwitch(
-            label = "Opponent notifications",
-            checked = !muted,
-            onChange = { dev.eversorhn.gait.notification.NotificationPrefs.setMuted(ctx, !it); muted = !it },
-        )
-        Text(
-            if (muted) "Muted: the opponent keeps writing to the Direct Channel, but nothing reaches your notifications."
-            else "On: same-day Predatory lines, stakes, and the occasional unprompted message reach you outside the app.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+            dev.eversorhn.gait.ui.theme.CorpoSwitch(
+                label = "Notifications",
+                description = if (muted) "Muted — messages still land in the Direct Channel." else "Same-day reactions, stakes, division notices reach you outside the app.",
+                checked = !muted,
+                onChange = { dev.eversorhn.gait.notification.NotificationPrefs.setMuted(ctx, !it); muted = !it },
+            )
+        }
 
         if (dev.eversorhn.gait.BuildConfig.DEBUG) {
             // Debug builds only: shortcuts for exercising the rare states without weeks of running.
@@ -287,12 +304,9 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
 
         CorpoButton(if (state.isHorde) "Switch to Rival Twin" else "Switch to Zombie Horde", onClick = { confirmSwitch = true }, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
 
-        Text(
-            "Danger zone",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.error,
-        )
-        CorpoButton("Erase all data", onClick = { confirmWipe = true }, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth())
+        dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Danger zone", summary = "Erase everything on this device", tone = dev.eversorhn.gait.ui.theme.PanelTone.WARN) {
+            CorpoButton("Erase all data", onClick = { confirmWipe = true }, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth())
+        }
 
         CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
     }

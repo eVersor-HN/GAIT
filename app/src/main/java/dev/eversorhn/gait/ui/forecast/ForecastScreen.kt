@@ -263,7 +263,7 @@ fun ForecastScreen(
                     val fromDivision = m.kind == dev.eversorhn.gait.data.db.entity.MessageKind.COMMENDATION
                     MessageCard(
                         from = when {
-                            fromDivision -> "Asset Performance Division"
+                            fromDivision -> "Division"
                             s.isHorde -> "The Horde"
                             else -> "${s.opponentName} (Twin-${s.generation})"
                         },

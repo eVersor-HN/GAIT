@@ -58,7 +58,6 @@ import dev.eversorhn.gait.ui.theme.SelectCard
 import dev.eversorhn.gait.ui.theme.StatTile
 import dev.eversorhn.gait.ui.theme.TextFaint
 import dev.eversorhn.gait.ui.theme.TrackLegend
-import dev.eversorhn.gait.ui.theme.formatSignedTenths
 import kotlin.math.abs
 
 @Composable
@@ -379,8 +378,8 @@ private fun LiveSession(
                     Text("at ${"%.2f".format(snapshot.distanceMeters / 1000.0)} km".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, modifier = Modifier.padding(bottom = 6.dp))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatTile("Finish · hold", p.projectedFinishSeconds?.let { formatDuration(it) } ?: "—", accent = Brass, sub = opponent.forecastFinishSeconds?.let { "vs ${formatDuration(it)}" })
-                    StatTile("Round now", when (p.roundToUser) { true -> "YOU"; false -> name.uppercase(); null -> "—" }, accent = when (p.roundToUser) { true -> Good; false -> Alert; null -> TextFaint }, sub = "${opponent.stake} pt${if (opponent.stake == 1) "" else "s"} riding")
+                    StatTile("Finish", p.projectedFinishSeconds?.let { formatDuration(it) } ?: "—", accent = Brass, sub = opponent.forecastFinishSeconds?.let { "if held · vs ${formatDuration(it)}" })
+                    StatTile("Round", when (p.roundToUser) { true -> "YOU"; false -> name.uppercase(); null -> "—" }, accent = when (p.roundToUser) { true -> Good; false -> Alert; null -> TextFaint }, sub = "${opponent.stake} pt${if (opponent.stake == 1) "" else "s"} riding")
                     StatTile("Board → ", p.projectedRank?.let { "#$it" } ?: "—", accent = when { (p.rankDelta ?: 0) > 0 -> Good; (p.rankDelta ?: 0) < 0 -> Alert; else -> MaterialTheme.colorScheme.onSurface }, sub = p.rankDelta?.let { d -> if (d > 0) "▲ $d places" else if (d < 0) "▼ ${-d} places" else "holding" } ?: "")
                 }
                 p.modelConfidencePercent?.let { c ->
@@ -423,7 +422,7 @@ private fun LiveSession(
 
     if (mode == TrackMode.OUTDOOR) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatTile(if (showSpeed) "Your speed" else "Your pace", snapshot.currentPaceSecPerKm?.let { paceOrSpeed(it) } ?: "—", accent = Brass, sub = snapshot.avgPaceSecPerKm?.let { "last 200 m · avg ${paceOrSpeed(it)}" })
+            StatTile(if (showSpeed) "Your speed" else "Your pace", snapshot.currentPaceSecPerKm?.let { paceOrSpeed(it) } ?: "—", accent = Brass, sub = snapshot.avgPaceSecPerKm?.let { "avg ${paceOrSpeed(it)}" })
             StatTile(
                 if (isDuel) "Target" else if (opponent?.isHorde == true) "Horde" else name,
                 referencePace?.let { paceOrSpeed(it) } ?: "—",
@@ -433,7 +432,7 @@ private fun LiveSession(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatTile("Distance", "%.2f km".format(snapshot.distanceMeters / 1000.0), sub = referenceDistance?.let { "of %.2f km".format(it / 1000.0) })
-            StatTile("Moving", formatElapsed(snapshot.movingSeconds), sub = referenceFinish?.let { "${if (isDuel) "target" else "forecast"} ${formatDuration(it)}" })
+            StatTile("Moving", formatElapsed(snapshot.movingSeconds), sub = referenceFinish?.let { "of ${formatDuration(it)}" })
             if (activity.key == "HIKING" || activity.key == "CYCLING" || activity.key == "E_BIKE" || activity.key == "HAND_CYCLE" || snapshot.elevationGainMeters >= 20) {
                 StatTile("Climb", "${snapshot.elevationGainMeters.toInt()} m", sub = snapshot.splitSeconds.takeIf { it.size >= 2 }?.let { sp -> dev.eversorhn.gait.domain.route.RouteMetrics.consistency(sp)?.let { "steady ${(it * 100).toInt()}%" } })
             }
@@ -442,40 +441,32 @@ private fun LiveSession(
             Text("Waiting for a GPS fix…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        // --- Divergence card: where you stand against the forecast, live ---
+        // --- Divergence: what the gap clock doesn't say — is this something the model can't script? ---
         val pace = snapshot.currentPaceSecPerKm
         if (pace != null && referencePace != null && opponent != null) {
             val gap = referencePace - pace // > 0 → you're faster
-            val ahead = gap > 0
-            val tone = when {
-                abs(gap) < 3 -> PanelTone.NEUTRAL
-                ahead -> PanelTone.GOOD
-                else -> PanelTone.WARN
-            }
-            val projected = FidelityReplay.step(opponent.fidelity, FidelityReplay.sessionFidelity(referencePace, pace))
-            val impactPoints = (projected - opponent.fidelity) * 100f
-            val metric = if (opponent.isHorde) "Proximity" else "Fidelity"
+            val steadyNow = snapshot.splitSeconds.takeIf { it.size >= 2 }?.let { dev.eversorhn.gait.domain.route.RouteMetrics.consistency(it) }
+            val tone = when { abs(gap) < 3 -> PanelTone.NEUTRAL; gap > 0 -> PanelTone.GOOD; else -> PanelTone.WARN }
             CorpoPanel(tone = tone) {
                 SectionLabel(
-                    when {
-                        abs(gap) < 3 -> "On forecast"
-                        ahead -> "Divergence detected"
-                        else -> "Behind forecast"
-                    },
+                    when { abs(gap) < 3 -> "On forecast"; gap > 0 -> "Divergence" ; else -> "Behind forecast" },
                     color = when (tone) { PanelTone.GOOD -> Good; PanelTone.WARN -> Alert; else -> MaterialTheme.colorScheme.onSurfaceVariant },
                 )
                 Text(
                     when {
                         abs(gap) < 3 -> "Exactly what $name expected. Do something it didn't."
-                        ahead -> "${formatGap(gap)} faster than $name's forecast."
-                        else -> "${formatGap(-gap)} slower than $name's forecast."
+                        gap > 0 -> "${formatGap(gap)} faster than $name's forecast right now."
+                        else -> "${formatGap(-gap)} slower than $name's forecast right now."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 FootNote(
-                    "$metric impact: ${formatSignedTenths(impactPoints)} live",
-                    color = if (impactPoints <= -0.05f) Good else if (impactPoints >= 0.05f) Alert else TextFaint,
+                    listOfNotNull(
+                        steadyNow?.let { "steadiness ${(it * 100).toInt()}%" },
+                        snapshot.elevationGainMeters.takeIf { it >= 10 }?.let { "climb ${it.toInt()} m" },
+                        "round judged on the session average",
+                    ).joinToString(" · ")
                 )
             }
         } else if (!isDuel && opponent?.forecastPaceSecPerKm == null) {

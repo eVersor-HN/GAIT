@@ -94,7 +94,7 @@ fun MessagesScreen(onDone: () -> Unit) {
                     else -> row.kind
                 }
                 MessageCard(
-                    from = if (row.kind == MessageKind.COMMENDATION) "Asset Performance Division" else if (state.isHorde) "The Horde" else state.opponentName,
+                    from = if (row.kind == MessageKind.COMMENDATION) "Division" else if (state.isHorde) "The Horde" else state.opponentName,
                     tag = tag,
                     body = row.line,
                     tone = tone,
@@ -111,7 +111,6 @@ fun MessagesScreen(onDone: () -> Unit) {
             }
         }
 
-        FootNote("Predatory lines also arrive as notifications · stakes are made when you open the forecast", color = TextFaint)
-        CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
+        FootNote("Swipe for Forecast and Statistics · stakes are made when you open the forecast", color = TextFaint)
     }
 }

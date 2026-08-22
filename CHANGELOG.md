@@ -4,6 +4,18 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.15.1] - 2026-08-22
+
+Findings from the 30-run speedrun (new user / explorer / seasoned; 0 crashes, 232 screens reviewed), fixed:
+
+### Changed
+- **Settings is sections, not a scroll of chips**: Opponent summary → *Name & voice* (folded; the 17 personas as a list with a radio mark and a sample line each, not a cloud of chips) → *Activity* (folded; 2 × 4 equal chips) → *Sound & notifications* (two switches in one panel) → *Asset transfer* (folded) → Switch opponent → *Danger zone* (folded).
+- **Live screen**: the divergence card no longer shows the confusing "Fidelity impact +0.9 % live" (mathematically right, humanly wrong) — it says the pace gap and steadiness/climb; tile labels shortened so nothing clips ("Finish · if held · vs 27:00", "Round · 4 pts riding", "avg 24.1km/h", "of 27:00").
+- **Direct Channel**: the division's sender no longer wraps letter by letter ("Division"); header sender/tag both ellipsise; no Back button on swipe pages (Channel, Statistics) — a footnote says where to swipe. Statistics' empty state explains what lands there.
+- **Board**: YOU/opponent context lines are one line ("New hire · protected 60 d"), "bottom 400" tile no longer clips; Horde map is 240 dp so the map page fits, career numbers one footnote.
+- **First-session Debrief** gets a "What happens next" panel (forecast from session 2, stakes from 3, 60-day cull protection) instead of half a page of nothing.
+- Ledger strip survives long opponent names (ellipsis; "THEY" in the standing).
+
 ## [0.15.0] - 2026-08-22
 
 Consistency pass after a 30-run speedrun (new user / explorer / seasoned), notifications, lock screen.

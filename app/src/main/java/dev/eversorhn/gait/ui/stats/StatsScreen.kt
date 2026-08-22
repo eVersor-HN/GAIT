@@ -140,11 +140,15 @@ fun StatsScreen(onDone: () -> Unit) {
         }
 
         if (state.loaded && state.rows.isEmpty()) {
-            Text(
-                "No sessions in this period.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            CorpoPanel {
+                Text("No sessions in this period.", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    if (state.period == StatsPeriod.ALL) "Every recorded or logged session lands here with its forecast, what you actually did, and who took the round. Tap a row to delete it."
+                    else "Switch to ALL to see everything on file.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         LazyColumn(
@@ -185,6 +189,6 @@ fun StatsScreen(onDone: () -> Unit) {
             }
         }
 
-        CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
+        FootNote("Swipe for Forecast and Channel", color = dev.eversorhn.gait.ui.theme.TextFaint)
     }
 }

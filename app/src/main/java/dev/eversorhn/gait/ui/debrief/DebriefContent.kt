@@ -181,7 +181,7 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
         } else {
             CorpoPanel {
                 Text(
-                    "No forecast existed yet for this session — it's now part of the baseline.",
+                    "No forecast existed yet — this session is the baseline.",
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -190,6 +190,16 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
                     Text(result.actualFinishLabel, style = MaterialTheme.typography.titleLarge)
                 }
                 if (result.dataSource == SessionSource.MANUAL) FootNote("Self-reported · not GPS-verified")
+            }
+        }
+
+        // --- First sessions: what happens next (the new user's "so what now?") ---
+        if (!result.hadForecast) {
+            CorpoPanel {
+                SectionLabel("What happens next")
+                Text("From your next session ${if (isHorde) "the horde" else result.opponentName} forecasts you — and every forecasted session is a round on the ledger.", style = MaterialTheme.typography.bodyMedium)
+                Text("From three sessions it starts staking points on its forecast. You can counter.", style = MaterialTheme.typography.bodyMedium)
+                Text("You're a new hire: protected from the quarterly cull for 60 days. Everyone starts at the bottom of the board.", style = MaterialTheme.typography.bodyMedium)
             }
         }
 

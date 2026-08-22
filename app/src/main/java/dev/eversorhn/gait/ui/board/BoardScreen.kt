@@ -108,7 +108,7 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         StatTile("Enrolled", "%,d".format(snap.enrolled), sub = "+${snap.newHires30d} in 30 d")
         StatTile("Under review", "${snap.underReview}", accent = Alert, sub = "floor ${RosterEngine.FLOOR.toInt()}")
-        StatTile("Next cull", if (snap.nextCullInDays == 0) "today" else "${snap.nextCullInDays} d", accent = Alert, sub = "bottom ${RosterEngine.CULL_COUNT} go")
+        StatTile("Next cull", if (snap.nextCullInDays == 0) "today" else "${snap.nextCullInDays} d", accent = Alert, sub = "bottom ${RosterEngine.CULL_COUNT}")
     }
 
     // --- You and the opponent: two rows, same structure, one line of context each ---
@@ -124,8 +124,8 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
                 FootNote(
                     when {
                         u.rank <= 15 -> "On the board"
-                        !safe && protectedDaysLeft > 0 -> "New hire · protected $protectedDaysLeft d · cull line #${snap.cullLine}"
-                        !safe -> "Below the cull line #${snap.cullLine} · ${snap.nextCullInDays} d"
+                        !safe && protectedDaysLeft > 0 -> "New hire · protected $protectedDaysLeft d"
+                        !safe -> "Below cull line #${snap.cullLine} · ${snap.nextCullInDays} d"
                         else -> "${snap.cullLine - u.rank} above the cull line"
                     },
                     color = if (safe || protectedDaysLeft > 0) TextFaint else Alert,
@@ -428,13 +428,13 @@ private fun HordeMap(snap: RosterSnapshot, proximityPercent: Int, career: Career
     val zombies = RosterEngine.zombies(snap, limit = 90)
     ScreenTitle("Containment unit · live", "Where they are")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatTile("Behind you", "${snap.decommissioned.size}", accent = Alert, sub = "decommissioned")
+        StatTile("Behind you", "${snap.decommissioned.size}", accent = Alert, sub = "released")
         StatTile("Proximity", "$proximityPercent%", accent = Alert)
         StatTile("Nearest", "${(100 - proximityPercent).coerceAtLeast(1) * 4} m", sub = "and closing")
     }
     CorpoPanel {
         SectionLabel("Containment map · you ahead, heading up")
-        Canvas(modifier = Modifier.fillMaxWidth().height(320.dp)) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(240.dp)) {
             val you = Offset(size.width / 2, size.height * 0.22f)
             val maxR = size.height * 0.74f
             // Range rings behind you (lower half-circles), 100 m apart.
@@ -464,16 +464,11 @@ private fun HordeMap(snap: RosterSnapshot, proximityPercent: Int, career: Career
             FootNote("● you", color = Brass)
             FootNote("● behind you · ${zombies.size} in range", color = Alert)
         }
-        FootNote("Rings 100 m · the newest decommissions are closest · proximity ${proximityPercent}% sets how close")
+        FootNote("Rings 100 m · newest releases closest · proximity ${proximityPercent}% sets the range")
     }
     career?.let { c ->
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatTile("Tenure", "${c.tenureDays} d", sub = "company days")
-            StatTile("Survived", "${c.cullsSurvived}", sub = if (c.cullsSurvived == 1) "cull" else "culls")
-            StatTile("Best streak", "${c.bestStreak}", sub = "${c.roundsPlayed} rounds")
-        }
+        FootNote("Tenure ${c.tenureDays} d · survived ${c.cullsSurvived} ${if (c.cullsSurvived == 1) "cull" else "culls"} · best streak ${c.bestStreak} · ${c.roundsPlayed} rounds · ${"%,d".format(snap.enrolled)} enrolled · next cull ${if (snap.nextCullInDays == 0) "today" else "in ${snap.nextCullInDays} d"}")
     }
-    FootNote("${"%,d".format(snap.enrolled)} assets enrolled · ${snap.underReview} under review · next cull ${if (snap.nextCullInDays == 0) "today" else "in ${snap.nextCullInDays} d"}")
     CorpoButton("Continue to forecast", onClick = onContinue, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
     Spacer(Modifier.height(8.dp))
 }

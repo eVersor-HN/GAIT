@@ -135,8 +135,8 @@ fun SectionLabel(text: String, color: Color = MaterialTheme.colorScheme.onSurfac
 
 /** `.foot-note`: the smallest mono line, for provenance ("GENERATION 7 · BASIS: 41 SESSIONS"). */
 @Composable
-fun FootNote(text: String, color: Color = TextFaint) {
-    Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = color)
+fun FootNote(text: String, color: Color = TextFaint, maxLines: Int = Int.MAX_VALUE) {
+    Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = color, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
 }
 
 /** `.stat`: a small key/value tile; `accent` colours the value (brass = you, cyan = twin). */
@@ -281,9 +281,9 @@ fun MessageCard(
         MessageTone.WATCHFUL -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     CorpoPanel(tone = panelTone) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-            Text(from.uppercase(), style = MaterialTheme.typography.labelSmall, color = fromColor, modifier = Modifier.weight(1f, fill = false))
-            Text(tag.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, textAlign = TextAlign.End, modifier = Modifier.padding(start = 10.dp))
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(from.uppercase(), style = MaterialTheme.typography.labelSmall, color = fromColor, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(tag.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.padding(start = 10.dp).widthIn(max = 200.dp))
         }
         Text(
             body,
@@ -610,11 +610,11 @@ fun LedgerStrip(
             drawCircle(markerColor.copy(alpha = 0.3f), radius = 7.dp.toPx(), center = Offset(x, midY))
             drawCircle(markerColor, radius = 4.dp.toPx(), center = Offset(x, midY))
         }
-        Text("$twinPoints ${opponentLabel.uppercase()}", style = MaterialTheme.typography.labelLarge, color = twinColor, maxLines = 1)
+        Text("$twinPoints ${opponentLabel.uppercase()}", style = MaterialTheme.typography.labelLarge, color = twinColor, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 150.dp))
         Text(
-            "· " + standing.uppercase().replace(" · STREAK ", " · S"),
-            style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1,
-            modifier = Modifier.widthIn(max = 120.dp),
+            "· " + standing.uppercase().replace(" · STREAK ", " · S").replace(opponentLabel.uppercase(), "THEY"),
+            style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 130.dp),
         )
     }
 }
