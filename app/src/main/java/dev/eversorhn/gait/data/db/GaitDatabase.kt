@@ -19,7 +19,7 @@ import dev.eversorhn.gait.data.db.entity.TwinProfileEntity
 
 @Database(
     entities = [SessionEntity::class, TwinProfileEntity::class, TwinMessageEntity::class, PlannedDayOffEntity::class, ImportedAssetEntity::class],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class GaitDatabase : RoomDatabase() {
@@ -41,7 +41,7 @@ abstract class GaitDatabase : RoomDatabase() {
                 )
                     // Real migrations from v5 on -- there is installed data on real devices
                     // now. Destructive fallback stays only for pre-v5 leftovers nobody has.
-                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
                     .fallbackToDestructiveMigration()
                     .build().also { instance = it }
             }
@@ -53,6 +53,27 @@ abstract class GaitDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE sessions ADD COLUMN composureState TEXT")
                 db.execSQL("ALTER TABLE sessions ADD COLUMN isDuel INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE sessions ADD COLUMN duelWon INTEGER")
+            }
+        }
+
+        /**
+          * v0.17.0: profiles become first-class. Sessions, messages and planned days are scoped
+          * to a profile id instead of an activity string; profiles get a user-visible name.
+          * Existing rows are attached to the profile of their activity (or the first profile).
+          */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE twin_profiles ADD COLUMN profileName TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE sessions ADD COLUMN profileId INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE twin_messages ADD COLUMN profileId INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE sessions SET profileId = COALESCE((SELECT p.id FROM twin_profiles p WHERE p.activityType = sessions.activityType LIMIT 1), (SELECT MIN(id) FROM twin_profiles))")
+                db.execSQL("UPDATE twin_messages SET profileId = COALESCE((SELECT MIN(id) FROM twin_profiles), 0)")
+                db.execSQL("UPDATE twin_profiles SET profileName = activityType WHERE profileName = ''")
+                // planned_days_off: new composite key (profileId, epochDay)
+                db.execSQL("CREATE TABLE IF NOT EXISTS planned_days_off_new (profileId INTEGER NOT NULL, epochDay INTEGER NOT NULL, createdAtEpochMillis INTEGER NOT NULL, PRIMARY KEY(profileId, epochDay))")
+                db.execSQL("INSERT OR REPLACE INTO planned_days_off_new (profileId, epochDay, createdAtEpochMillis) SELECT COALESCE((SELECT MIN(id) FROM twin_profiles), 0), epochDay, createdAtEpochMillis FROM planned_days_off")
+                db.execSQL("DROP TABLE planned_days_off")
+                db.execSQL("ALTER TABLE planned_days_off_new RENAME TO planned_days_off")
             }
         }
 

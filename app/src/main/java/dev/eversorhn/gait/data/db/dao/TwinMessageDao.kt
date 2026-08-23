@@ -11,11 +11,14 @@ interface TwinMessageDao {
     @Insert
     suspend fun insert(message: TwinMessageEntity): Long
 
-    @Query("SELECT * FROM twin_messages ORDER BY epochMillis DESC")
-    suspend fun getAll(): List<TwinMessageEntity>
+    @Query("SELECT * FROM twin_messages WHERE profileId = :profileId ORDER BY epochMillis DESC")
+    suspend fun getAll(profileId: Long): List<TwinMessageEntity>
 
-    @Query("SELECT * FROM twin_messages ORDER BY epochMillis DESC LIMIT :limit")
-    fun observeRecent(limit: Int): Flow<List<TwinMessageEntity>>
+    @Query("SELECT * FROM twin_messages WHERE profileId = :profileId ORDER BY epochMillis DESC LIMIT :limit")
+    fun observeRecent(profileId: Long, limit: Int): Flow<List<TwinMessageEntity>>
+
+    @Query("DELETE FROM twin_messages WHERE profileId = :profileId")
+    suspend fun deleteForProfile(profileId: Long)
 
     @Query("DELETE FROM twin_messages")
     suspend fun deleteAll()

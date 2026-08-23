@@ -82,8 +82,8 @@ fun ForecastScreen(
 
                 PhaseTrack(current = 1)
                 ScreenTitle(
-                    eyebrow = "Pre-Session Forecast",
-                    headline = if (s.isHorde) "What the horde expects of you" else "What ${s.opponentName} expects today",
+                    eyebrow = if (s.isHorde) "Contact projection" else "Pre-session forecast",
+                    headline = if (s.isHorde) "Today's line" else "What ${s.opponentName} expects today",
                 )
 
                 // --- The division's memo (folded to its first sentence; tap for the rest) ---
@@ -149,7 +149,7 @@ fun ForecastScreen(
                                 kind = ButtonKind.RISK,
                                 modifier = Modifier.fillMaxWidth(),
                             )
-                            FootNote("Beat the forecast pace today and the points are yours. Miss it and they're ${if (s.isHorde) "theirs" else "${s.opponentName}'s"}.")
+                            FootNote(if (s.isHorde) "Hold the line and the points are yours" else "Beat it and the points are yours")
                         } else {
                             FootNote("Exposure doubled both ways · ${st.calledPoints} pts ride on today's pace")
                         }
@@ -181,11 +181,8 @@ fun ForecastScreen(
                         )
                         Meter(fraction = s.metricPercent / 100f, color = Alert, threshold = s.trialThresholdPercent / 100f)
                         Text(
-                            if (s.isHorde) {
-                                "They've learned your pace. One run, faster than your own strongest session, and the wave breaks."
-                            } else {
-                                "${s.opponentName} predicts you well enough to replace you. Win a single duel against its strongest session to reset it."
-                            },
+                            if (s.isHorde) "One run faster than your own best breaks the wave."
+                            else "Beat your own best over 1 km to reset ${s.opponentName}.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

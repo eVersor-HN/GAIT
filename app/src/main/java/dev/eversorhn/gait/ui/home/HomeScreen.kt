@@ -1,8 +1,6 @@
 package dev.eversorhn.gait.ui.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,30 +17,29 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.ui.board.BoardScreen
+import dev.eversorhn.gait.ui.coach.CoachScreen
 import dev.eversorhn.gait.ui.forecast.ForecastScreen
-import dev.eversorhn.gait.ui.messages.MessagesScreen
 import dev.eversorhn.gait.ui.stats.StatsScreen
 import dev.eversorhn.gait.ui.theme.Brass
 import dev.eversorhn.gait.ui.theme.ExitGuard
 import dev.eversorhn.gait.ui.theme.LineSoft
 import dev.eversorhn.gait.ui.theme.TextFaint
+import dev.eversorhn.gait.ui.theme.pressable
 import kotlinx.coroutines.launch
 
-/** The four swipeable pages of the main screen, in order. */
-enum class HomePage(val label: String) { BOARD("Board"), FORECAST("Forecast"), CHANNEL("Channel"), STATS("Stats") }
+/** The four pages of an open enrolment, in the order you need them. */
+enum class HomePage(val label: String) { STANDING("Standing"), FORECAST("Forecast"), ANALYSIS("Analysis"), LOG("Log") }
 
 /**
- * The main screen: Board (or Containment Map) → Forecast → Direct Channel → Statistics as
- * swipeable pages, with a page indicator under the HUD. Opens on the board, as before. Pushes
- * (Track, Log, Rest & Vacation, Settings) stay separate routes on top. One ExitGuard for the
- * whole thing, so the system back gesture always asks before the app closes.
+ * An open enrolment: Standing (the board, or the containment display for a horde) → Forecast →
+ * Analysis → Log. Each page opens on what you came for; the session starts from the button at
+ * the top of the first page.
  */
 @Composable
 fun HomeScreen(
@@ -54,6 +51,7 @@ fun HomeScreen(
     onLogSession: () -> Unit,
     onRestDays: () -> Unit,
     onSettings: () -> Unit,
+    onProfiles: () -> Unit,
     onEnrolNew: () -> Unit,
 ) {
     val pager = rememberPagerState(initialPage = 0, pageCount = { HomePage.entries.size })
@@ -62,55 +60,41 @@ fun HomeScreen(
 
     ExitGuard(opponentName = if (isHorde) "The horde" else opponentName.ifBlank { "The model" })
 
-    // Notification permission: asked once there's an opponent that could message you — i.e. here,
-    // on the first screen after setup — not as the very first thing on launch.
-    val notificationPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
-    ) { /* denial just means opponent pings stay silent */ }
-    LaunchedEffect(Unit) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
-
     LaunchedEffect(pager) {
         snapshotFlow { pager.currentPage }.collect { onPageChanged(HomePage.entries[it]) }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
         PageIndicator(current = pager.currentPage, isHorde = isHorde, onSelect = { go(it) })
-        HorizontalPager(
-            state = pager,
-            modifier = Modifier.fillMaxSize(),
-            beyondViewportPageCount = 1,
-        ) { page ->
+        HorizontalPager(state = pager, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
             when (HomePage.entries[page]) {
-                HomePage.BOARD -> BoardScreen(onContinue = { go(HomePage.FORECAST) }, onEnrolNew = onEnrolNew)
+                HomePage.STANDING -> BoardScreen(
+                    onGo = onStartActivity,
+                    onStartDuel = onStartDuel,
+                    onEnrolNew = onEnrolNew,
+                    onProfiles = onProfiles,
+                )
                 HomePage.FORECAST -> ForecastScreen(
-                    onBoard = { go(HomePage.BOARD) },
+                    onBoard = { go(HomePage.STANDING) },
                     onStartActivity = onStartActivity,
                     onStartDuel = onStartDuel,
                     onLogSession = onLogSession,
-                    onMessages = { go(HomePage.CHANNEL) },
+                    onMessages = { go(HomePage.LOG) },
                     onRestDays = onRestDays,
-                    onStats = { go(HomePage.STATS) },
+                    onStats = { go(HomePage.LOG) },
                     onSettings = onSettings,
                 )
-                HomePage.CHANNEL -> MessagesScreen(onDone = { go(HomePage.FORECAST) })
-                HomePage.STATS -> StatsScreen(onDone = { go(HomePage.FORECAST) })
+                HomePage.ANALYSIS -> CoachScreen()
+                HomePage.LOG -> StatsScreen(onDone = { go(HomePage.FORECAST) })
             }
         }
     }
 }
 
-/** Four small labelled dots; tap to jump, swipe to move. */
 @Composable
 private fun PageIndicator(current: Int, isHorde: Boolean, onSelect: (HomePage) -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .padding(top = 2.dp, bottom = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 2.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -119,16 +103,14 @@ private fun PageIndicator(current: Int, isHorde: Boolean, onSelect: (HomePage) -
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(p) },
+                modifier = Modifier.pressable(onClick = { onSelect(p) }),
             ) {
                 Box(
-                    Modifier
-                        .width(if (active) 18.dp else 6.dp)
-                        .height(6.dp)
+                    Modifier.width(if (active) 18.dp else 6.dp).height(6.dp)
                         .background(if (active) Brass else LineSoft, RoundedCornerShape(3.dp))
                 )
                 Text(
-                    (if (p == HomePage.BOARD && isHorde) "Map" else p.label).uppercase(),
+                    (if (p == HomePage.STANDING && isHorde) "Contact" else p.label).uppercase(),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (active) Brass else TextFaint,
                 )

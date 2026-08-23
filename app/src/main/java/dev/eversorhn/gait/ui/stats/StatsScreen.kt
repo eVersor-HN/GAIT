@@ -189,6 +189,19 @@ fun StatsScreen(onDone: () -> Unit) {
             }
         }
 
-        FootNote("Swipe for Forecast and Channel", color = dev.eversorhn.gait.ui.theme.TextFaint)
+        if (state.transmissions.isNotEmpty()) {
+            dev.eversorhn.gait.ui.theme.CollapsiblePanel(
+                title = if (state.isHorde) "Signals" else "Transmissions",
+                summary = state.transmissions.first().second,
+            ) {
+                state.transmissions.forEach { (date, line) ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        FootNote(date, maxLines = 1)
+                        Text(line, style = MaterialTheme.typography.bodyMedium, color = dev.eversorhn.gait.ui.theme.TextDim, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+        FootNote("Swipe back for Analysis and Forecast", color = dev.eversorhn.gait.ui.theme.TextFaint)
     }
 }

@@ -19,6 +19,8 @@ object SessionSource {
 @Entity(tableName = "sessions")
 data class SessionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** The profile this session belongs to (twin_profiles.id). */
+    val profileId: Long = 0,
     val activityType: String,
     val startTimeEpochMillis: Long,
     val dayOfWeek: Int, // 1 (Monday) .. 7 (Sunday), ISO-8601

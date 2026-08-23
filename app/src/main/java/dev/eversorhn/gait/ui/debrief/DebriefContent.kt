@@ -264,7 +264,14 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
             )
         }
 
-        CorpoButton("Back to forecast", onClick = onDone, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
+        if (result.closingLine.isNotBlank()) {
+            CorpoPanel(tone = if (result.beatForecast == true) PanelTone.GOOD else PanelTone.WARN) {
+                SectionLabel(if (isHorde) "Behind you" else result.opponentName, color = if (result.beatForecast == true) Good else Alert)
+                Text(result.closingLine, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+
+        CorpoButton("Done", onClick = onDone, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
     }
 }

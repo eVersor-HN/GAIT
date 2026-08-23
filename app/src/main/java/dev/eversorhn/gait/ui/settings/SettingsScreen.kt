@@ -151,26 +151,6 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
         val appRepo = (androidx.compose.ui.platform.LocalContext.current.applicationContext as dev.eversorhn.gait.GaitApplication).repository
         var activeActivity by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(appRepo.activeActivityType) }
         val scope = androidx.compose.runtime.rememberCoroutineScope()
-        dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Activity", summary = dev.eversorhn.gait.domain.activity.Activities.byKey(activeActivity).label + " · own opponent, ledger and history per activity") {
-            // 2 × 4 grid of equal chips.
-            dev.eversorhn.gait.domain.activity.Activities.all.chunked(4).forEach { rowActs ->
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    rowActs.forEach { a ->
-                        CorpoChip(label = a.label, active = a.key == activeActivity, modifier = Modifier.weight(1f), onClick = {
-                            if (a.key == activeActivity) return@CorpoChip
-                            scope.launch {
-                                appRepo.activeActivityType = a.key
-                                activeActivity = a.key
-                                val hasProfile = appRepo.getTwinProfile(a.key) != null
-                                if (hasProfile) onDone() else onWiped()
-                            }
-                        })
-                    }
-                    repeat(4 - rowActs.size) { androidx.compose.foundation.layout.Spacer(Modifier.weight(1f)) }
-                }
-            }
-            FootNote("Switching to an activity without a profile starts its setup")
-        }
 
         // --- Asset transfer: export the division's file on you; import someone else's asset ---
         val appCtx = androidx.compose.ui.platform.LocalContext.current

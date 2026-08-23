@@ -67,12 +67,7 @@ fun RestDaysScreen(onDone: () -> Unit) {
             .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        ScreenTitle("Rest & vacation", "When you're allowed to disappear")
-        Text(
-            "Three ways to be away without it counting against you: a weekly pattern, days marked off in advance on the calendar, or a block of vacation from the yearly bank. On any of them: sessions still count, Fidelity stays frozen, nobody reacts, no stakes.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        ScreenTitle("Availability", "Declared time off")
 
         // --- Calendar: tap days in advance ---
         CorpoPanel {
@@ -100,7 +95,11 @@ fun RestDaysScreen(onDone: () -> Unit) {
                 Legend(TextDim, "weekly rest")
                 Legend(Cyan, "vacation")
             }
-            FootNote("${state.plannedUpcoming} upcoming planned · tap a day from today on to toggle · ${if (state.monthOffset == 0) "this month" else "+${state.monthOffset} months"}")
+            FootNote(
+                if (state.plannedUpcoming == 0) "No days declared · tap a day to declare it"
+                else "${state.plannedUpcoming} day${if (state.plannedUpcoming == 1) "" else "s"} declared · saved",
+                color = if (state.plannedUpcoming > 0) Brass else TextFaint,
+            )
         }
 
         // --- Weekly pattern ---

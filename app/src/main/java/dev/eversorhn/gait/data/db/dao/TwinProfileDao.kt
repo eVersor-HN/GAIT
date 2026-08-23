@@ -1,6 +1,7 @@
 package dev.eversorhn.gait.data.db.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
@@ -15,17 +16,23 @@ interface TwinProfileDao {
     @Update
     suspend fun update(profile: TwinProfileEntity)
 
-    @Query("SELECT * FROM twin_profiles WHERE activityType = :activityType LIMIT 1")
-    fun observeProfile(activityType: String): Flow<TwinProfileEntity?>
+    @Delete
+    suspend fun delete(profile: TwinProfileEntity)
 
-    @Query("SELECT * FROM twin_profiles WHERE activityType = :activityType LIMIT 1")
-    suspend fun getProfile(activityType: String): TwinProfileEntity?
+    @Query("SELECT * FROM twin_profiles WHERE id = :id")
+    fun observeById(id: Long): Flow<TwinProfileEntity?>
+
+    @Query("SELECT * FROM twin_profiles WHERE id = :id")
+    suspend fun getById(id: Long): TwinProfileEntity?
+
+    @Query("SELECT * FROM twin_profiles ORDER BY createdAtEpochMillis")
+    suspend fun getAll(): List<TwinProfileEntity>
+
+    @Query("SELECT * FROM twin_profiles ORDER BY createdAtEpochMillis")
+    fun observeAll(): Flow<List<TwinProfileEntity>>
 
     @Query("SELECT MIN(createdAtEpochMillis) FROM twin_profiles")
     suspend fun earliestCreatedAt(): Long?
-
-    @Query("SELECT activityType FROM twin_profiles")
-    suspend fun getAllActivityTypes(): List<String>
 
     @Query("DELETE FROM twin_profiles")
     suspend fun deleteAll()

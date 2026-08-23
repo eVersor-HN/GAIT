@@ -5,24 +5,23 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import dev.eversorhn.gait.data.db.entity.PlannedDayOffEntity
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PlannedDayOffDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(day: PlannedDayOffEntity)
 
-    @Query("DELETE FROM planned_days_off WHERE epochDay = :epochDay")
-    suspend fun delete(epochDay: Long)
+    @Query("DELETE FROM planned_days_off WHERE profileId = :profileId AND epochDay = :epochDay")
+    suspend fun delete(profileId: Long, epochDay: Long)
 
-    @Query("SELECT * FROM planned_days_off ORDER BY epochDay")
-    suspend fun getAll(): List<PlannedDayOffEntity>
+    @Query("SELECT * FROM planned_days_off WHERE profileId = :profileId ORDER BY epochDay")
+    suspend fun getAll(profileId: Long): List<PlannedDayOffEntity>
 
-    @Query("SELECT * FROM planned_days_off ORDER BY epochDay")
-    fun observeAll(): Flow<List<PlannedDayOffEntity>>
+    @Query("SELECT COUNT(*) FROM planned_days_off WHERE profileId = :profileId AND epochDay = :epochDay")
+    suspend fun count(profileId: Long, epochDay: Long): Int
 
-    @Query("SELECT COUNT(*) FROM planned_days_off WHERE epochDay = :epochDay")
-    suspend fun count(epochDay: Long): Int
+    @Query("DELETE FROM planned_days_off WHERE profileId = :profileId")
+    suspend fun deleteForProfile(profileId: Long)
 
     @Query("DELETE FROM planned_days_off")
     suspend fun deleteAll()

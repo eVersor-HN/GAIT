@@ -4,6 +4,27 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.17.0] - 2026-08-23
+
+The restructure: profiles first, two modes that stop borrowing each other's language, a monochrome console, and an Analysis page that answers "what do I do now?".
+
+### Added
+- **Enrolments as profiles** (DB v12, `Migration(11, 12)`): the app opens on your list of enrolments — each one an activity, an opponent, a standing, its own sessions, ledger, messages, rest days and settings. Open one, or enrol a new one; delete removes only that enrolment. Existing data is attached to its activity's profile by the migration.
+- **One enrolment form** instead of a four-screen wizard: activity → opponent → identity → name, each a list with a selection mark, one action at the end.
+- **Analysis page** (`domain/coach`): the instructions, ordered by urgency, each with the number to act on and the evidence behind it — today's target pace, the distance that makes it count, the trial deadline, how many rounds to clear the cull line, which weekday is costing you, when predictability (not pace) is the problem, steadiness, absence, streaks.
+- **Horde has its own first page**: a containment display that breathes with proximity (the wave pulse tightens as they close), separation in metres, releases behind you, and a signal log — no board, no ticker, no forecast talk, no sentences. The Twin's board keeps the ticker; a horde enrolment never shows one.
+- **GO** at the top of the first page — the session starts from where you land.
+- **Closing line** after every session (`ClosingLine`): scaled by how far you beat or missed the forecast. The Twin gets quieter the further ahead you finish and colder the further behind; the horde only gets louder or more distant.
+- **Briefing** (Enrolments → Briefing & settings): every explanation the working screens used to carry — premise, rounds, stakes, fidelity and the trial, the board and the cull, the horde, availability, data.
+
+### Changed
+- **Monochrome theme**: black, white and grey, with exactly three signals — amber for you and the one primary action, red for danger, a pale green for a confirmed win. The opponent is a light grey, not a second brand colour.
+- **App icon**: a flat monochrome G cut from a stride, with a single amber tick. Adaptive + monochrome layer.
+- Pages are Standing · Forecast · Analysis · Log (the message log folds into Log). Rest & Vacation is "Availability" and says plainly when days are declared and saved.
+- **Indoor no longer starts by itself**: choosing a mode selects it; START starts it.
+- Live screen gains the number that decides the round: **hold-from-here pace** for the remaining distance, green while you're under it.
+- Settings are per enrolment (the activity switcher is gone — an activity is part of an enrolment).
+
 ## [0.16.1] - 2026-08-22
 
 ### Added

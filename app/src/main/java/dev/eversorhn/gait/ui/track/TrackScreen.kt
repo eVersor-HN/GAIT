@@ -199,17 +199,28 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
                 }
                 SelectCard(
                     title = "Outdoor · GPS",
-                    description = "${if (act.usesSpeed) "Speed" else "Pace"}, distance and route verified by the device. Live comparison, splits, commentary. Tap to start.",
+                    description = "Verified by the device · live comparison, splits, commentary",
                     selected = false,
-                    onClick = { viewModel.chooseMode(TrackMode.OUTDOOR); if (hasLocationPermission) viewModel.start() },
+                    onClick = { viewModel.chooseMode(TrackMode.OUTDOOR) },
                     badge = "verified",
                 )
                 SelectCard(
                     title = "Indoor · ${act.indoorLabel}",
-                    description = "Timed only. You enter the distance the ${if (act.indoorLabel == "timed only") "trip" else "machine"} shows when you stop — tagged as self-reported. Tap to start.",
+                    description = "Timed only · distance entered on stop, tagged self-reported",
                     selected = false,
-                    onClick = { viewModel.chooseMode(TrackMode.INDOOR); viewModel.start() },
+                    onClick = { viewModel.chooseMode(TrackMode.INDOOR) },
                     badge = "self-reported",
+                )
+                CorpoButton(
+                    text = if (isDuel) "START TRIAL" else "START",
+                    onClick = {
+                        if (uiState.mode == TrackMode.OUTDOOR && !hasLocationPermission) {
+                            permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                        } else viewModel.start()
+                    },
+                    enabled = uiState.mode != null,
+                    kind = if (isDuel) ButtonKind.RISK else ButtonKind.PRIMARY,
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
             }
@@ -377,8 +388,19 @@ private fun LiveSession(
                     )
                     Text("at ${"%.2f".format(snapshot.distanceMeters / 1000.0)} km".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, modifier = Modifier.padding(bottom = 6.dp))
                 }
+                // What it takes from here: hold this pace over the remaining distance and the round is yours.
+                val remainingKm = opponent.forecastDistanceMeters?.let { (it - snapshot.distanceMeters) / 1000.0 } ?: 0.0
+                val neededPace = if (referencePace != null && opponent.forecastDistanceMeters != null && remainingKm > 0.05) {
+                    val targetTotal = referencePace * (opponent.forecastDistanceMeters / 1000.0)
+                    ((targetTotal - snapshot.movingSeconds) / remainingKm).coerceAtLeast(1.0)
+                } else null
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatTile("Finish", p.projectedFinishSeconds?.let { formatDuration(it) } ?: "—", accent = Brass, sub = opponent.forecastFinishSeconds?.let { "if held · vs ${formatDuration(it)}" })
+                    StatTile(
+                        if (remainingKm > 0.05) "Hold from here" else "Finish",
+                        neededPace?.let { dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(it, activity.key) } ?: (p.projectedFinishSeconds?.let { formatDuration(it) } ?: "—"),
+                        accent = if (neededPace != null && snapshot.currentPaceSecPerKm != null && snapshot.currentPaceSecPerKm!! <= neededPace) Good else Alert,
+                        sub = if (remainingKm > 0.05) "%.1f km left".format(remainingKm) else "final",
+                    )
                     StatTile("Round", when (p.roundToUser) { true -> "YOU"; false -> name.uppercase(); null -> "—" }, accent = when (p.roundToUser) { true -> Good; false -> Alert; null -> TextFaint }, sub = "${opponent.stake} pt${if (opponent.stake == 1) "" else "s"} riding")
                     StatTile("Board → ", p.projectedRank?.let { "#$it" } ?: "—", accent = when { (p.rankDelta ?: 0) > 0 -> Good; (p.rankDelta ?: 0) < 0 -> Alert; else -> MaterialTheme.colorScheme.onSurface }, sub = p.rankDelta?.let { d -> if (d > 0) "▲ $d places" else if (d < 0) "▼ ${-d} places" else "holding" } ?: "")
                 }

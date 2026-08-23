@@ -24,6 +24,7 @@ object MessageKind {
 @Entity(tableName = "twin_messages")
 data class TwinMessageEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val profileId: Long = 0,
     val epochMillis: Long,
     /** One of [MessageKind]. */
     val kind: String,

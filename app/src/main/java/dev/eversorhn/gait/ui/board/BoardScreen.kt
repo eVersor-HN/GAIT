@@ -50,6 +50,8 @@ import dev.eversorhn.gait.ui.theme.Ink
 import dev.eversorhn.gait.ui.theme.Ink2
 import dev.eversorhn.gait.ui.theme.LineSoft
 import dev.eversorhn.gait.ui.theme.PanelTone
+import dev.eversorhn.gait.ui.theme.Meter
+import dev.eversorhn.gait.ui.theme.pressable
 import dev.eversorhn.gait.ui.theme.ScreenTitle
 import dev.eversorhn.gait.ui.theme.SectionLabel
 import dev.eversorhn.gait.ui.theme.Sparkline
@@ -72,7 +74,12 @@ import kotlin.math.sin
  * If a quarterly cull caught you in the bottom 400, this is the termination notice.
  */
 @Composable
-fun BoardScreen(onContinue: () -> Unit, onEnrolNew: () -> Unit) {
+fun BoardScreen(
+    onGo: () -> Unit,
+    onStartDuel: () -> Unit,
+    onEnrolNew: () -> Unit,
+    onProfiles: () -> Unit,
+) {
     val viewModel: BoardViewModel = gaitViewModel()
     val state by viewModel.uiState.collectAsState()
 
@@ -80,22 +87,43 @@ fun BoardScreen(onContinue: () -> Unit, onEnrolNew: () -> Unit) {
         DossierDialog(d, state.dossierStanding, state.snapshot?.day ?: 0L, onClose = viewModel::closeDossier)
     }
 
+    val snap = state.snapshot
+    if (state.isHorde && state.termination == null) {
+        dev.eversorhn.gait.ui.horde.HordeScreen(
+            snapshot = snap,
+            proximityPercent = state.proximityPercent,
+            separationMeters = state.separationMeters,
+            releasedTotal = state.releasedTotal,
+            daysSinceLast = state.daysSinceLast,
+            signals = state.transmissions,
+            tenureDays = state.career?.tenureDays ?: 0L,
+            onGo = onGo,
+        )
+        return
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        val snap = state.snapshot
         when {
             !state.loaded || snap == null -> {
-                ScreenTitle("Asset board", "Compiling standings…")
-                FootNote("First open of the day: the division re-runs the whole roster · a few seconds")
+                CorpoButton("GO", onClick = onGo, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
+                ScreenTitle("Standings", "Compiling…")
+                FootNote("First open of the day: the division re-runs the whole roster")
             }
             state.termination != null -> TerminationNotice(state.termination!!, snap, state.career, onEnrolNew = { viewModel.enrolNewAsset(onEnrolNew) })
-            state.isHorde -> HordeMap(snap, state.proximityPercent, state.career, onContinue)
-            else -> Board(snap, state.opponentName, state.career, onContinue, onRow = viewModel::openDossier)
+            else -> Board(
+                snap = snap,
+                state = state,
+                onGo = onGo,
+                onStartDuel = onStartDuel,
+                onProfiles = onProfiles,
+                onRow = viewModel::openDossier,
+            )
         }
     }
 }
@@ -103,19 +131,49 @@ fun BoardScreen(onContinue: () -> Unit, onEnrolNew: () -> Unit) {
 // ------------------------------------------------------------------ Twin: the board
 
 @Composable
-private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, onContinue: () -> Unit, onRow: (Int) -> Unit) {
-    ScreenTitle("Asset Performance Division · standings", "Asset board")
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatTile("Enrolled", "%,d".format(snap.enrolled), sub = "+${snap.newHires30d} in 30 d")
-        StatTile("Under review", "${snap.underReview}", accent = Alert, sub = "floor ${RosterEngine.FLOOR.toInt()}")
-        StatTile("Next cull", if (snap.nextCullInDays == 0) "today" else "${snap.nextCullInDays} d", accent = Alert, sub = "bottom ${RosterEngine.CULL_COUNT}")
-    }
-
-    // --- You and the opponent: two rows, same structure, one line of context each ---
+private fun Board(
+    snap: RosterSnapshot,
+    state: BoardUiState,
+    onGo: () -> Unit,
+    onStartDuel: () -> Unit,
+    onProfiles: () -> Unit,
+    onRow: (Int) -> Unit,
+) {
+    val opponentName = state.opponentName
     val u = snap.user
     val safe = u.rank <= snap.cullLine
-    val protectedDaysLeft = career?.let { (RosterEngine.CULL_GRACE_DAYS - it.tenureDays).coerceAtLeast(0) } ?: 0
-    CorpoPanel(tone = if (safe || protectedDaysLeft > 0) PanelTone.TWIN else PanelTone.WARN) {
+    val protectedDaysLeft = state.career?.let { (RosterEngine.CULL_GRACE_DAYS - it.tenureDays).coerceAtLeast(0) } ?: 0
+
+    // --- The one action, first ---
+    CorpoButton(if (state.trialEligible) "GO · TRIAL OPEN" else "GO", onClick = onGo, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
+
+    // --- Where you stand against the model, in one line of numbers ---
+    CorpoPanel {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                FootNote("You", maxLines = 1)
+                Text("${state.userPoints}", style = MaterialTheme.typography.headlineLarge, color = Brass)
+            }
+            Column(Modifier.weight(1f)) {
+                FootNote(opponentName, maxLines = 1)
+                Text("${state.opponentPoints}", style = MaterialTheme.typography.headlineLarge, color = Cyan)
+            }
+            Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1.2f)) {
+                FootNote("${state.roundsPlayed} rounds", maxLines = 1)
+                dev.eversorhn.gait.ui.theme.FormDots(form = state.form, twinColor = Cyan)
+            }
+        }
+        FootNote(state.standingLine, maxLines = 1, color = if (state.userPoints >= state.opponentPoints) Brass else Alert)
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        StatTile("Rank", "#${u.rank}", accent = if (safe) Brass else Alert, sub = "of ${"%,d".format(snap.enrolled)}")
+        StatTile("Index", "${u.index}", accent = if (u.delta >= 0) Brass else Alert, sub = signed(u.delta) + " today")
+        StatTile("Next cull", if (snap.nextCullInDays == 0) "today" else "${snap.nextCullInDays} d", accent = if (safe) MaterialTheme.colorScheme.onSurface else Alert, sub = "line #${snap.cullLine}")
+    }
+
+    // --- You and the model, same structure ---
+    CorpoPanel(tone = if (safe || protectedDaysLeft > 0) PanelTone.NEUTRAL else PanelTone.WARN) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("#${u.rank}", style = MaterialTheme.typography.titleLarge, color = Brass, modifier = Modifier.width(72.dp))
             Arrow(u.prevRank?.let { it - u.rank } ?: 0)
@@ -125,9 +183,10 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
                     when {
                         u.rank <= 15 -> "On the board"
                         !safe && protectedDaysLeft > 0 -> "New hire · protected $protectedDaysLeft d"
-                        !safe -> "Below cull line #${snap.cullLine} · ${snap.nextCullInDays} d"
-                        else -> "${snap.cullLine - u.rank} above the cull line"
+                        !safe -> "Below the line · ${snap.nextCullInDays} d"
+                        else -> "${snap.cullLine - u.rank} above the line"
                     },
+                    maxLines = 1,
                     color = if (safe || protectedDaysLeft > 0) TextFaint else Alert,
                 )
             }
@@ -143,10 +202,11 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
                     Text(opponentName.uppercase(), style = MaterialTheme.typography.titleMedium, color = Cyan)
                     FootNote(
                         when {
-                            t.rank < u.rank -> "Model · ahead of you by ${u.rank - t.rank}"
-                            t.rank > u.rank -> "Model · ${t.rank - u.rank} behind you"
-                            else -> "Model · level with you"
+                            t.rank < u.rank -> "Ahead of you by ${u.rank - t.rank}"
+                            t.rank > u.rank -> "${t.rank - u.rank} behind you"
+                            else -> "Level with you"
                         },
+                        maxLines = 1,
                         color = if (t.rank < u.rank) Alert else TextFaint,
                     )
                 }
@@ -155,21 +215,31 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
         }
     }
 
-    // --- The table: top 5 by default; tap the header or the foot to unfold to 15, tap again to fold ---
+    // --- Substitution review ---
+    if (state.trialEligible) {
+        CorpoPanel(tone = PanelTone.WARN) {
+            SectionLabel("Substitution review", color = Alert)
+            Text("$opponentName — ${state.proximityPercent}%", style = MaterialTheme.typography.titleLarge, color = Alert)
+            Meter(fraction = state.proximityPercent / 100f, color = Alert, threshold = 0.95f)
+            CorpoButton("Contest · 3 pts", onClick = onStartDuel, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth())
+            FootNote(state.trialDeadlineDays?.let { if (it == 0) "Auto-review today" else "Auto-review in $it d" } ?: "Beat your best over 1 km", color = Alert)
+        }
+    }
+
+    // --- The table ---
     var tableOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     val tableRows = if (tableOpen) 15 else 5
     CorpoPanel {
         Row(
-            modifier = Modifier.fillMaxWidth().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { tableOpen = !tableOpen },
+            modifier = Modifier.fillMaxWidth().pressable(onClick = { tableOpen = !tableOpen }),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SectionLabel("#", color = TextFaint); Spacer(Modifier.width(40.dp))
-            SectionLabel("Asset · tap row for file", color = TextFaint)
+            SectionLabel("Asset", color = TextFaint)
             Spacer(Modifier.weight(1f))
             SectionLabel("Index · Δ", color = TextFaint)
             Text(if (tableOpen) "  –" else "  +", style = MaterialTheme.typography.labelLarge, color = TextFaint)
         }
-        // Merge the sim rows with the user's (and the opponent's) by rank, show the first [tableRows].
         val twinRow = snap.twin
         var placed = 0
         var i = 0
@@ -187,11 +257,21 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
             placed++
         }
         Row(
-            modifier = Modifier.fillMaxWidth().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { tableOpen = !tableOpen },
+            modifier = Modifier.fillMaxWidth().pressable(onClick = { tableOpen = !tableOpen }),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            FootNote("${if (snap.nextReviewInDays == 0) "Review today" else "Next review in ${snap.nextReviewInDays} d"} · ${snap.onLeave} on leave")
-            FootNote(if (tableOpen) "show top 5" else "show top 15", color = Brass)
+            FootNote("${if (snap.nextReviewInDays == 0) "Review today" else "Review in ${snap.nextReviewInDays} d"} · ${snap.onLeave} on leave", maxLines = 1)
+            FootNote(if (tableOpen) "show 5" else "show 15", color = Brass, maxLines = 1)
+        }
+    }
+
+    // --- Transmissions: the last things it said ---
+    if (state.transmissions.isNotEmpty()) {
+        CorpoPanel {
+            SectionLabel("Transmissions")
+            state.transmissions.take(3).forEach {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = TextDim, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 
@@ -204,7 +284,7 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
         ) {
             snap.movers.take(5).forEach { m ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onRow(m.asset.slot) },
+                    modifier = Modifier.fillMaxWidth().pressable(onClick = { onRow(m.asset.slot) }),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Arrow(m.delta)
@@ -226,14 +306,16 @@ private fun Board(snap: RosterSnapshot, opponentName: String, career: Career?, o
             snap.decommissioned.take(3).forEach { d ->
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text("${d.asset.id} · ${d.asset.name}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    FootNote("${snap.day - d.day}d ago · ${d.lastIndex}")
+                    FootNote("${snap.day - d.day}d ago · ${d.lastIndex}", maxLines = 1)
                 }
             }
-            FootNote(snap.lastCullDay?.let { "Last cull ${snap.day - it} d ago · ${snap.decommissioned.count { d -> d.day == it }} removed" } ?: "Individual reviews only so far")
         }
     }
 
-    CorpoButton("Continue to forecast", onClick = onContinue, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
+    state.career?.let { c ->
+        FootNote("Tenure ${c.tenureDays} d · survived ${c.cullsSurvived} ${if (c.cullsSurvived == 1) "cull" else "culls"} · best streak ${c.bestStreak}", maxLines = 1)
+    }
+    CorpoButton("Enrolments", onClick = onProfiles, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
     Spacer(Modifier.height(8.dp))
 }
 
@@ -417,58 +499,3 @@ private fun TerminationNotice(t: Termination, snap: RosterSnapshot, career: Care
     Spacer(Modifier.height(8.dp))
 }
 
-// ------------------------------------------------------------------ Horde: containment map
-
-/**
- * You're running from them, so you're ahead: the user sits in the upper third, the horde
- * spreads behind in a cone below, the closest ones by Proximity. Rings are 100 m.
- */
-@Composable
-private fun HordeMap(snap: RosterSnapshot, proximityPercent: Int, career: Career?, onContinue: () -> Unit) {
-    val zombies = RosterEngine.zombies(snap, limit = 90)
-    ScreenTitle("Containment unit · live", "Where they are")
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatTile("Behind you", "${snap.decommissioned.size}", accent = Alert, sub = "released")
-        StatTile("Proximity", "$proximityPercent%", accent = Alert)
-        StatTile("Nearest", "${(100 - proximityPercent).coerceAtLeast(1) * 4} m", sub = "and closing")
-    }
-    CorpoPanel {
-        SectionLabel("Containment map · you ahead, heading up")
-        Canvas(modifier = Modifier.fillMaxWidth().height(240.dp)) {
-            val you = Offset(size.width / 2, size.height * 0.22f)
-            val maxR = size.height * 0.74f
-            // Range rings behind you (lower half-circles), 100 m apart.
-            for (i in 1..4) drawCircle(LineSoft, radius = maxR * i / 4, center = you, style = Stroke(1f))
-            drawLine(LineSoft, Offset(you.x, 0f), Offset(you.x, size.height), 1f)
-            // Your heading: a short brass tick forward.
-            drawLine(Brass.copy(alpha = 0.5f), you, Offset(you.x, you.y - 26.dp.toPx()), 2.dp.toPx())
-            // The horde: a cone behind you (angles 35°..145° below the horizontal), newest closest.
-            val baseDist = (1.0 - proximityPercent / 100.0).coerceIn(0.10, 1.0)
-            zombies.forEachIndexed { i, z ->
-                val seed = z.asset.slot * 31 + z.asset.hireIndex * 7
-                val spread = ((seed * 2654435761L) % 1000L).toDouble() / 1000.0   // 0..1
-                val angle = Math.PI * (0.20 + 0.60 * spread)                     // 36°..144°, i.e. below you
-                val recency = i.toDouble() / zombies.size.coerceAtLeast(1)       // 0 = newest
-                val r = maxR * (baseDist * (0.45 + 0.50 * recency) + ((seed % 17) / 17.0) * 0.10).coerceIn(0.10, 1.0)
-                val p = Offset(you.x + (r * cos(angle)).toFloat(), you.y + (r * sin(angle)).toFloat())
-                if (p.y > size.height - 2.dp.toPx()) return@forEachIndexed
-                val alpha = if (i < 10) 0.95f else 0.55f
-                drawCircle(Alert.copy(alpha = alpha * 0.3f), radius = 6.dp.toPx(), center = p)
-                drawCircle(Alert.copy(alpha = alpha), radius = 2.5.dp.toPx(), center = p)
-            }
-            drawCircle(Brass.copy(alpha = 0.25f), radius = 10.dp.toPx(), center = you)
-            drawCircle(Brass, radius = 5.dp.toPx(), center = you)
-            drawCircle(Ink, radius = 2.dp.toPx(), center = you)
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            FootNote("● you", color = Brass)
-            FootNote("● behind you · ${zombies.size} in range", color = Alert)
-        }
-        FootNote("Rings 100 m · newest releases closest · proximity ${proximityPercent}% sets the range")
-    }
-    career?.let { c ->
-        FootNote("Tenure ${c.tenureDays} d · survived ${c.cullsSurvived} ${if (c.cullsSurvived == 1) "cull" else "culls"} · best streak ${c.bestStreak} · ${c.roundsPlayed} rounds · ${"%,d".format(snap.enrolled)} enrolled · next cull ${if (snap.nextCullInDays == 0) "today" else "in ${snap.nextCullInDays} d"}")
-    }
-    CorpoButton("Continue to forecast", onClick = onContinue, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
-    Spacer(Modifier.height(8.dp))
-}

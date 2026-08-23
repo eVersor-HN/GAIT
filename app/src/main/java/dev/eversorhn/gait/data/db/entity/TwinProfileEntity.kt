@@ -22,6 +22,8 @@ object OpponentType {
 data class TwinProfileEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val activityType: String,
+    /** What the user calls this profile in the list ("Morning runs", "Commute"). */
+    val profileName: String = "",
     val opponentType: String = OpponentType.TWIN,
     /** Twin only: key into Personas. Null for a Horde. */
     val personaKey: String? = null,

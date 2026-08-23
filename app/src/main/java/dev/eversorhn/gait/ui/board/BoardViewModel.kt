@@ -42,6 +42,19 @@ data class BoardUiState(
     /** Slot of the asset whose dossier is open, if any. */
     val dossier: RosterEngine.Dossier? = null,
     val dossierStanding: dev.eversorhn.gait.domain.roster.Standing? = null,
+    // --- what the Standing page needs beyond the roster ---
+    val userPoints: Int = 0,
+    val opponentPoints: Int = 0,
+    val roundsPlayed: Int = 0,
+    val form: List<Boolean> = emptyList(),
+    val standingLine: String = "",
+    val trialEligible: Boolean = false,
+    val trialDeadlineDays: Int? = null,
+    /** The last few things the opponent said (Twin) or the last sounds (Horde). */
+    val transmissions: List<String> = emptyList(),
+    val separationMeters: Int = 0,
+    val releasedTotal: Int = 0,
+    val daysSinceLast: Long? = null,
 )
 
 /**
@@ -151,8 +164,28 @@ class BoardViewModel(private val repository: GaitRepository) : ViewModel() {
                 }
             }
 
+            val messages = repository.getMessages()
+            val transmissions = if (profile.isHorde) {
+                // A horde does not speak: the log is what you heard, in brackets, newest first.
+                (sessions.mapNotNull { it.twinLine } + messages.map { it.line }).filter { it.startsWith("[") }.take(4)
+                    .ifEmpty { listOf(dev.eversorhn.gait.domain.horde.HordeSoundCues.idleCaption()) }
+            } else {
+                (sessions.mapNotNull { s -> s.twinLine } + messages.map { it.line }).take(3)
+            }
+            val separation = ((100 - fidelity).coerceAtLeast(1) * 6)
             _uiState.value = _uiState.value.copy(
                 loaded = true,
+                userPoints = ledger.userPoints,
+                opponentPoints = ledger.twinPoints,
+                roundsPlayed = ledger.roundsPlayed,
+                form = ledger.form().map { it == Side.USER },
+                standingLine = dev.eversorhn.gait.domain.directive.Directive.standing(ledger, profile.twinName, profile.isHorde),
+                trialEligible = dev.eversorhn.gait.domain.trial.DecommissionTrial.isEligible(profile.fidelity),
+                trialDeadlineDays = profile.trialDeadlineEpochDay.takeIf { it >= 0 }?.let { (it - today).toInt().coerceAtLeast(0) },
+                transmissions = transmissions,
+                separationMeters = separation,
+                releasedTotal = snapshot.decommissioned.size,
+                daysSinceLast = sessions.firstOrNull()?.let { (System.currentTimeMillis() - it.startTimeEpochMillis) / 86_400_000L },
                 isHorde = profile.isHorde,
                 opponentName = profile.twinName,
                 proximityPercent = fidelity,

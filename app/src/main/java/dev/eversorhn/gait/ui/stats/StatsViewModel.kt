@@ -62,6 +62,8 @@ data class StatsUiState(
     /** ISO weekday 1..7 → (user wins, twin wins), only weekdays with rounds. */
     val weekdayRecord: List<Triple<Int, Int, Int>> = emptyList(),
     val ownershipLine: String? = null,
+    /** Everything said on this enrolment, newest first — the Channel folded into the Log page. */
+    val transmissions: List<Pair<String, String>> = emptyList(),
 )
 
 class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
@@ -70,6 +72,7 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
     val uiState: StateFlow<StatsUiState> = _uiState.asStateFlow()
 
     private var allSessions: List<SessionEntity> = emptyList()
+    private var transmissions: List<Pair<String, String>> = emptyList()
 
     init {
         reload(StatsPeriod.ALL)
@@ -90,6 +93,11 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
         viewModelScope.launch {
             allSessions = repository.getSessions() // newest-first, per SessionDao
             val profile = repository.getTwinProfile()
+            transmissions = (repository.getMessages().map { m ->
+                java.text.SimpleDateFormat("d MMM", java.util.Locale.getDefault()).format(java.util.Date(m.epochMillis)) to m.line
+            } + allSessions.mapNotNull { s ->
+                s.twinLine?.let { java.text.SimpleDateFormat("d MMM", java.util.Locale.getDefault()).format(java.util.Date(s.startTimeEpochMillis)) to it }
+            }).take(20)
             applyPeriod(
                 period = period,
                 currentFidelity = profile?.fidelity ?: 0f,
@@ -119,6 +127,7 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
             ?: ledger.userStrongestWeekday()?.let { (d, v) -> "${dayName(d)}s are yours, ${v.first}–${v.second}." }
 
         _uiState.value = StatsUiState(
+            transmissions = transmissions,
             isHorde = isHorde,
             opponentName = opponentName,
             userPoints = ledger.userPoints,

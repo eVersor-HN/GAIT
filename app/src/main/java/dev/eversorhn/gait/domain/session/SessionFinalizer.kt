@@ -82,6 +82,8 @@ data class DebriefResult(
     val ledgerBefore: LedgerState = LedgerState(0, 0, emptyList()),
     /** A division commendation earned by this round, if any. */
     val commendation: String? = null,
+    /** The line the session ends on — the one thing the user carries out of the app. */
+    val closingLine: String = "",
     /** "Pace" or "Speed", per the active activity. */
     val paceWord: String = "Pace",
     /** Motor-assisted activities: the round was judged on novelty/steadiness, not on pace. */
@@ -341,6 +343,10 @@ class SessionFinalizer(
             ledger = ledgerAfter,
             ledgerBefore = ledgerBefore,
             commendation = commendation?.body,
+            closingLine = run {
+                val margin = forecast?.let { it.forecastPaceSecPerKm - avgPace } ?: 0.0
+                if (isHorde) ClosingLine.horde(margin) else ClosingLine.twin(margin, profile?.twinName ?: "The model")
+            },
         )
     }
 
