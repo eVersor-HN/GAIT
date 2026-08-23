@@ -4,6 +4,10 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.19.2 — 2026-08-23
+
+- **Demo data can be taken back out.** Loading it records exactly what it wrote; "Remove demo data" deletes those sample sessions and restores the numbers it overwrote. Anything you recorded yourself is untouched, so you no longer have to erase everything to get rid of the samples.
+
 ## 0.19.1 — 2026-08-23
 
 - **One way into settings.** They belong to the enrolment you are inside and are reached from the header on every one of its pages — the three separate entry points are gone. The enrolment list offers only what a list should: open one, add one, remove one.

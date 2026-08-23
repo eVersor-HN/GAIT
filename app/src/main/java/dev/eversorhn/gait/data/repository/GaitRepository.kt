@@ -82,6 +82,8 @@ class GaitRepository(private val db: GaitDatabase, private val appContext: Conte
         db.twinMessageDao().deleteForProfile(profile.id)
         db.plannedDayOffDao().deleteForProfile(profile.id)
         db.twinProfileDao().delete(profile)
+        // The demo record described rows that no longer exist.
+        appContext?.let { dev.eversorhn.gait.domain.demo.DemoRecord.clear(it, profile.id) }
         if (activeProfileId == profile.id) activeProfileId = 0L
     }
 
@@ -110,9 +112,9 @@ class GaitRepository(private val db: GaitDatabase, private val appContext: Conte
         db.sessionDao().observeSessions(profileId)
 
     /** Stamps the active profile onto the row, so callers never have to remember. */
-    suspend fun logSession(session: SessionEntity) {
+    /** Returns the new row id, so callers that may need to take the session back can keep it. */
+    suspend fun logSession(session: SessionEntity): Long =
         db.sessionDao().insert(session.copy(profileId = activeProfileId, activityType = activeActivityType))
-    }
 
     suspend fun deleteSession(id: Long) {
         db.sessionDao().deleteById(id)
@@ -160,7 +162,9 @@ class GaitRepository(private val db: GaitDatabase, private val appContext: Conte
         db.twinMessageDao().deleteAll()
         db.plannedDayOffDao().deleteAll()
         db.importedAssetDao().deleteAll()
+        val profileIds = db.twinProfileDao().getAll().map { it.id }
         db.twinProfileDao().deleteAll()
+        appContext?.let { ctx -> profileIds.forEach { dev.eversorhn.gait.domain.demo.DemoRecord.clear(ctx, it) } }
         activeProfileId = 0L
     }
 }

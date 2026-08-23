@@ -297,17 +297,35 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
 
         // --- Demo data: see the app lived-in without six weeks of running ---
         var demoNote by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-        dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Demo data", summary = "Load six weeks of sample history") {
+        var demoLoaded by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.domain.demo.DemoSeeder.isLoaded(appCtx, appRepo.activeProfileId))
+        }
+        dev.eversorhn.gait.ui.theme.CollapsiblePanel(
+            title = "Demo data",
+            summary = if (demoLoaded) "Loaded — can be removed again" else "Load six weeks of sample history",
+        ) {
             Text(
-                "Adds ~26 sample sessions (rounds, stakes, a won duel, routes, rest days) so you can see every screen with data. Best on a fresh profile; Erase all data removes it again.",
+                "Adds ~26 sample sessions (rounds, stakes, a won duel, routes, rest days) so you can see every screen with data. " +
+                    "Removing takes back exactly what it added — anything you recorded yourself stays.",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            CorpoButton("Load demo data", onClick = {
-                scope.launch {
-                    dev.eversorhn.gait.domain.demo.DemoSeeder.seed(appRepo)
-                    demoNote = "Loaded. Swipe to the Board and Forecast."
-                }
-            }, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
+            if (demoLoaded) {
+                CorpoButton("Remove demo data", onClick = {
+                    scope.launch {
+                        val n = dev.eversorhn.gait.domain.demo.DemoSeeder.remove(appRepo, appCtx)
+                        demoLoaded = false
+                        demoNote = "Removed $n sample ${if (n == 1) "session" else "sessions"}."
+                    }
+                }, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth())
+            } else {
+                CorpoButton("Load demo data", onClick = {
+                    scope.launch {
+                        dev.eversorhn.gait.domain.demo.DemoSeeder.seed(appRepo, appCtx)
+                        demoLoaded = true
+                        demoNote = "Loaded. Swipe to the Board and Forecast."
+                    }
+                }, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
+            }
             demoNote?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface) }
         }
 

@@ -1,5 +1,6 @@
 package dev.eversorhn.gait.domain.demo
 
+import android.content.Context
 import dev.eversorhn.gait.data.db.entity.SessionEntity
 import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.data.repository.GaitRepository
@@ -16,11 +17,13 @@ import kotlin.random.Random
  * with a streak and a recovery, staked and called rounds, two rest-day sessions, three route
  * variants (so novelty/steadiness exist), one won duel (generation 2), and the inbox filled
  * with stakes, a call, idle jabs, a gap ping and two commendations. Deterministic (fixed seed).
- * Adds on top of whatever exists; intended for a fresh profile.
+ * Adds on top of whatever exists; intended for a fresh profile. Everything it writes is
+ * recorded (DemoRecord), so [remove] can take exactly this back out again and leave real
+ * sessions untouched.
  */
 object DemoSeeder {
 
-    suspend fun seed(repository: GaitRepository) {
+    suspend fun seed(repository: GaitRepository, context: Context) {
         val rng = Random(42)
         val zone = ZoneId.systemDefault()
         val now = System.currentTimeMillis()
@@ -72,10 +75,15 @@ object DemoSeeder {
             Spec(1, 5.2, 333, 334, 2, "One second. That's all the room you left me. I only need one.", "WATCHFUL"),
         )
 
+        val before = repository.getTwinProfile()?.let {
+            DemoRecord.Before(it.generation, it.fidelity, it.vacationDaysUsedThisYear, it.vacationYear)
+        }
+        val seededIds = ArrayList<Long>()
+
         for (s in specs) {
             val start = now - s.daysAgo * day - rng.nextLong(0, 4 * 3_600_000L)
             val durationSec = (s.paceSec * s.km).toInt()
-            repository.logSession(
+            seededIds += repository.logSession(
                 SessionEntity(
                     activityType = repository.activeActivityType,
                     startTimeEpochMillis = start,
@@ -104,6 +112,8 @@ object DemoSeeder {
         val profile = repository.getTwinProfile()
         val name = profile?.twinName ?: "The model"
 
+        before?.let { DemoRecord.save(context, repository.activeProfileId, seededIds, it) }
+
         // Profile: generation 2 (the won duel), fidelity mid-high, a couple of vacation days used.
         profile?.let {
             repository.updateTwinProfile(
@@ -115,5 +125,32 @@ object DemoSeeder {
                 )
             )
         }
+    }
+
+    /** True when this enrolment currently holds demo data that can be taken back out. */
+    fun isLoaded(context: Context, profileId: Long): Boolean = DemoRecord.has(context, profileId)
+
+    /**
+     * Removes exactly what [seed] added: its sessions by id, and the profile numbers it
+     * overwrote. Anything you recorded yourself stays.
+     */
+    suspend fun remove(repository: GaitRepository, context: Context): Int {
+        val profileId = repository.activeProfileId
+        val ids = DemoRecord.sessionIds(context, profileId)
+        for (id in ids) repository.deleteSession(id)
+        DemoRecord.before(context, profileId)?.let { b ->
+            repository.getTwinProfile()?.let {
+                repository.updateTwinProfile(
+                    it.copy(
+                        generation = b.generation,
+                        fidelity = b.fidelity,
+                        vacationDaysUsedThisYear = b.vacationDaysUsed,
+                        vacationYear = b.vacationYear,
+                    )
+                )
+            }
+        }
+        DemoRecord.clear(context, profileId)
+        return ids.size
     }
 }
