@@ -153,7 +153,15 @@ fun RowScope.StatTile(label: String, value: String, accent: Color = MaterialThem
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
-        Text(value, style = if (value.length > 7) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge, color = accent, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+        Text(
+            value,
+            style = when {
+                value.length > 8 -> MaterialTheme.typography.titleSmall
+                value.length > 6 -> MaterialTheme.typography.titleMedium
+                else -> MaterialTheme.typography.titleLarge
+            },
+            color = accent, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+        )
         Text(sub ?: " ", style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -244,6 +252,39 @@ fun Meter(fraction: Float, color: Color = Brass, threshold: Float? = null, modif
         if (threshold != null) {
             val x = size.width * threshold.coerceIn(0f, 1f)
             drawLine(Alert, Offset(x, -2.dp.toPx()), Offset(x, size.height + 2.dp.toPx()), strokeWidth = 2f)
+        }
+    }
+}
+
+
+/**
+ * A staged progress bar. Used for model calibration on the Forecast: how many sessions the
+ * opponent still needs before it estimates at all, before points ride on a round, and before
+ * it is at full strength. Reached stages are lit, the rest are outlines.
+ */
+@Composable
+fun StageBar(progress: Float, stages: List<Pair<String, Float>>, reached: Int, accent: Color = Brass) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(8.dp)) {
+            val r = 4.dp.toPx()
+            drawRoundRect(Ink2, cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r))
+            drawRoundRect(LineSoft, cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r), style = Stroke(1f))
+            val w = size.width * progress.coerceIn(0f, 1f)
+            if (w > 0f) drawRoundRect(accent, size = androidx.compose.ui.geometry.Size(w, size.height), cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r))
+            stages.forEach { (_, at) ->
+                val x = size.width * at.coerceIn(0f, 1f)
+                drawLine(Ink, Offset(x, 0f), Offset(x, size.height), strokeWidth = 3f)
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            stages.forEachIndexed { i, (name, _) ->
+                Text(
+                    name.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (i < reached) accent else TextFaint,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

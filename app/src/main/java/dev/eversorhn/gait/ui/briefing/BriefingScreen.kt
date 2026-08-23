@@ -88,7 +88,7 @@ fun BriefingScreen(onDone: () -> Unit) {
             "Chosen instead of a Twin. No name, no words.",
             listOf(
                 "Proximity replaces Fidelity: how well they read your pace.",
-                "Everything is distance and sound; there is no board and no forecast talk.",
+                "Everything is distance and proximity; there is no board and no ticker.",
                 "They are built from released assets.",
             ),
         )

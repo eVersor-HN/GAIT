@@ -119,7 +119,7 @@ fun HordeScreen(
 
         if (signals.isNotEmpty()) {
             CorpoPanel {
-                SectionLabel("Signals", color = Alert)
+                SectionLabel("Recent contact", color = Alert)
                 signals.take(4).forEach { Text(it, style = MaterialTheme.typography.bodyMedium, color = if (closing) Alert else TextFaint) }
             }
         }

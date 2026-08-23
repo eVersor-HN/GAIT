@@ -156,21 +156,11 @@ class BoardViewModel(private val repository: GaitRepository) : ViewModel() {
                 roundsPlayed = ledger.roundsPlayed,
             )
 
-            // A big climb since yesterday's close earns a division note — once per day.
-            if (ledgerYesterday.roundsPlayed > 0) snapshot.user.prevRank?.let { prev ->
-                dev.eversorhn.gait.domain.directive.Commendation.forClimb(prev - snapshot.user.rank, snapshot.user.rank)?.let { note ->
-                    val already = repository.getMessages().any { it.kind == dev.eversorhn.gait.data.db.entity.MessageKind.COMMENDATION && it.epochMillis >= startOfToday && it.line.startsWith(note.code) }
-                    if (!already) repository.recordMessage(dev.eversorhn.gait.data.db.entity.MessageKind.COMMENDATION, "${note.code} · ${note.body}", null, now.toEpochMilli())
-                }
-            }
 
-            val messages = repository.getMessages()
-            val transmissions = if (profile.isHorde) {
-                // A horde does not speak: the log is what you heard, in brackets, newest first.
-                (sessions.mapNotNull { it.twinLine } + messages.map { it.line }).filter { it.startsWith("[") }.take(4)
-                    .ifEmpty { listOf(dev.eversorhn.gait.domain.horde.HordeSoundCues.idleCaption()) }
-            } else {
-                (sessions.mapNotNull { s -> s.twinLine } + messages.map { it.line }).take(3)
+            // The recent rounds, as they landed. Numbers only — nothing speaks here.
+            val transmissions = ledger.rounds.take(4).mapIndexed { i, r ->
+                val n = ledger.roundsPlayed - i
+                "Round $n · +${r.stake} ${if (r.winner == Side.USER) "you" else if (profile.isHorde) "horde" else "model"}"
             }
             val separation = ((100 - fidelity).coerceAtLeast(1) * 6)
             _uiState.value = _uiState.value.copy(
@@ -179,7 +169,7 @@ class BoardViewModel(private val repository: GaitRepository) : ViewModel() {
                 opponentPoints = ledger.twinPoints,
                 roundsPlayed = ledger.roundsPlayed,
                 form = ledger.form().map { it == Side.USER },
-                standingLine = dev.eversorhn.gait.domain.directive.Directive.standing(ledger, profile.twinName, profile.isHorde),
+                standingLine = dev.eversorhn.gait.domain.ledger.Ledger.standingLabel(ledger, profile.twinName, profile.isHorde),
                 trialEligible = dev.eversorhn.gait.domain.trial.DecommissionTrial.isEligible(profile.fidelity),
                 trialDeadlineDays = profile.trialDeadlineEpochDay.takeIf { it >= 0 }?.let { (it - today).toInt().coerceAtLeast(0) },
                 transmissions = transmissions,

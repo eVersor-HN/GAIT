@@ -191,7 +191,7 @@ fun StatsScreen(onDone: () -> Unit) {
 
         if (state.transmissions.isNotEmpty()) {
             dev.eversorhn.gait.ui.theme.CollapsiblePanel(
-                title = if (state.isHorde) "Signals" else "Transmissions",
+                title = "Round record",
                 summary = state.transmissions.first().second,
             ) {
                 state.transmissions.forEach { (date, line) ->

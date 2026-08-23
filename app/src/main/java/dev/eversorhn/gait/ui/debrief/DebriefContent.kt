@@ -16,12 +16,10 @@ import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.domain.composure.ComposureState
-import dev.eversorhn.gait.domain.directive.Directive
 import dev.eversorhn.gait.domain.ledger.Side
 import dev.eversorhn.gait.ui.theme.FormDots
 import dev.eversorhn.gait.domain.session.DebriefResult
 import dev.eversorhn.gait.domain.trial.DecommissionTrial
-import dev.eversorhn.gait.ui.forecast.composureTag
 import dev.eversorhn.gait.ui.theme.Alert
 import dev.eversorhn.gait.ui.theme.Brass
 import dev.eversorhn.gait.ui.theme.ButtonKind
@@ -92,7 +90,7 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
                     )
                 }
                 Text(
-                    Directive.ruling(toUser, result.stake, result.opponentName, isHorde),
+                    dev.eversorhn.gait.domain.ledger.Ledger.rulingLabel(toUser, result.stake, result.opponentName, isHorde),
                     style = MaterialTheme.typography.titleLarge,
                     color = if (toUser) Good else Alert,
                 )
@@ -113,19 +111,13 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
                     }
                 }
                 FootNote(
-                    Directive.standing(result.ledger, result.opponentName, isHorde) +
+                    dev.eversorhn.gait.domain.ledger.Ledger.standingLabel(result.ledger, result.opponentName, isHorde) +
                         " · was ${result.ledgerBefore.userPoints}—${result.ledgerBefore.twinPoints}",
                     color = if (toUser) Brass else twinColor,
                 )
             }
         }
 
-        result.commendation?.let { note ->
-            CorpoPanel(tone = PanelTone.GOOD) {
-                SectionLabel("Asset Performance Division · commendation", color = Good)
-                Text(note, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-            }
-        }
 
         // --- Duel verdict, when there was one ---
         duel?.let { d ->
@@ -232,42 +224,26 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
                 "${result.generationLabel} ${result.generation} · " +
                     if (won) "initialising" else "next review at ${result.trialThresholdPercent}%"
             )
-            Text("Composure: ${composureTag(result.composureState, isHorde)}".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint)
         }
 
         result.restNote?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = Cyan)
         }
 
-        // --- What it said ---
-        if (result.twinLine != null) {
-            val tone = when {
-                won -> MessageTone.TWIN
-                else -> when (result.composureState) {
-                    ComposureState.PREDATORY -> MessageTone.PREDATORY
-                    ComposureState.COWED -> MessageTone.COWED
-                    ComposureState.WATCHFUL -> MessageTone.WATCHFUL
-                }
+        // --- Duel result, as figures ---
+        if (won) {
+            CorpoPanel(tone = PanelTone.GOOD) {
+                SectionLabel("Duel won", color = Good)
+                Text("${result.metricLabel} reset → ${result.newFidelityPercent}%".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint)
+                Text("${result.generationLabel} ${result.generation} initialising".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint)
             }
-            MessageCard(
-                from = if (isHorde) "The Horde" else "${result.opponentName} (Twin-${if (won) result.generation - 1 else result.generation})",
-                tag = if (won) "direct channel" else composureTag(result.composureState, isHorde),
-                body = result.twinLine,
-                tone = tone,
-                footer = if (won) {
-                    {
-                        Text("DUEL: WON", style = MaterialTheme.typography.labelSmall, color = Good)
-                        Text("${result.metricLabel} reset → ${result.newFidelityPercent}%".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint)
-                        Text("${result.generationLabel} ${result.generation} is initialising…".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint)
-                    }
-                } else null,
-            )
         }
 
-        if (result.closingLine.isNotBlank()) {
+        result.marginLabel?.let { margin ->
             CorpoPanel(tone = if (result.beatForecast == true) PanelTone.GOOD else PanelTone.WARN) {
-                SectionLabel(if (isHorde) "Behind you" else result.opponentName, color = if (result.beatForecast == true) Good else Alert)
-                Text(result.closingLine, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
+                SectionLabel(if (result.beatForecast == true) "Ahead of forecast" else "Behind forecast", color = if (result.beatForecast == true) Good else Alert)
+                Text(margin, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
+                FootNote("${result.paceWord} forecast ${result.forecastPaceLabel} · actual ${result.actualPaceLabel}")
             }
         }
 

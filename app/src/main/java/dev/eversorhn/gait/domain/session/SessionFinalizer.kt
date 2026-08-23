@@ -9,16 +9,12 @@ import dev.eversorhn.gait.data.repository.ACTIVITY_RUNNING
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.composure.ComposureEngine
 import dev.eversorhn.gait.domain.composure.ComposureState
-import dev.eversorhn.gait.domain.directive.Commendation
-import dev.eversorhn.gait.data.db.entity.MessageKind
 import dev.eversorhn.gait.domain.fidelity.FidelityReplay
 import dev.eversorhn.gait.domain.forecast.ForecastEngine
-import dev.eversorhn.gait.domain.horde.HordeSoundCues
 import dev.eversorhn.gait.domain.ledger.Ledger
 import dev.eversorhn.gait.domain.ledger.LedgerState
 import dev.eversorhn.gait.domain.ledger.Side
 import dev.eversorhn.gait.domain.wager.WagerPolicy
-import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.domain.restdays.RestDayPolicy
 import dev.eversorhn.gait.domain.trial.DecommissionTrial
 import dev.eversorhn.gait.notification.TwinNotifier
@@ -36,7 +32,6 @@ data class DuelOutcome(
     /** Set on a win: the generation/wave that just spun up. */
     val newGeneration: Int?,
     /** Set on a win: the opponent's handoff line (Phase 05), quoting the user's own data. */
-    val handoffLine: String?,
 )
 
 data class DebriefResult(
@@ -44,7 +39,6 @@ data class DebriefResult(
     val forecastPaceLabel: String,
     val actualPaceLabel: String,
     val composureState: ComposureState,
-    val twinLine: String?,
     val newFidelityPercent: Int,
     val dataSource: String,
     val opponentType: String = OpponentType.TWIN,
@@ -80,12 +74,10 @@ data class DebriefResult(
     val stakeCalled: Boolean = false,
     val ledger: LedgerState = LedgerState(0, 0, emptyList()),
     val ledgerBefore: LedgerState = LedgerState(0, 0, emptyList()),
-    /** A division commendation earned by this round, if any. */
-    val commendation: String? = null,
-    /** The line the session ends on — the one thing the user carries out of the app. */
-    val closingLine: String = "",
     /** "Pace" or "Speed", per the active activity. */
     val paceWord: String = "Pace",
+    /** Signed distance from the forecast — the number the session closes on. Null without one. */
+    val marginLabel: String? = null,
     /** Motor-assisted activities: the round was judged on novelty/steadiness, not on pace. */
     val scoredOnDimensions: Boolean = false,
     val routeNoveltyPercent: Int? = null,
@@ -156,7 +148,6 @@ class SessionFinalizer(
         val forecastClimb = priorSessions.mapNotNull { it.elevationGainMeters }.take(8).takeIf { it.isNotEmpty() }?.average()
 
         val isHorde = profile?.isHorde == true
-        val persona = if (profile != null && !isHorde) Personas.byKey(profile.personaKey) else null
         val metricLabel = if (isHorde) "Proximity" else "Fidelity"
         val generationLabel = if (isHorde) "Wave" else "Generation"
 
@@ -190,23 +181,12 @@ class SessionFinalizer(
         val previousFidelity = profile?.fidelity ?: FidelityReplay.INITIAL_FIDELITY
         var newFidelity = previousFidelity
         var newGeneration = profile?.generation ?: 1
-        var handoffLine: String? = null
 
         if (profile != null) {
             when {
                 duelWon -> {
-                    // How often the user beat the forecast this generation -- the handoff line quotes it back.
-                    val timesBeaten = priorSessions
-                        .takeWhile { !(it.isDuel && it.duelWon == true) }
-                        .count { s -> s.forecastPaceSecPerKm?.let { s.avgPaceSecPerKm < it } == true } +
-                        (if (forecast != null && avgPace < forecast.forecastPaceSecPerKm) 1 else 0)
                     newFidelity = DecommissionTrial.RESET_FIDELITY
                     newGeneration = profile.generation + 1
-                    handoffLine = if (isHorde) {
-                        HordeSoundCues.handoffCaption(newGeneration)
-                    } else {
-                        persona!!.handoffLine(timesBeaten, newGeneration)
-                    }
                     repository.updateTwinProfile(profile.copy(fidelity = newFidelity, generation = newGeneration, trialDeadlineEpochDay = -1L))
                 }
                 forecast != null && !isRestPeriod -> {
@@ -219,21 +199,6 @@ class SessionFinalizer(
             }
         }
 
-        fun speedWords(line: String?): String? =
-            if (line != null && activity.usesSpeed) line.replace("pace", "speed").replace("Pace", "Speed") else line
-        val opponentLine: String? = speedWords(when {
-            isRestPeriod -> null
-            verdict == DecommissionTrial.Verdict.LOST ->
-                if (isHorde) HordeSoundCues.duelLostCaption() else persona?.duelLostLines?.random(Random)
-            verdict == DecommissionTrial.Verdict.WON -> handoffLine
-            isHorde -> HordeSoundCues.captionFor(composureState, profile?.hordeIntensity ?: "")
-            persona != null -> when (composureState) {
-                ComposureState.COWED -> persona.cowedLines.random(Random)
-                ComposureState.WATCHFUL -> persona.watchfulLines.random(Random)
-                ComposureState.PREDATORY -> persona.predatoryLines.random(Random)
-            }
-            else -> null
-        })
 
         repository.logSession(
             SessionEntity(
@@ -247,7 +212,6 @@ class SessionFinalizer(
                 forecastFinishSeconds = forecast?.forecastFinishSeconds,
                 isRestDay = isRestPeriod,
                 dataSource = dataSource,
-                twinLine = opponentLine,
                 composureState = if (isRestPeriod) null else composureState.name,
                 isDuel = duelTarget != null,
                 duelWon = when (verdict) {
@@ -271,13 +235,9 @@ class SessionFinalizer(
             }
         }
 
-        if (!isRestPeriod && composureState == ComposureState.PREDATORY && profile != null && opponentLine != null) {
-            TwinNotifier.postTwinMessage(appContext, profile.twinName, opponentLine, TwinNotifier.Kind.REACTION)
-        }
-
         val restNote = when {
-            isOnVacation -> "Logged during vacation — counted as training, but $metricLabel stays frozen and nobody reacts."
-            isRestDay -> "Logged on a declared rest day — counted as training, but $metricLabel stays frozen and nobody reacts."
+            isOnVacation -> "Logged during vacation — counted as training, $metricLabel frozen, round not scored."
+            isRestDay -> "Logged on a declared rest day — counted as training, $metricLabel frozen, round not scored."
             else -> null
         }
 
@@ -285,21 +245,25 @@ class SessionFinalizer(
         val history = FidelityReplay.history(allSessions)
         val ledgerAfter = Ledger.from(allSessions)
 
-        // The division's note, if this round earned one (stored in the inbox, shown on the Forecast).
-        var commendation: Commendation.Note? = null
-        if (forecast != null && !isRestPeriod && profile != null) {
-            commendation = Commendation.afterRound(ledgerBefore, ledgerAfter, forecast.forecastPaceSecPerKm - avgPace, profile.twinName, isHorde)
-            commendation?.let {
-                repository.recordMessage(MessageKind.COMMENDATION, "${it.code} · ${it.body}", null, now.toEpochMilli())
-                TwinNotifier.postDivisionNotice(appContext, "Commendation ${it.code}", it.body, TwinNotifier.Kind.COMMENDATION)
-            }
-        }
 
         return DebriefResult(
             hadForecast = forecast != null,
             forecastPaceLabel = forecast?.let { dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(it.forecastPaceSecPerKm, repository.activeActivityType) } ?: "—",
             actualPaceLabel = dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(avgPace, repository.activeActivityType),
             paceWord = dev.eversorhn.gait.domain.activity.Activities.paceWord(repository.activeActivityType),
+            marginLabel = forecast?.let { f ->
+                val a = dev.eversorhn.gait.domain.activity.Activities.byKey(repository.activeActivityType)
+                if (a.usesSpeed) {
+                    val d = 3600.0 / avgPace.coerceAtLeast(1.0) - 3600.0 / f.forecastPaceSecPerKm.coerceAtLeast(1.0)
+                    "%+.1f km/h".format(d)
+                } else {
+                    val d = ((f.forecastPaceSecPerKm - avgPace) * a.paceUnitMeters / 1000.0).toInt()
+                    val unit = if (a.paceUnitMeters == 1000) "km" else "${a.paceUnitMeters}m"
+                    val sign = if (d >= 0) "+" else "−"
+                    val abs = kotlin.math.abs(d)
+                    "$sign${abs / 60}:${(abs % 60).toString().padStart(2, '0')}/$unit"
+                }
+            },
             composureState = composureState,
             scoredOnDimensions = !activity.paceMeaningful,
             routeNoveltyPercent = novelty?.let { (it * 100).toInt() },
@@ -307,7 +271,6 @@ class SessionFinalizer(
             forecastConsistencyPercent = forecastConsistency?.let { (it * 100).toInt() },
             elevationGainLabel = elevationGainMeters?.let { "${it.toInt()} m" },
             forecastElevationLabel = forecastClimb?.let { "~${it.toInt()} m" },
-            twinLine = opponentLine,
             newFidelityPercent = (newFidelity * 100).toInt(),
             dataSource = dataSource,
             opponentType = profile?.opponentType ?: OpponentType.TWIN,
@@ -328,7 +291,6 @@ class SessionFinalizer(
                     verdict = it,
                     targetPaceLabel = dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(duelTarget!!, repository.activeActivityType),
                     newGeneration = if (duelWon) newGeneration else null,
-                    handoffLine = handoffLine,
                 )
             },
             roundWinner = Ledger.winnerOf(
@@ -342,11 +304,6 @@ class SessionFinalizer(
             stakeCalled = stakeCalled,
             ledger = ledgerAfter,
             ledgerBefore = ledgerBefore,
-            commendation = commendation?.body,
-            closingLine = run {
-                val margin = forecast?.let { it.forecastPaceSecPerKm - avgPace } ?: 0.0
-                if (isHorde) ClosingLine.horde(margin) else ClosingLine.twin(margin, profile?.twinName ?: "The model")
-            },
         )
     }
 

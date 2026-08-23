@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.domain.activity.Activities
 import dev.eversorhn.gait.domain.horde.HordeIntensity
-import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.ui.gaitViewModel
 import dev.eversorhn.gait.ui.theme.Alert
 import dev.eversorhn.gait.ui.theme.Brass
@@ -77,13 +76,16 @@ fun EnrolScreen(onCreated: () -> Unit, onCancel: () -> Unit) {
         // --- 1. Activity ---
         CorpoPanel {
             SectionLabel("1 · Activity")
-            Activities.all.forEach { a ->
-                SelectRow(
-                    title = a.label,
-                    detail = a.dimensions.joinToString(" · "),
-                    selected = state.activityKey == a.key,
-                    onClick = { viewModel.selectActivity(a.key) },
-                )
+            Activities.groups.forEach { (group, list) ->
+                FootNote(group)
+                list.forEach { a ->
+                    SelectRow(
+                        title = a.label,
+                        detail = a.dimensions.joinToString(" · "),
+                        selected = state.activityKey == a.key,
+                        onClick = { viewModel.selectActivity(a.key) },
+                    )
+                }
             }
         }
 
@@ -92,13 +94,13 @@ fun EnrolScreen(onCreated: () -> Unit, onCancel: () -> Unit) {
             SectionLabel("2 · Opponent")
             SelectRow(
                 title = "Rival Twin",
-                detail = "A named model of you. Speaks.",
+                detail = "A named model of you. Forecast, standing, board.",
                 selected = state.opponentType == OpponentType.TWIN,
                 onClick = { viewModel.selectOpponent(OpponentType.TWIN) },
             )
             SelectRow(
                 title = "Zombie Horde",
-                detail = "No name. No words. Distance and sound.",
+                detail = "No name. Distance, proximity, containment map.",
                 selected = state.opponentType == OpponentType.HORDE,
                 onClick = { viewModel.selectOpponent(OpponentType.HORDE) },
             )
@@ -126,15 +128,6 @@ fun EnrolScreen(onCreated: () -> Unit, onCancel: () -> Unit) {
                     ),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(2.dp))
-                Personas.mvpRoster.forEach { p ->
-                    SelectRow(
-                        title = p.label,
-                        detail = p.predatoryLines.first(),
-                        selected = state.personaKey == p.key,
-                        onClick = { viewModel.selectPersona(p.key) },
-                    )
-                }
             }
         }
 

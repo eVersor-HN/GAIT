@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import dev.eversorhn.gait.domain.directive.Directive
 import dev.eversorhn.gait.domain.ledger.Ledger
 import java.time.DayOfWeek
 import java.time.format.TextStyle
@@ -62,7 +61,7 @@ data class StatsUiState(
     /** ISO weekday 1..7 → (user wins, twin wins), only weekdays with rounds. */
     val weekdayRecord: List<Triple<Int, Int, Int>> = emptyList(),
     val ownershipLine: String? = null,
-    /** Everything said on this enrolment, newest first — the Channel folded into the Log page. */
+    /** Every scored round on this enrolment, newest first, for the Log page. */
     val transmissions: List<Pair<String, String>> = emptyList(),
 )
 
@@ -93,11 +92,11 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
         viewModelScope.launch {
             allSessions = repository.getSessions() // newest-first, per SessionDao
             val profile = repository.getTwinProfile()
-            transmissions = (repository.getMessages().map { m ->
-                java.text.SimpleDateFormat("d MMM", java.util.Locale.getDefault()).format(java.util.Date(m.epochMillis)) to m.line
-            } + allSessions.mapNotNull { s ->
-                s.twinLine?.let { java.text.SimpleDateFormat("d MMM", java.util.Locale.getDefault()).format(java.util.Date(s.startTimeEpochMillis)) to it }
-            }).take(20)
+            // The record, as figures: each scored round with the date it landed and what it moved.
+            transmissions = dev.eversorhn.gait.domain.ledger.Ledger.from(allSessions).rounds.take(20).map { r ->
+                java.text.SimpleDateFormat("d MMM", java.util.Locale.getDefault()).format(java.util.Date(r.epochMillis)) to
+                    ("+${r.stake} " + if (r.winner == dev.eversorhn.gait.domain.ledger.Side.USER) "you" else "them")
+            }
             applyPeriod(
                 period = period,
                 currentFidelity = profile?.fidelity ?: 0f,
@@ -133,7 +132,7 @@ class StatsViewModel(private val repository: GaitRepository) : ViewModel() {
             userPoints = ledger.userPoints,
             twinPoints = ledger.twinPoints,
             roundsPlayed = ledger.roundsPlayed,
-            standing = Directive.standing(ledger, opponentName, isHorde),
+            standing = dev.eversorhn.gait.domain.ledger.Ledger.standingLabel(ledger, opponentName, isHorde),
             weekdayRecord = ledger.byWeekday().entries.sortedBy { it.key }.map { Triple(it.key, it.value.first, it.value.second) },
             ownershipLine = ownership,
             period = period,

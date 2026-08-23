@@ -8,10 +8,8 @@ import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.data.db.entity.isHorde
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.forecast.ForecastEngine
-import dev.eversorhn.gait.domain.horde.HordeSoundCues
 import dev.eversorhn.gait.domain.live.LiveCommentary
 import dev.eversorhn.gait.domain.live.LiveZone
-import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.ui.forecast.formatPace
 import dev.eversorhn.gait.domain.trial.DecommissionTrial
 import dev.eversorhn.gait.domain.session.DebriefResult
@@ -313,6 +311,7 @@ class TrackViewModel(
 
     private var cachedSessions: List<dev.eversorhn.gait.data.db.entity.SessionEntity>? = null
 
+    /** One line for the live feed. Numbers, not voices: the gap, the mark, the direction. */
     private fun lineFor(opp: LiveOpponent, trigger: LiveCommentary.Trigger): String {
         fun gapLabel(g: Double): String {
             val t = kotlin.math.abs(g).toInt()
@@ -322,19 +321,11 @@ class TrackViewModel(
             is LiveCommentary.Trigger.KmMark -> Triple(trigger.zone, trigger.gapSecPerKm, trigger.km)
             is LiveCommentary.Trigger.LeadChange -> Triple(trigger.zone, trigger.gapSecPerKm, null)
         }
-        if (opp.isHorde) {
-            return when (zone) {
-                LiveZone.AHEAD -> HordeSoundCues.liveAhead(gapLabel(gap))
-                LiveZone.BEHIND -> HordeSoundCues.liveBehind(gapLabel(gap))
-                LiveZone.LEVEL -> HordeSoundCues.liveLevel(km ?: 0)
-            }
-        }
-        val persona = Personas.byKey(opp.personaKey)
-        val prefix = if (km != null) "Km $km. " else ""
+        val mark = if (km != null) "Km $km" else "Lead change"
         return when (zone) {
-            LiveZone.AHEAD -> prefix + persona.liveAheadLines.random(Random)(gapLabel(gap))
-            LiveZone.BEHIND -> prefix + persona.liveBehindLines.random(Random)(gapLabel(gap))
-            LiveZone.LEVEL -> persona.liveLevelLines.random(Random)(km ?: 0)
+            LiveZone.AHEAD -> "$mark · ${gapLabel(gap)} up"
+            LiveZone.BEHIND -> "$mark · ${gapLabel(gap)} down"
+            LiveZone.LEVEL -> "$mark · level"
         }
     }
 

@@ -197,13 +197,15 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
                         }
                     }
                 }
-                SelectCard(
-                    title = "Outdoor · GPS",
-                    description = "Verified by the device · live comparison, splits, commentary",
-                    selected = false,
-                    onClick = { viewModel.chooseMode(TrackMode.OUTDOOR) },
-                    badge = "verified",
-                )
+                if (act.outdoorCapable) {
+                    SelectCard(
+                        title = "Outdoor · GPS",
+                        description = "Verified by the device · live comparison, splits, commentary",
+                        selected = false,
+                        onClick = { viewModel.chooseMode(TrackMode.OUTDOOR) },
+                        badge = "verified",
+                    )
+                }
                 SelectCard(
                     title = "Indoor · ${act.indoorLabel}",
                     description = "Timed only · distance entered on stop, tagged self-reported",
@@ -301,7 +303,7 @@ private fun DuelBriefing(opponent: LiveOpponent?) {
     CorpoPanel(tone = PanelTone.WARN) {
         SectionLabel("Asset review", color = Alert)
         Text(
-            opponent?.duelTargetPaceSecPerKm?.let { "Beat ${formatPace(it)} — ${opponent.name}'s strongest session" }
+            opponent?.duelTargetPaceSecPerKm?.let { "Beat ${formatPace(it)} — its strongest session" }
                 ?: "No reference session yet — this run becomes the baseline.",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
@@ -478,7 +480,7 @@ private fun LiveSession(
                 )
                 Text(
                     when {
-                        abs(gap) < 3 -> "Exactly what $name expected. Do something it didn't."
+                        abs(gap) < 3 -> "On the forecast — no divergence."
                         gap > 0 -> "${formatGap(gap)} faster than $name's forecast right now."
                         else -> "${formatGap(-gap)} slower than $name's forecast right now."
                     },
@@ -495,7 +497,7 @@ private fun LiveSession(
             }
         } else if (!isDuel && opponent?.forecastPaceSecPerKm == null) {
             CorpoPanel {
-                Text("No forecast yet — $name is only watching this one.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("No forecast for this session — it becomes baseline material.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 

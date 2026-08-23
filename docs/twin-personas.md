@@ -1,5 +1,9 @@
 # Twin Personas & Dialogue Variation
 
+> **Superseded in v0.18.0.** The opponent no longer speaks. Every persona line, taunt, memo,
+> caption and closing line was removed; the opponent communicates only through its forecast,
+> the ledger, the board and the map. This document is kept as design history.
+
 Default content language for the app is **English**; other locales are a later, separate effort and out of scope for now.
 
 ## Persona roster

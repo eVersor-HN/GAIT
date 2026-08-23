@@ -6,7 +6,6 @@ import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.db.entity.isHorde
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.horde.HordeIntensity
-import dev.eversorhn.gait.domain.persona.Personas
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +15,6 @@ data class SettingsUiState(
     val loaded: Boolean = false,
     val isHorde: Boolean = false,
     val twinName: String = "",
-    val personaKey: String = Personas.hatedPerson.key,
     val hordeIntensity: String = HordeIntensity.STANDARD,
     val generation: Int = 1,
     val metricPercent: Int = 50,
@@ -48,7 +46,6 @@ class SettingsViewModel(private val repository: GaitRepository) : ViewModel() {
                 loaded = true,
                 isHorde = profile.isHorde,
                 twinName = profile.twinName,
-                personaKey = profile.personaKey ?: Personas.hatedPerson.key,
                 hordeIntensity = profile.hordeIntensity ?: HordeIntensity.STANDARD,
                 generation = profile.generation,
                 metricPercent = (profile.fidelity * 100).toInt(),
@@ -59,10 +56,6 @@ class SettingsViewModel(private val repository: GaitRepository) : ViewModel() {
 
     fun updateName(name: String) {
         _uiState.value = _uiState.value.copy(twinName = name)
-    }
-
-    fun selectPersona(key: String) {
-        _uiState.value = _uiState.value.copy(personaKey = key)
     }
 
     fun selectIntensity(key: String) {
@@ -78,8 +71,8 @@ class SettingsViewModel(private val repository: GaitRepository) : ViewModel() {
                 profile.copy(hordeIntensity = s.hordeIntensity)
             } else {
                 profile.copy(
-                    twinName = s.twinName.ifBlank { Personas.byKey(s.personaKey).defaultName },
-                    personaKey = s.personaKey,
+                    twinName = s.twinName.ifBlank { "The model" },
+                    personaKey = null,
                 )
             }
             repository.updateTwinProfile(updated)
@@ -95,9 +88,9 @@ class SettingsViewModel(private val repository: GaitRepository) : ViewModel() {
             val switched = if (profile.isHorde) {
                 profile.copy(
                     opponentType = OpponentType.TWIN,
-                    personaKey = s.personaKey,
+                    personaKey = null,
                     hordeIntensity = null,
-                    twinName = Personas.byKey(s.personaKey).defaultName,
+                    twinName = "The model",
                     fidelity = 0.5f,
                     generation = 1,
                 )

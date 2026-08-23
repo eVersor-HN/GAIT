@@ -27,7 +27,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import dev.eversorhn.gait.R
 import dev.eversorhn.gait.domain.horde.HordeIntensity
-import dev.eversorhn.gait.domain.persona.Personas
 import dev.eversorhn.gait.ui.gaitViewModel
 import dev.eversorhn.gait.ui.theme.pressable
 import androidx.compose.ui.Alignment
@@ -113,37 +112,19 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
                     selected = HordeIntensity.all.indexOf(state.hordeIntensity).coerceAtLeast(0),
                     onSelect = { viewModel.selectIntensity(HordeIntensity.all[it]) },
                 )
-                FootNote("Only changes how the horde sounds when it's closing in")
+                FootNote("Only changes how fast the horde closes")
             }
         } else {
-            val currentPersona = Personas.byKey(state.personaKey)
-            dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Name & voice", summary = "${state.twinName} · ${currentPersona.label}") {
+            dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Name", summary = state.twinName) {
                 OutlinedTextField(
                     value = state.twinName,
                     onValueChange = viewModel::updateName,
-                    label = { Text("Twin name") },
+                    label = { Text("Opponent name") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                SectionLabel("Voice · 17 personas")
-                // A list with a radio mark, not a cloud of chips: the eye scans top-down, the selected one is obvious.
-                Personas.mvpRoster.forEach { persona ->
-                    val selected = state.personaKey == persona.key
-                    Row(
-                        modifier = Modifier.fillMaxWidth().pressable(onClick = { viewModel.selectPersona(persona.key) }).padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        androidx.compose.foundation.layout.Box(Modifier.size(14.dp).border(androidx.compose.foundation.BorderStroke(1.dp, if (selected) dev.eversorhn.gait.ui.theme.Brass else dev.eversorhn.gait.ui.theme.LineSoft), androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
-                            if (selected) androidx.compose.foundation.layout.Box(Modifier.size(8.dp).background(dev.eversorhn.gait.ui.theme.Brass, androidx.compose.foundation.shape.CircleShape))
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text(persona.label, style = MaterialTheme.typography.titleMedium, color = if (selected) dev.eversorhn.gait.ui.theme.Brass else MaterialTheme.colorScheme.onSurface)
-                            Text(persona.predatoryLines.first(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                        }
-                    }
-                }
+                FootNote("Shown on the board, the ledger and every forecast")
             }
         }
 
@@ -259,8 +240,8 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
         CorpoPanel {
             SectionLabel("Sound & notifications")
             dev.eversorhn.gait.ui.theme.CorpoSwitch(
-                label = "Live commentator",
-                description = "Kilometre marks, lead changes, a status line every couple of minutes. Ducks your music.",
+                label = "Spoken readout",
+                description = "Reads the live figures aloud at kilometre marks and lead changes. Ducks your music.",
                 checked = voiceOn,
                 onChange = { dev.eversorhn.gait.audio.VoicePrefs.setEnabled(appCtx, it); voiceOn = it },
             )
@@ -270,7 +251,7 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
         var muted by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.notification.NotificationPrefs.isMuted(ctx)) }
             dev.eversorhn.gait.ui.theme.CorpoSwitch(
                 label = "Notifications",
-                description = if (muted) "Muted — messages still land in the Direct Channel." else "Same-day reactions, stakes, division notices reach you outside the app.",
+                description = if (muted) "Muted — nothing reaches the shade." else "Session tracking and review deadlines reach you outside the app.",
                 checked = !muted,
                 onChange = { dev.eversorhn.gait.notification.NotificationPrefs.setMuted(ctx, !it); muted = !it },
             )
@@ -318,7 +299,7 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
         var demoNote by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
         dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Demo data", summary = "Load six weeks of sample history") {
             Text(
-                "Adds ~26 sample sessions (rounds, stakes, a won duel, routes, rest days) and a filled Direct Channel — so you can see every screen with data. Best on a fresh profile; Erase all data removes it again.",
+                "Adds ~26 sample sessions (rounds, stakes, a won duel, routes, rest days) so you can see every screen with data. Best on a fresh profile; Erase all data removes it again.",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             CorpoButton("Load demo data", onClick = {

@@ -265,10 +265,10 @@ private fun Board(
         }
     }
 
-    // --- Transmissions: the last things it said ---
+    // --- The last rounds, as they landed ---
     if (state.transmissions.isNotEmpty()) {
         CorpoPanel {
-            SectionLabel("Transmissions")
+            SectionLabel("Recent rounds")
             state.transmissions.take(3).forEach {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = TextDim, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
@@ -485,7 +485,7 @@ private fun TerminationNotice(t: Termination, snap: RosterSnapshot, career: Care
                 StatTile("Best streak", "${c.bestStreak}", sub = "${c.roundsPlayed} rounds")
             }
         }
-        FootNote("Your model keeps running. It always did. It's just not yours to beat any more.")
+        FootNote("This enrolment is closed. Its ledger and history stay with it.")
     }
     CorpoPanel {
         SectionLabel("Re-enrolment")

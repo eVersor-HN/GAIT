@@ -20,7 +20,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.eversorhn.gait.GaitApplication
 import dev.eversorhn.gait.data.db.entity.isHorde
-import dev.eversorhn.gait.domain.directive.Directive
 import dev.eversorhn.gait.domain.ledger.Ledger
 import dev.eversorhn.gait.domain.roster.RosterEngine
 import dev.eversorhn.gait.ui.briefing.BriefingScreen
@@ -77,7 +76,7 @@ fun GaitNavGraph() {
 
     val ledgerFlow = remember(route) {
         combine(app.repository.observeTwinProfile(), app.repository.observeSessions()) { profile, sessions ->
-            profile?.let { Triple(it, Ledger.from(sessions), Directive.standing(Ledger.from(sessions), it.twinName, it.isHorde)) }
+            profile?.let { Triple(it, Ledger.from(sessions), Ledger.standingLabel(Ledger.from(sessions), it.twinName, it.isHorde)) }
         }
     }
     val ledgerInfo by ledgerFlow.collectAsState(initial = null)

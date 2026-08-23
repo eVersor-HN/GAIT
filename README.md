@@ -87,7 +87,8 @@ If a hash does not match, delete the file.
 **CONTROL**
 - Runs entirely on your phone. No account, no cloud, no other people.
 - Multiple enrolments side by side — each with its own activity, opponent, standing and settings.
-- Two opponents: a named rival model of you, or a horde that hunts you and never speaks in words.
+- 25 activities on foot, on wheels, on water, on snow and on gym machines, adaptive ones included.
+- Two opponents: a named rival model of you, or a horde that closes on you from behind.
 - Intensity is yours to set: from quiet rivalry to openly hostile.
 
 **WORKFLOW**
@@ -100,7 +101,8 @@ If a hash does not match, delete the file.
 **PRESSURE**
 - A division of roughly a thousand simulated assets, ranked against you every day, with a ticker of who rose and who fell.
 - Your opponent stakes points on its own prediction. You can double the round.
-- Live callouts spoken aloud at kilometre marks and lead changes — a cool synthetic voice for the division, a deep one for the horde.
+- Nothing talks at you. The opponent is its forecast, the score and the distance — no scripted lines, no taunts, no messages.
+- The live figures read aloud at kilometre marks and lead changes, for when the phone is in a pocket.
 - A lock-screen card that shows the gap without unlocking.
 - Every quarter the bottom of the division is cut. If that is you, the enrolment ends and you start again.
 

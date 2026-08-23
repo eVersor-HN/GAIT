@@ -3,11 +3,10 @@ package dev.eversorhn.gait.domain.live
 import kotlin.math.abs
 
 /**
- * What the division's voice says during a session: a neutral live commentator — distances,
- * gaps, kilometre marks, who holds the round — never the persona's taunts (those stay on
- * screen). Pure: given the live numbers it returns a line or null. Cadence is owned by the
- * caller (cooldowns, caps); this only decides *what* and *whether it's worth saying*.
- * See docs/voice-design.md for the voice itself.
+ * The spoken instrument readout during a session: distances, gaps, kilometre marks, what is
+ * riding on the round. Nobody is talking — these are the numbers read aloud for when the phone
+ * is in a pocket. Pure: given the live values it returns a line or null. Cadence (cooldowns,
+ * per-session cap) is the caller's.
  */
 object CommentaryScript {
 
@@ -28,61 +27,61 @@ object CommentaryScript {
 
     enum class Kind { KM, LEAD_CHANGE, STATUS, START }
 
-    fun startLine(i: Input): String =
-        if (i.isHorde) "Recording. The horde starts behind you. Keep it that way."
-        else "Recording. ${i.opponentName} is running its forecast beside you. ${stakeLine(i.stake)}"
+    fun startLine(i: Input): String {
+        val riding = stakeLine(i.stake)
+        return if (i.isHorde) {
+            "Recording." + (i.separationMetres?.let { " Horde at $it metres." } ?: "") + riding
+        } else {
+            "Recording." + riding
+        }
+    }
 
     fun kmLine(i: Input): String {
         val base = "Kilometre ${i.km}."
         return if (i.isHorde) {
             val sep = i.separationMetres ?: return base
-            base + " " + when {
-                sep < 50 -> "They are right on you — ${abs(sep)} metres."
-                sep < 0 -> "The horde is past your line by ${abs(sep)} metres."
-                else -> "The horde is $sep metres behind you."
-            }
+            base + " " + if (sep < 0) "Horde ahead by ${abs(sep)} metres." else "Horde at $sep metres."
         } else {
             val g = i.gapSeconds ?: return base
             base + " " + when {
-                abs(g) < 3 -> "Level with the model."
-                g > 0 -> "${spokenSeconds(g)} ahead of ${i.opponentName}."
-                else -> "${spokenSeconds(-g)} behind ${i.opponentName}."
+                abs(g) < 3 -> "Level."
+                g > 0 -> "${spokenSeconds(g)} up."
+                else -> "${spokenSeconds(-g)} down."
             }
         }
     }
 
     fun leadChangeLine(i: Input, nowAhead: Boolean): String =
-        if (i.isHorde) (if (nowAhead) "You are pulling away from the horde." else "The horde is catching up.")
-        else (if (nowAhead) "You've taken the lead. ${i.opponentName} is behind you now." else "${i.opponentName} is ahead of you now.")
+        if (i.isHorde) (if (nowAhead) "Separation growing." else "Separation closing.")
+        else (if (nowAhead) "Lead change. You are ahead." else "Lead change. ${i.opponentName} is ahead.")
 
-    /** Periodic status: the most useful single fact right now. */
+    /** Periodic status: the most useful single figure right now. */
     fun statusLine(i: Input): String? {
         if (i.isHorde) {
             val sep = i.separationMetres ?: return null
             val closing = i.closingPerMinute ?: 0
             return when {
-                sep < 30 -> "The horde is on you. ${abs(sep)} metres."
-                closing > 15 -> "The horde is catching up — $sep metres and closing at $closing a minute."
-                closing < -15 -> "You're pulling away. $sep metres, and growing."
-                else -> "The horde is $sep metres behind you. Holding."
+                sep < 30 -> "Horde at ${abs(sep)} metres."
+                closing > 15 -> "Horde at $sep metres, closing $closing a minute."
+                closing < -15 -> "Horde at $sep metres, falling back ${-closing} a minute."
+                else -> "Horde at $sep metres."
             }
         }
         val m = i.gapMetres
         val g = i.gapSeconds
         return when {
-            m != null && abs(m) >= 20 -> if (m > 0) "${i.opponentName} is $m metres behind you." else "${i.opponentName} is ${-m} metres ahead of you."
-            g != null && abs(g) < 3 -> "Stride for stride with ${i.opponentName}."
-            i.roundToUser == true && i.stake > 1 -> "The round is yours right now. ${i.stake} points riding."
-            i.modelConfidence != null && i.modelConfidence < 40 -> "Model confidence is down to ${i.modelConfidence} percent."
+            m != null && abs(m) >= 20 -> if (m > 0) "$m metres up." else "${-m} metres down."
+            g != null && abs(g) < 3 -> "Level."
+            i.roundToUser == true && i.stake > 1 -> "Round to you. ${i.stake} points riding."
+            i.modelConfidence != null && i.modelConfidence < 40 -> "Model confidence ${i.modelConfidence} percent."
             i.projectedFinishSeconds != null && i.modelFinishSeconds != null ->
-                "Hold this and you finish in ${spokenDuration(i.projectedFinishSeconds)} against its ${spokenDuration(i.modelFinishSeconds)}."
+                "Projected finish ${spokenDuration(i.projectedFinishSeconds)} against ${spokenDuration(i.modelFinishSeconds)}."
             else -> null
         }
     }
 
     private fun stakeLine(stake: Int): String = when {
-        stake >= 4 -> "$stake points on this one."
-        stake >= 2 -> "$stake points riding."
+        stake >= 2 -> " $stake points riding."
         else -> ""
     }
 

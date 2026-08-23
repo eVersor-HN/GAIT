@@ -125,4 +125,20 @@ object Ledger {
             rounds = rounds,
         )
     }
+
+    /** The ledger strip's one-liner. Numbers only — nobody is talking. */
+    fun standingLabel(ledger: LedgerState, opponentName: String, isHorde: Boolean): String {
+        val them = if (isHorde) "the horde" else opponentName
+        val streak = ledger.streak?.let { (side, n) -> if (n >= 2) " · streak $n ${if (side == Side.USER) "you" else them}" else "" } ?: ""
+        return when (ledger.leader) {
+            Side.USER -> "You lead by ${ledger.lead}$streak"
+            Side.TWIN -> "$them leads by ${-ledger.lead}$streak"
+            null -> if (ledger.roundsPlayed == 0) "No rounds yet" else "Level$streak"
+        }
+    }
+
+    /** Who took the round and what it moved — the Debrief header. */
+    fun rulingLabel(userWon: Boolean, stake: Int, opponentName: String, isHorde: Boolean): String =
+        (if (userWon) "Round to you · +$stake" else "Round to ${if (isHorde) "the horde" else opponentName} · +$stake") +
+            if (stake == 1) " pt" else " pts"
 }

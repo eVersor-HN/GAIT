@@ -1,6 +1,5 @@
 package dev.eversorhn.gait.domain.demo
 
-import dev.eversorhn.gait.data.db.entity.MessageKind
 import dev.eversorhn.gait.data.db.entity.SessionEntity
 import dev.eversorhn.gait.data.db.entity.SessionSource
 import dev.eversorhn.gait.data.repository.GaitRepository
@@ -88,7 +87,6 @@ object DemoSeeder {
                     forecastFinishSeconds = s.forecast?.let { (it * s.km).toInt() },
                     isRestDay = s.rest,
                     dataSource = s.src,
-                    twinLine = s.line,
                     composureState = s.mood,
                     isDuel = s.duelWon != null,
                     duelWon = s.duelWon,
@@ -105,14 +103,6 @@ object DemoSeeder {
         // Inbox: what the opponent and the division said along the way.
         val profile = repository.getTwinProfile()
         val name = profile?.twinName ?: "The model"
-        repository.recordMessage(MessageKind.STAKE, "You won't beat 5:40/km today. I'd put money on it — so I'm putting 2 points on it.", ComposureState.WATCHFUL.name, now - 30 * day)
-        repository.recordMessage(MessageKind.CALL, "Doubled. Remember you did that to yourself.", ComposureState.PREDATORY.name, now - 30 * day + 3_600_000)
-        repository.recordMessage(MessageKind.IDLE, "Thinking about you. Not in a good way.", null, now - 20 * day)
-        repository.recordMessage(MessageKind.GAP, "Three days. Three days and you're already negotiating with yourself.", ComposureState.PREDATORY.name, now - 15 * day)
-        repository.recordMessage(MessageKind.COMMENDATION, "APD-C3 · Commendation: three consecutive rounds clear of $name. The division notes sustained outperformance, not a single good day.", null, now - 12 * day)
-        repository.recordMessage(MessageKind.STAKE, "Confidence sufficient. 3 points staked: actual pace will not beat 5:36/km.", ComposureState.WATCHFUL.name, now - 3 * day)
-        repository.recordMessage(MessageKind.COMMENDATION, "APD-LVL · Commendation: ledger recovered from behind to level or better. The division weights recoveries above leads.", null, now - 2 * day)
-        repository.recordMessage(MessageKind.IDLE, "Still here. Are you?", null, now - 1 * day)
 
         // Profile: generation 2 (the won duel), fidelity mid-high, a couple of vacation days used.
         profile?.let {

@@ -1,5 +1,8 @@
 # Zombie Horde — Alternate Opponent Mode
 
+> **Changed in v0.18.0.** The bracketed sound captions were removed with every other voice in
+> the app. A horde enrolment is now distance, proximity and the containment map alone.
+
 Chosen at setup instead of a Rival Twin. Same underlying engines (Forecast, Fidelity/Composure math, Rest Days), completely different fiction and delivery: no name, no persona voice — a distance closing behind you, and non-verbal sound.
 
 ## Lore: where the horde comes from

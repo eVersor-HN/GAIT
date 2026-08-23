@@ -1,5 +1,10 @@
 # Voice Design — the one GAIT voice
 
+> **Changed in v0.18.0.** Nobody speaks any more. The voice survives only as a spoken
+> *instrument readout* — kilometre marks, the gap, what is riding on the round — read aloud for
+> when the phone is in a pocket. The character notes below still describe its timbre; the words
+> it says are now numbers, never a persona's lines.
+
 Decision (2026-08-21): **one voice for everything spoken** — the Twin's live callouts, stakes, memos read aloud, the Horde's captions if ever voiced. No roster of different voices per persona; persona lives in the *words*, the voice is the division's.
 
 ## Character

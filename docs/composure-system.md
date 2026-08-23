@@ -1,5 +1,9 @@
 # Composure — Dominance-Reactive Tone
 
+> **Superseded in v0.18.0.** The opponent no longer speaks. Every persona line, taunt, memo,
+> caption and closing line was removed; the opponent communicates only through its forecast,
+> the ledger, the board and the map. This document is kept as design history.
+
 The core rule: **the better you are than the Twin, the smaller it gets. The moment it senses you slipping, it goes for the throat — immediately.**
 
 ## Composure vs. Fidelity

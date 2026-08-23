@@ -4,6 +4,18 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.18.0 — 2026-08-23
+
+The opponent stops talking. Sixteen new activities, and a bar that shows exactly how far the model is from predicting you.
+
+- **Nobody speaks any more.** Every scripted line is gone — the personas and their taunts, the division's memos and commendations, the file it kept on you, the horde's sounds, the stake announcements, the idle pings and the closing line after a session. The opponent now communicates through the only things that were ever real: its forecast, the ledger, its row on the board, and the distance between you.
+- **A session closes on a number** instead of a remark: how far ahead of or behind the forecast you finished.
+- **Model calibration on the forecast page.** A staged bar showing where the opponent stands: how many sessions until it makes its first estimate, until points ride on a round, and until it is at full strength — so a new enrolment can see what is still missing.
+- **Sixteen new activities**, grouped by how you move: guided run and Nordic walking on foot; racing chair, inline skating, skateboard and kick scooter on wheels; rowing, adaptive rowing, kayak, para-canoe and swimming on water; cross-country skiing and sit-ski on snow; rowing ergometer, bike ergometer, elliptical and stair climber indoors. Adaptive activities sit with the movement they belong to, not in a category of their own.
+- **Units that match the sport.** Rowing reads as a 500 m split, swimming as a 100 m pace, wheels in km/h, everything else in min/km.
+- **Gym machines only offer the timed mode** — there is no outdoor ergometer.
+- The live feed during a session reads the gap, the mark and the direction. The spoken readout does the same aloud, for when the phone is in a pocket.
+
 ## 0.17.1 — 2026-08-23
 
 - Back behaves the way you expect: inside an enrolment it steps up to your list, and only from there does the app ask whether to leave.

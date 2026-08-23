@@ -39,6 +39,7 @@ import dev.eversorhn.gait.ui.theme.FormDots
 import dev.eversorhn.gait.ui.theme.MessageCard
 import dev.eversorhn.gait.ui.theme.MessageTone
 import dev.eversorhn.gait.ui.theme.Meter
+import dev.eversorhn.gait.ui.theme.StageBar
 import dev.eversorhn.gait.ui.theme.PanelTone
 import dev.eversorhn.gait.ui.theme.PhaseTrack
 import dev.eversorhn.gait.ui.theme.Quote
@@ -86,25 +87,39 @@ fun ForecastScreen(
                     headline = if (s.isHorde) "Today's line" else "What ${s.opponentName} expects today",
                 )
 
-                // --- The division's memo (folded to its first sentence; tap for the rest) ---
-                CollapsiblePanel(
-                    title = "Division memo",
-                    summary = s.memo.body.substringBefore(". ") + ".",
-                    trailing = s.memo.ref,
-                ) {
-                    Text(s.memo.body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                // --- Model calibration: what the opponent can and cannot do yet ---
+                CorpoPanel {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        SectionLabel(if (s.isHorde) "Horde calibration" else "Model calibration", color = TextFaint)
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            if (s.calibration.remaining == null) "${s.calibration.sessions} sessions"
+                            else "${s.calibration.sessions} / ${dev.eversorhn.gait.ui.forecast.Calibration.FULL_AT}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextFaint,
+                        )
+                    }
+                    StageBar(
+                        progress = s.calibration.progress,
+                        stages = listOf(
+                            "Estimates" to dev.eversorhn.gait.ui.forecast.Calibration.FORECAST_AT / dev.eversorhn.gait.ui.forecast.Calibration.FULL_AT.toFloat(),
+                            "Points" to dev.eversorhn.gait.ui.forecast.Calibration.STAKES_AT / dev.eversorhn.gait.ui.forecast.Calibration.FULL_AT.toFloat(),
+                            "Full" to 1f,
+                        ),
+                        reached = listOf(s.calibration.forecasting, s.calibration.staking, s.calibration.remaining == null).count { it },
+                    )
+                    FootNote(s.calibration.label)
                 }
 
                 if (s.restStateLabel != null) {
                     Text(s.restStateLabel, style = MaterialTheme.typography.bodyMedium, color = Cyan)
                 }
 
-                // --- The forecast itself: the provocation ---
-                CorpoPanel {
-                    if (s.hordeCaption != null) {
-                        Text(s.hordeCaption, style = MaterialTheme.typography.bodyMedium, color = Cyan)
+                // --- The forecast itself. Before the first session the calibration bar says it all. ---
+                if (!s.coldStart) CorpoPanel {
+                    if (s.ruleNote != null) {
+                        FootNote(s.ruleNote)
                     }
-                    Quote(s.forecastLine, color = MaterialTheme.colorScheme.onSurface)
                     if (!s.coldStart) {
                         Spacer(Modifier.height(4.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -124,8 +139,6 @@ fun ForecastScreen(
                             "Forecast confidence: ${s.confidencePercent}% · based on " +
                                 pluralStringResource(R.plurals.sessions_count, s.basedOnSessions, s.basedOnSessions)
                         )
-                    } else {
-                        FootNote("No forecast yet · the first session becomes the baseline")
                     }
                 }
 
@@ -221,12 +234,6 @@ fun ForecastScreen(
                     )
                 }
 
-                // --- The file the opponent keeps on you (folded; the line is the summary) ---
-                s.intel?.let { i ->
-                    CollapsiblePanel(title = "Asset file", summary = i.line, trailing = i.tag, initiallyExpanded = false) {
-                        Text(i.line, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                    }
-                }
 
                 // --- Asset status: the number the whole loop is about (folded; summary in the header) ---
                 CollapsiblePanel(
@@ -260,28 +267,8 @@ fun ForecastScreen(
                     FootNote("${s.generationLabel} ${s.generation} · next review at ${s.trialThresholdPercent}%")
                 }
 
-                // --- Last thing it said ---
-                s.lastMessage?.let { m ->
-                    val fromDivision = m.kind == dev.eversorhn.gait.data.db.entity.MessageKind.COMMENDATION
-                    MessageCard(
-                        from = when {
-                            fromDivision -> "Division"
-                            s.isHorde -> "The Horde"
-                            else -> "${s.opponentName} (Twin-${s.generation})"
-                        },
-                        tag = (if (m.daysAgo == 0L) "today" else if (m.daysAgo == 1L) "yesterday" else "${m.daysAgo}d ago") +
-                            " · " + (if (fromDivision) "commendation" else (m.state?.let { composureTag(it, s.isHorde) } ?: m.kind)),
-                        body = m.line,
-                        tone = when {
-                            fromDivision -> MessageTone.COWED
-                            m.state == ComposureState.COWED -> MessageTone.COWED
-                            m.state == ComposureState.PREDATORY -> MessageTone.PREDATORY
-                            else -> MessageTone.WATCHFUL
-                        },
-                    )
-                }
 
-                // --- Secondary navigation: one ghost row. Board, Channel and Stats are a swipe away. ---
+                // --- Secondary navigation: one ghost row. Board, Analysis and Log are a swipe away. ---
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CorpoButton("Log manually", onClick = onLogSession, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
                     CorpoButton("Rest days", onClick = onRestDays, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
