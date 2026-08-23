@@ -30,6 +30,14 @@ fun LogSessionScreen(onDone: () -> Unit) {
     val viewModel: LogSessionViewModel = gaitViewModel()
     val state by viewModel.uiState.collectAsState()
 
+    // Back with figures in the fields would throw the session away without a word.
+    dev.eversorhn.gait.ui.theme.DiscardGuard(
+        enabled = state.result == null && (state.distanceKm.isNotBlank() || state.durationMinutes.isNotBlank()),
+        title = "Discard this session?",
+        body = "It has not been submitted — the distance and duration you entered are lost.",
+        onDiscard = onDone,
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()

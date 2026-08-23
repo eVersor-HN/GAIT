@@ -66,6 +66,14 @@ fun EnrolScreen(onCreated: () -> Unit, onCancel: () -> Unit) {
 
     LaunchedEffect(state.createdId) { if (state.createdId != null) onCreated() }
 
+    // Back would drop a half-filled enrolment: ask before it does.
+    dev.eversorhn.gait.ui.theme.DiscardGuard(
+        enabled = state.twinName.isNotBlank() || state.profileName != Activities.byKey(state.activityKey).label,
+        title = "Discard this enrolment?",
+        body = "Nothing has been created yet. The activity, opponent and name you picked are lost.",
+        onDiscard = onCancel,
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()

@@ -4,6 +4,11 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.19.3 — 2026-08-23
+
+- **Nothing you typed is thrown away in silence.** Leaving a half-filled enrolment, or the manual session form with figures in it, now asks first — keep editing, or discard.
+- The leave-the-app prompt is the same console dialog as every other confirmation; the last stock system dialog is gone.
+
 ## 0.19.2 — 2026-08-23
 
 - **Demo data can be taken back out.** Loading it records exactly what it wrote; "Remove demo data" deletes those sample sessions and restores the numbers it overwrote. Anything you recorded yourself is untouched, so you no longer have to erase everything to get rid of the samples.
