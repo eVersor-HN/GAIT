@@ -4,7 +4,12 @@ import android.app.Application
 import dev.eversorhn.gait.data.db.GaitDatabase
 import dev.eversorhn.gait.data.repository.GaitRepository
 import kotlinx.coroutines.launch
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import dev.eversorhn.gait.notification.TwinNotifier
+import dev.eversorhn.gait.work.DivisionReportWorker
+import java.util.concurrent.TimeUnit
 
 class GaitApplication : Application() {
     val database: GaitDatabase by lazy { GaitDatabase.getInstance(this) }
@@ -13,6 +18,7 @@ class GaitApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         TwinNotifier.ensureChannel(this)
+        scheduleDivisionReport()
         preloadRoster()
     }
 
@@ -36,4 +42,17 @@ class GaitApplication : Application() {
         }
     }
 
+
+    /**
+     * The daily close: what moved while you weren't training. Once every 24 h with a flex
+     * window, so it neither wakes the device nor lands at the same minute every day.
+     */
+    private fun scheduleDivisionReport() {
+        val request = PeriodicWorkRequestBuilder<DivisionReportWorker>(1, TimeUnit.DAYS, 4, TimeUnit.HOURS).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            DivisionReportWorker.UNIQUE_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
+    }
 }

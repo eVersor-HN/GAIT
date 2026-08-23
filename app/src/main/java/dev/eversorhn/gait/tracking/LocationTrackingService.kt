@@ -171,33 +171,86 @@ class LocationTrackingService : Service() {
         val ctx = this
         val live = s ?: TrackingSessionState.snapshot.value
         val opp = LiveOpponentInfo.current
-        val activityKey = (applicationContext as? dev.eversorhn.gait.GaitApplication)?.repository?.activeActivityType
+        val activityKey = opp?.activityKey
+            ?: (applicationContext as? dev.eversorhn.gait.GaitApplication)?.repository?.activeActivityType
         fun fmt(p: Double) = dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(p, activityKey)
         fun mmss(sec: Int) = if (sec >= 3600) "%d:%02d:%02d".format(sec / 3600, (sec % 3600) / 60, sec % 60) else "%d:%02d".format(sec / 60, sec % 60)
+
         val title: String
         val text: String
+        val detail: String?
         if (!live.isTracking) {
             title = if (mode == TrackingMode.OUTDOOR) "GAIT · waiting for GPS" else "GAIT · timing"
             text = if (mode == TrackingMode.OUTDOOR) "Recording starts with the first fix." else "Indoor session running."
+            detail = null
         } else if (mode == TrackingMode.INDOOR) {
             title = "GAIT · ${mmss(live.elapsedSeconds)}"
-            text = opp?.let { o -> o.forecastFinishSeconds?.let { f -> val r = f - live.elapsedSeconds; if (r > 0) "${o.name} finishes in ${mmss(r)}" else "${o.name} finished ${mmss(-r)} ago — distance decides" } } ?: "Indoor · distance on stop"
+            text = opp?.let { o ->
+                o.forecastFinishSeconds?.let { f ->
+                    val r = f - live.elapsedSeconds
+                    if (r > 0) "${o.name} finishes in ${mmss(r)}" else "${o.name} finished ${mmss(-r)} ago — distance decides"
+                }
+            } ?: "Indoor · distance on stop"
+            detail = null
         } else {
             title = "GAIT · ${mmss(live.movingSeconds)} · %.2f km".format(live.distanceMeters / 1000.0)
-            val mine = live.currentPaceSecPerKm?.let { fmt(it) } ?: "—"
+            val mine = live.currentPaceSecPerKm
             val ref = opp?.referencePaceSecPerKm
-            val gap = if (ref != null) (ref * live.distanceMeters / 1000.0).toInt() - live.movingSeconds else null
-            text = buildString {
-                append("You $mine")
-                if (ref != null) append(" · ${opp.name} ${fmt(ref)}")
-                if (gap != null) append(if (gap >= 0) " · +${mmss(gap)} ahead" else " · −${mmss(-gap)} behind")
+            val horde = opp?.isHorde == true
+
+            // Where the opponent is, expressed the way that mode reads it.
+            val line1 = buildString {
+                append("You ${mine?.let { fmt(it) } ?: "—"}")
+                if (ref != null && !horde) append(" · ${opp.name} ${fmt(ref)}")
+                if (ref != null) {
+                    if (horde) {
+                        // The horde runs the model's pace: separation is the ground between you.
+                        val theirs = live.movingSeconds / ref * 1000.0
+                        val sep = (live.distanceMeters - theirs).toInt()
+                        val rate = mine?.let { ((1000.0 / it) - (1000.0 / ref)) * 60.0 }?.toInt()
+                        append(" · horde ${if (sep >= 0) "$sep m back" else "${-sep} m ahead"}")
+                        if (rate != null && rate != 0) append(if (rate < 0) " · closing ${-rate} m/min" else " · +$rate m/min")
+                    } else {
+                        val gap = (ref * live.distanceMeters / 1000.0).toInt() - live.movingSeconds
+                        append(if (gap >= 0) " · +${mmss(gap)} up" else " · −${mmss(-gap)} down")
+                    }
+                }
             }
+
+            // The one actionable number: the pace that still takes the round from here.
+            val target = opp?.forecastDistanceMeters
+            val hold = if (ref != null && target != null && target > live.distanceMeters + 50) {
+                val remainingKm = (target - live.distanceMeters) / 1000.0
+                val budget = ref * (target / 1000.0) - live.movingSeconds
+                if (budget > 0) budget / remainingKm else null
+            } else null
+            val line2 = buildString {
+                if (hold != null) {
+                    append("Hold ${fmt(hold)} for %.2f km".format((target!! - live.distanceMeters) / 1000.0))
+                } else if (ref != null && target != null) {
+                    append("Past the forecast distance — the average decides")
+                }
+                if (mine != null && ref != null && target != null) {
+                    val projected = (live.movingSeconds + mine * ((target - live.distanceMeters).coerceAtLeast(0.0) / 1000.0)).toInt()
+                    if (isNotEmpty()) append(" · ")
+                    append("finish ${mmss(projected)} vs ${mmss((ref * target / 1000.0).toInt())}")
+                }
+            }.ifBlank { null }
+
+            text = line1
+            detail = line2
         }
+        val sub = buildString {
+            opp?.let {
+                append("${it.stake} pt${if (it.stake == 1) "" else "s"} riding")
+                it.startRank?.let { r -> append(" · #$r") }
+            }
+        }.ifBlank { "GAIT session" }
         return NotificationCompat.Builder(ctx, TwinNotifier.trackingChannelId(ctx))
             .setContentTitle(title)
             .setContentText(text)
-            .setSubText(opp?.let { "${it.stake} pt${if (it.stake == 1) "" else "s"} riding" } ?: "GAIT session")
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setSubText(sub)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(listOfNotNull(text, detail).joinToString(System.lineSeparator())))
             .setSmallIcon(dev.eversorhn.gait.R.drawable.ic_notification)
             .setContentIntent(TwinNotifier.openAppIntent(ctx))
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -276,6 +329,9 @@ class LocationTrackingService : Service() {
         }
     }
 
+    /** The spoken readout. It lives here so it keeps talking with the screen off. */
+    private val voice by lazy { dev.eversorhn.gait.audio.SessionVoice(applicationContext) }
+
     private fun startTicker() {
         tickerJob?.cancel()
         tickerJob = serviceScope.launch {
@@ -290,6 +346,12 @@ class LocationTrackingService : Service() {
                     s.copy(elapsedSeconds = elapsed, movingSeconds = moving)
                 }
                 refreshLiveNotification()
+                val snap = TrackingSessionState.snapshot.value
+                if (snap.isTracking && snap.mode == TrackingMode.OUTDOOR) {
+                    val opp = LiveOpponentInfo.current
+                    voice.lastVoiceHorde = opp?.isHorde == true
+                    voice.onTick(LiveFigures.of(snap, opp))
+                }
                 if (++secondsSincePersist >= PERSIST_EVERY_SECONDS) {
                     persist()
                     secondsSincePersist = 0
@@ -382,6 +444,10 @@ class LocationTrackingService : Service() {
     }
 
     private fun stopTracking() {
+        val finalSnapshot = TrackingSessionState.snapshot.value
+        if (finalSnapshot.isTracking && finalSnapshot.mode == TrackingMode.OUTDOOR && finalSnapshot.distanceMeters > 100) {
+            voice.onFinish(LiveFigures.of(finalSnapshot, LiveOpponentInfo.current))
+        }
         if (locationUpdatesActive) {
             fusedLocationClient.removeLocationUpdates(locationCallback)
             locationUpdatesActive = false
@@ -395,6 +461,9 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // The closing line is still speaking when we get here — the scope is about to die, so
+        // the release runs on the main looper instead.
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ voice.shutdown() }, 9_000L)
         serviceScope.cancel()
     }
 

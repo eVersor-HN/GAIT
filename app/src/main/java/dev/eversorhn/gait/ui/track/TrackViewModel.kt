@@ -110,6 +110,8 @@ data class TrackUiState(
     val callouts: List<LiveCallout> = emptyList(),
     val projection: LiveProjection? = null,
     val finishing: Boolean = false,
+    /** START was pressed and the service is coming up — the picker is done, recording isn't live yet. */
+    val starting: Boolean = false,
     /** Indoor only: timer stopped, waiting for the user to type the distance off the machine. */
     val awaitingIndoorDistance: Boolean = false,
     val indoorElapsedSeconds: Int = 0,
@@ -137,12 +139,6 @@ class TrackViewModel(
     val uiState: StateFlow<TrackUiState> = _uiState.asStateFlow()
 
     private var commentary = LiveCommentary()
-    /** The spoken commentator (docs/voice-design.md). Created lazily so a TTS engine is only bound once a session runs. */
-    private var commentator: dev.eversorhn.gait.audio.Commentator? = null
-    private var lastSpokenAt = -1000
-    private var lastStatusAt = -1000
-    private var lastAheadSpoken: Boolean? = null
-    private var spokenLines = 0
     private var lastKmMarked = 0
     private var lastKmMovingSeconds = 0
     private var splits: List<Split> = emptyList()
@@ -172,13 +168,9 @@ class TrackViewModel(
                 if (snap.isTracking && !wasTracking) {
                     commentary = LiveCommentary()
                     lastKmMarked = 0; lastKmMovingSeconds = 0; splits = emptyList(); lastProjectionAt = -100
-                    lastSpokenAt = -1000; lastStatusAt = 0; lastAheadSpoken = null; spokenLines = 0; lastSpokenKm = 0
                     _uiState.value = _uiState.value.copy(callouts = emptyList(), projection = null)
-                    _uiState.value.opponent?.let { opp ->
-                        if (snap.mode == TrackingMode.OUTDOOR) speak(dev.eversorhn.gait.domain.live.CommentaryScript.startLine(scriptInput(snap, opp, null)), snap.movingSeconds, force = true)
-                    }
                 }
-                if (!snap.isTracking && wasTracking) commentator?.stop()
+                if (snap.isTracking && _uiState.value.starting) _uiState.value = _uiState.value.copy(starting = false)
                 wasTracking = snap.isTracking
                 if (!snap.isTracking || snap.mode != TrackingMode.OUTDOOR) return@collect
                 val opp = _uiState.value.opponent ?: return@collect
@@ -198,19 +190,6 @@ class TrackViewModel(
                     lastProjectionAt = snap.movingSeconds
                     val proj = project(snap, opp, reference)
                     _uiState.value = _uiState.value.copy(projection = proj)
-                    // --- Spoken commentary: km marks, lead changes, and a status line every ~2 min ---
-                    val input = scriptInput(snap, opp, proj)
-                    val aheadNow: Boolean? = if (opp.isHorde) proj.separationMeters?.let { it > 0 } else proj.gapSeconds.let { it > 0 }
-                    when {
-                        km > (lastSpokenKm) && km >= 1 -> { lastSpokenKm = km; speak(dev.eversorhn.gait.domain.live.CommentaryScript.kmLine(input), snap.movingSeconds) }
-                        aheadNow != null && lastAheadSpoken != null && aheadNow != lastAheadSpoken && snap.movingSeconds > 60 ->
-                            speak(dev.eversorhn.gait.domain.live.CommentaryScript.leadChangeLine(input, aheadNow), snap.movingSeconds)
-                        snap.movingSeconds - lastStatusAt >= 120 && snap.movingSeconds > 90 -> {
-                            dev.eversorhn.gait.domain.live.CommentaryScript.statusLine(input)?.let { speak(it, snap.movingSeconds) }
-                            lastStatusAt = snap.movingSeconds
-                        }
-                    }
-                    if (aheadNow != null && (lastAheadSpoken == null || snap.movingSeconds > 60)) lastAheadSpoken = aheadNow
                 }
 
                 val gap = if (reference != null && snap.currentPaceSecPerKm != null) reference - snap.currentPaceSecPerKm else null
@@ -227,35 +206,8 @@ class TrackViewModel(
         }
     }
 
-    private var lastSpokenKm = 0
-
-    private fun scriptInput(snap: dev.eversorhn.gait.tracking.TrackingSnapshot, opp: LiveOpponent, p: LiveProjection?): dev.eversorhn.gait.domain.live.CommentaryScript.Input {
-        val gapMetres = p?.gapSeconds?.let { g -> snap.currentPaceSecPerKm?.let { pace -> (g * 1000.0 / pace).toInt() } }
-        return dev.eversorhn.gait.domain.live.CommentaryScript.Input(
-            opponentName = opp.name, isHorde = opp.isHorde, km = (snap.distanceMeters / 1000.0).toInt(),
-            gapSeconds = p?.gapSeconds, gapMetres = gapMetres, separationMetres = p?.separationMeters, closingPerMinute = p?.closingPerMinute,
-            roundToUser = p?.roundToUser, stake = opp.stake, modelConfidence = p?.modelConfidencePercent,
-            projectedFinishSeconds = p?.projectedFinishSeconds, modelFinishSeconds = opp.forecastFinishSeconds,
-        )
-    }
-
-    /** Cooldown 40 s, 20 lines per session, respects the Voice setting. [force] for the opening line. */
-    private fun speak(text: String, atSeconds: Int, force: Boolean = false) {
-        if (!dev.eversorhn.gait.audio.VoicePrefs.isEnabled(appContext)) return
-        if (!force && (atSeconds - lastSpokenAt < 40 || spokenLines >= 20)) return
-        val horde = _uiState.value.opponent?.isHorde == true
-        val c = commentator ?: dev.eversorhn.gait.audio.Commentator(
-            appContext,
-            if (horde) dev.eversorhn.gait.audio.VoiceFx.Voice.HORDE else dev.eversorhn.gait.audio.VoiceFx.Voice.DIVISION,
-        ).also { commentator = it }
-        // A horde caption is written for the eye ("[snarling, close]"); spoken, it is the words
-        // inside the brackets, deep and slow. The division's lines are spoken as written.
-        c.say(if (horde) text.trim().removePrefix("[").removeSuffix("]") else text)
-        lastSpokenAt = atSeconds; spokenLines++
-    }
 
     override fun onCleared() {
-        commentator?.shutdown()
         super.onCleared()
     }
 
@@ -443,10 +395,17 @@ class TrackViewModel(
         _uiState.value.opponent?.let { o ->
             val ref = if (_uiState.value.duel) o.duelTargetPaceSecPerKm ?: o.forecastPaceSecPerKm else o.forecastPaceSecPerKm
             dev.eversorhn.gait.tracking.LiveOpponentInfo.current = dev.eversorhn.gait.tracking.LiveOpponentInfo(
-                name = if (o.isHorde) "Horde" else o.name, referencePaceSecPerKm = ref, forecastFinishSeconds = o.forecastFinishSeconds, stake = o.stake,
+                name = if (o.isHorde) "Horde" else o.name,
+                referencePaceSecPerKm = ref,
+                forecastFinishSeconds = o.forecastFinishSeconds,
+                stake = o.stake,
+                isHorde = o.isHorde,
+                forecastDistanceMeters = o.forecastDistanceMeters,
+                activityKey = repository.activeActivityType,
+                startRank = o.todayRank,
             )
         }
-        _uiState.value = _uiState.value.copy(stopMessage = null)
+        _uiState.value = _uiState.value.copy(stopMessage = null, starting = true)
         TrackingSessionState.update { it.copy(error = null) }
         val action = when (mode.toTracking()) {
             TrackingMode.INDOOR -> LocationTrackingService.ACTION_START_INDOOR

@@ -4,6 +4,20 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.19.0 — 2026-08-23
+
+The opponent trains while you don't, the lock screen carries the whole session, and the voice moves out of the app.
+
+- **The model keeps its own schedule.** On the days you skip that you would normally train, it completes its own session at the pace it predicted for you. The standing page and the daily notice report what it covered while you were away — the horde reports the ground it took.
+- **A daily close in the notification shade.** Once a day, in figures: where you and your opponent rank, how many places are between you, which way both moved, the score, and the cull deadline when it is near. Today's report replaces yesterday's instead of stacking up.
+- **The lock-screen card now carries the session.** Time and distance, your pace against the model's and the gap between you — or the horde's separation and how fast it is closing — plus the pace that still takes the round and your projected finish against its own. Readable without unlocking, refreshed continuously.
+- **The spoken readout moved into the session itself**, so it keeps talking with the screen off and the app closed. It opens with what is riding and the pace to hold, calls every kilometre with the gap and the number to hold, announces every lead change, warns immediately when the horde comes inside 50 metres, and reads a closing summary when you stop.
+- **Activities are grouped** in the enrolment form — on foot, wheels, water, snow, machines — one group open at a time, so 25 choices fit on a screen instead of scrolling past all of them.
+- **Your enrolment list is a list again**: tapping a card opens it, and settings and delete live one tap deeper, so a mis-tap can never delete an enrolment.
+- **One start, not two.** Choosing indoor or outdoor and pressing START now begins the session; what used to be a second confirmation is a proper waiting state that tells you it is looking for your position.
+- **Every screen reads in the activity's own unit.** Cycling and the other wheeled activities no longer show min/km in the pre-session tiles, the duel target or the live divergence line.
+- The app icon is monochrome throughout — the accent is gone.
+
 ## 0.18.0 — 2026-08-23
 
 The opponent stops talking. Sixteen new activities, and a bar that shows exactly how far the model is from predicting you.

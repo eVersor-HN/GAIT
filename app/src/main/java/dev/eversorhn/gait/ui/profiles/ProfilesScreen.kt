@@ -68,6 +68,22 @@ fun ProfilesScreen(
     val viewModel: ProfilesViewModel = gaitViewModel()
     val state by viewModel.uiState.collectAsState()
     var pendingDelete by remember { mutableStateOf<TwinProfileEntity?>(null) }
+    var manage by remember { mutableStateOf<ProfileRowState?>(null) }
+
+    // The row itself opens the enrolment; everything rarer lives one tap deeper, so a mis-tap
+    // can never be a delete.
+    manage?.let { row ->
+        CorpoDialog(
+            title = row.profile.profileName.ifBlank { Activities.byKey(row.profile.activityType).label },
+            body = "Settings belong to this enrolment alone. Deleting it removes its sessions, ledger and standing.",
+            onDismiss = { manage = null },
+            confirmText = "Settings",
+            onConfirm = { val p = row.profile; manage = null; viewModel.select(p.id) { onSettings(p.id) } },
+            confirmKind = ButtonKind.SAFE,
+            extraText = "Delete enrolment",
+            onExtra = { val p = row.profile; manage = null; pendingDelete = p },
+        )
+    }
 
     pendingDelete?.let { p ->
         CorpoDialog(
@@ -100,8 +116,7 @@ fun ProfilesScreen(
             ProfileRow(
                 row = row,
                 onOpen = { viewModel.select(row.profile.id) { onOpen(row.profile.id) } },
-                onSettings = { viewModel.select(row.profile.id) { onSettings(row.profile.id) } },
-                onDelete = { pendingDelete = row.profile },
+                onManage = { manage = row },
             )
         }
 
@@ -112,7 +127,7 @@ fun ProfilesScreen(
 }
 
 @Composable
-private fun ProfileRow(row: ProfileRowState, onOpen: () -> Unit, onSettings: () -> Unit, onDelete: () -> Unit) {
+private fun ProfileRow(row: ProfileRowState, onOpen: () -> Unit, onManage: () -> Unit) {
     val horde = row.profile.opponentType == OpponentType.HORDE
     Column(
         modifier = Modifier
@@ -138,17 +153,18 @@ private fun ProfileRow(row: ProfileRowState, onOpen: () -> Unit, onSettings: () 
                 )
             }
             Text(row.standing.uppercase(), style = MaterialTheme.typography.labelSmall, color = if (row.leadPositive) Brass else if (row.leadNegative) Alert else TextFaint)
+            Text(
+                "⋯",
+                style = MaterialTheme.typography.titleMedium,
+                color = TextFaint,
+                modifier = Modifier.pressable(onClick = onManage).padding(horizontal = 8.dp, vertical = 4.dp),
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Stat("Rounds", "${row.rounds}")
             Stat(if (horde) "Proximity" else "Fidelity", "${row.metricPercent}%")
             Stat("Sessions", "${row.sessions}")
             Stat("Last", row.lastLabel)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CorpoButton("Open", onClick = onOpen, kind = ButtonKind.SAFE, modifier = Modifier.weight(1f))
-            CorpoButton("Settings", onClick = onSettings, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
-            CorpoButton("Delete", onClick = onDelete, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
         }
     }
 }

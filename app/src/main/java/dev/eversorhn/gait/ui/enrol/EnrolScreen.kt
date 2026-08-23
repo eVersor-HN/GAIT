@@ -26,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -76,15 +78,45 @@ fun EnrolScreen(onCreated: () -> Unit, onCancel: () -> Unit) {
         // --- 1. Activity ---
         CorpoPanel {
             SectionLabel("1 · Activity")
+            // One group open at a time: 25 activities are a wall otherwise. The group holding
+            // the current selection is the one that starts open.
+            var openGroup by androidx.compose.runtime.saveable.rememberSaveable {
+                mutableStateOf(Activities.byKey(state.activityKey).group)
+            }
             Activities.groups.forEach { (group, list) ->
-                FootNote(group)
-                list.forEach { a ->
-                    SelectRow(
-                        title = a.label,
-                        detail = a.dimensions.joinToString(" · "),
-                        selected = state.activityKey == a.key,
-                        onClick = { viewModel.selectActivity(a.key) },
+                val open = openGroup == group
+                val picked = list.firstOrNull { it.key == state.activityKey }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .pressable(onClick = { openGroup = if (open) "" else group })
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        group.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (picked != null) Brass else TextFaint,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
                     )
+                    if (!open && picked != null) {
+                        Text(picked.label, style = MaterialTheme.typography.labelSmall, color = Brass, maxLines = 1)
+                    } else if (!open) {
+                        Text("${list.size}", style = MaterialTheme.typography.labelSmall, color = TextFaint)
+                    }
+                    Text(if (open) "–" else "+", style = MaterialTheme.typography.labelLarge, color = TextFaint)
+                }
+                if (open) {
+                    list.forEach { a ->
+                        SelectRow(
+                            title = a.label,
+                            detail = a.dimensions.joinToString(" · "),
+                            selected = state.activityKey == a.key,
+                            onClick = { viewModel.selectActivity(a.key) },
+                        )
+                    }
                 }
             }
         }

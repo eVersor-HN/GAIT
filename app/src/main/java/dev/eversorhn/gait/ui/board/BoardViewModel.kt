@@ -52,6 +52,8 @@ data class BoardUiState(
     val trialDeadlineDays: Int? = null,
     /** The last few things the opponent said (Twin) or the last sounds (Horde). */
     val transmissions: List<String> = emptyList(),
+    /** What the opponent did while you were away. Null when you are current. */
+    val opponentActivity: String? = null,
     val separationMeters: Int = 0,
     val releasedTotal: Int = 0,
     val daysSinceLast: Long? = null,
@@ -157,6 +159,23 @@ class BoardViewModel(private val repository: GaitRepository) : ViewModel() {
             )
 
 
+            // What it did while you were out — the model keeps its own schedule.
+            val forecastNow = dev.eversorhn.gait.domain.forecast.ForecastEngine()
+                .forecast(sessions, java.time.LocalDate.now().dayOfWeek.value, System.currentTimeMillis())
+            val awayReport = dev.eversorhn.gait.domain.opponent.OpponentActivity.since(
+                sessionsNewestFirst = sessions,
+                forecastPaceSecPerKm = forecastNow?.forecastPaceSecPerKm,
+                forecastDistanceMeters = forecastNow?.forecastDistanceMeters,
+                nowEpochMillis = System.currentTimeMillis(),
+                plannedDaysOff = runCatching { repository.getPlannedDaysOff().toSet() }.getOrNull().orEmpty(),
+                weeklyRestDays = (1..7).filter { (profile.restDayMask shr (it - 1)) and 1 == 1 }.toSet(),
+            )
+            val awayLine = if (!awayReport.active) null else {
+                val km = "%.1f km".format(awayReport.distanceMeters / 1000.0)
+                if (profile.isHorde) "Horde covered $km while you were away · ${awayReport.daysAbsent} d"
+                else "${profile.twinName} trained ${awayReport.sessions}× · $km while you were away"
+            }
+
             // The recent rounds, as they landed. Numbers only — nothing speaks here.
             val transmissions = ledger.rounds.take(4).mapIndexed { i, r ->
                 val n = ledger.roundsPlayed - i
@@ -173,6 +192,7 @@ class BoardViewModel(private val repository: GaitRepository) : ViewModel() {
                 trialEligible = dev.eversorhn.gait.domain.trial.DecommissionTrial.isEligible(profile.fidelity),
                 trialDeadlineDays = profile.trialDeadlineEpochDay.takeIf { it >= 0 }?.let { (it - today).toInt().coerceAtLeast(0) },
                 transmissions = transmissions,
+                opponentActivity = awayLine,
                 separationMeters = separation,
                 releasedTotal = snapshot.decommissioned.size,
                 daysSinceLast = sessions.firstOrNull()?.let { (System.currentTimeMillis() - it.startTimeEpochMillis) / 86_400_000L },

@@ -131,6 +131,9 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
     }
 
     val opponent = uiState.opponent
+    val activeActivity = dev.eversorhn.gait.domain.activity.Activities.byKey(
+        (LocalContext.current.applicationContext as dev.eversorhn.gait.GaitApplication).repository.activeActivityType
+    )
     val isDuel = uiState.duel
     val opponentName = opponent?.name ?: "Twin"
     val screenEyebrow = if (isDuel) (if (opponent?.isHorde == true) "Outrun Trial" else "Decommission Trial") else "Track"
@@ -179,8 +182,8 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
                 )
             }
 
-            uiState.mode == null -> {
-                if (isDuel) DuelBriefing(opponent) else PhaseTrack(current = 2)
+            !uiState.starting && !snapshot.isTracking && !(uiState.mode == TrackMode.OUTDOOR && !hasLocationPermission) -> {
+                if (isDuel) DuelBriefing(opponent, activeActivity.key) else PhaseTrack(current = 2)
                 ScreenTitle(screenEyebrow, "Indoor or outdoor?")
                 uiState.stopMessage?.let { StopNotice(it) }
                 val act = dev.eversorhn.gait.domain.activity.Activities.byKey(
@@ -267,31 +270,27 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
             }
 
             else -> {
-                if (isDuel) DuelBriefing(opponent) else PhaseTrack(current = 2)
-                ScreenTitle(screenEyebrow, "Ready when you are")
+                if (isDuel) DuelBriefing(opponent, activeActivity.key) else PhaseTrack(current = 2)
+                ScreenTitle(screenEyebrow, if (uiState.mode == TrackMode.INDOOR) "Starting" else "Waiting for the first fix")
                 Text(
-                    if (uiState.mode == TrackMode.OUTDOOR) "Outdoor · GPS-verified" else "Indoor · timed, distance entered on stop",
+                    if (uiState.mode == TrackMode.INDOOR) "Timing starts in a moment."
+                    else "Recording begins the moment the device has your position.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (opponent?.forecastPaceSecPerKm != null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatTile("$opponentName pace", formatPace(opponent.forecastPaceSecPerKm), accent = Cyan)
+                        StatTile(
+                            "$opponentName ${dev.eversorhn.gait.domain.activity.Activities.paceWord(activeActivity.key).lowercase()}",
+                            dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(opponent.forecastPaceSecPerKm, activeActivity.key),
+                            accent = Cyan,
+                        )
                         StatTile("Finish", opponent.forecastFinishSeconds?.let { formatDuration(it) } ?: "—", accent = Cyan)
                     }
                 }
                 uiState.stopMessage?.let { StopNotice(it) }
                 snapshot.error?.let { StopNotice(it) }
-                CorpoButton(
-                    text = if (isDuel) "Start duel" else "Start activity",
-                    onClick = viewModel::start,
-                    kind = if (isDuel) ButtonKind.RISK else ButtonKind.PRIMARY,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CorpoButton("Indoor / outdoor", onClick = { viewModel.chooseMode(TrackMode.OUTDOOR).also { viewModel.reset() } }, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
-                    CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
-                }
+                CorpoButton("Cancel", onClick = { viewModel.stop(); onDone() }, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
             }
         }
     }
@@ -299,11 +298,11 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
 
 /** Phase 04 header shown above a Trial before it starts: what you have to beat. */
 @Composable
-private fun DuelBriefing(opponent: LiveOpponent?) {
+private fun DuelBriefing(opponent: LiveOpponent?, activityKey: String?) {
     CorpoPanel(tone = PanelTone.WARN) {
         SectionLabel("Asset review", color = Alert)
         Text(
-            opponent?.duelTargetPaceSecPerKm?.let { "Beat ${formatPace(it)} — its strongest session" }
+            opponent?.duelTargetPaceSecPerKm?.let { "Beat ${dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(it, activityKey)} — its strongest session" }
                 ?: "No reference session yet — this run becomes the baseline.",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
@@ -481,8 +480,8 @@ private fun LiveSession(
                 Text(
                     when {
                         abs(gap) < 3 -> "On the forecast — no divergence."
-                        gap > 0 -> "${formatGap(gap)} faster than $name's forecast right now."
-                        else -> "${formatGap(-gap)} slower than $name's forecast right now."
+                        gap > 0 -> "${divergenceLabel(gap, pace, referencePace, activity)} faster than $name's forecast right now."
+                        else -> "${divergenceLabel(-gap, pace, referencePace, activity)} slower than $name's forecast right now."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -573,6 +572,25 @@ private fun StopNotice(message: String) {
     CorpoPanel(tone = PanelTone.WARN) {
         Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
     }
+}
+
+/**
+ * How far off the forecast you are, in the unit the activity is read in: a time gap per
+ * kilometre for pace sports, a speed difference for anything wheeled.
+ */
+private fun divergenceLabel(
+    gapSecPerKm: Double,
+    paceSecPerKm: Double,
+    referenceSecPerKm: Double,
+    activity: dev.eversorhn.gait.domain.activity.Activity,
+): String {
+    if (activity.usesSpeed) {
+        val delta = kotlin.math.abs(3600.0 / paceSecPerKm.coerceAtLeast(1.0) - 3600.0 / referenceSecPerKm.coerceAtLeast(1.0))
+        return "%.1fkm/h".format(delta)
+    }
+    val unit = if (activity.paceUnitMeters == 1000) "km" else "${activity.paceUnitMeters}m"
+    val total = (kotlin.math.abs(gapSecPerKm) * activity.paceUnitMeters / 1000.0).toInt()
+    return "${total / 60}:${(total % 60).toString().padStart(2, '0')}/$unit"
 }
 
 private fun formatGap(secPerKm: Double): String {

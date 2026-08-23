@@ -265,6 +265,14 @@ private fun Board(
         }
     }
 
+    // --- What it did while you were away ---
+    state.opponentActivity?.let {
+        CorpoPanel(tone = PanelTone.WARN) {
+            SectionLabel("While you were away", color = Alert)
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = TextDim)
+        }
+    }
+
     // --- The last rounds, as they landed ---
     if (state.transmissions.isNotEmpty()) {
         CorpoPanel {

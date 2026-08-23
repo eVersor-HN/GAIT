@@ -15,23 +15,19 @@ import dev.eversorhn.gait.MainActivity
 import dev.eversorhn.gait.R
 
 /**
- * Everything that reaches the notification shade. Three channels, so the user can tune each
- * in Android's own settings:
- *  - **Opponent** (default importance): same-day Predatory lines, stakes, the occasional
- *    unprompted jab. Title = who's talking, text = the line, subtext = what kind of message.
- *  - **Division** (low importance): commendations and cull/review notices — the company, not
- *    the rival. Quiet by design.
- *  - **Tracking** (low): the ongoing recording notification.
- * Every notification opens the app on tap. Muting (NotificationPrefs) silences the opponent
- * and division channels at the source; the tracking notification is mandatory for a
- * foreground service and stays.
+ * Everything that reaches the notification shade. Nothing here is anyone speaking — every
+ * notification is a figure you would otherwise have to unlock the phone to read. Two channels,
+ * so the user can tune each in Android's own settings:
+ *  - **Division** (low importance): the daily close — where you and your opponent stand, how
+ *    the ground between you moved, cull and review deadlines. Quiet by design.
+ *  - **Tracking** (low): the live session card, readable on the lock screen.
+ * Every notification opens the app on tap. Muting (NotificationPrefs) silences the division
+ * channel at the source; the tracking card is mandatory for a foreground service and stays.
  */
 object TwinNotifier {
 
-    private const val CHANNEL_OPPONENT = "twin_messages"
     private const val CHANNEL_DIVISION = "division_notices"
     private const val TRACKING_CHANNEL_ID = "tracking_status"
-    private const val GROUP_OPPONENT = "gait.opponent"
     private const val GROUP_DIVISION = "gait.division"
     private var notificationId = 1000
 
@@ -43,13 +39,6 @@ object TwinNotifier {
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (manager.getNotificationChannel(CHANNEL_OPPONENT) == null) {
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_OPPONENT, "Opponent messages", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                    description = "Your Twin or the Horde: same-day reactions, stakes on today's forecast, the occasional unprompted jab."
-                }
-            )
-        }
         if (manager.getNotificationChannel(CHANNEL_DIVISION) == null) {
             manager.createNotificationChannel(
                 NotificationChannel(CHANNEL_DIVISION, "Division notices", NotificationManager.IMPORTANCE_LOW).apply {
@@ -88,28 +77,8 @@ object TwinNotifier {
         return true
     }
 
-    /** The opponent speaking. [kind] becomes the subtext so a glance says what this is. */
-    fun postTwinMessage(context: Context, twinName: String, body: String, kind: Kind = Kind.REACTION) {
-        ensureChannel(context)
-        if (!allowed(context)) return
-        val n = NotificationCompat.Builder(context, CHANNEL_OPPONENT)
-            .setContentTitle(twinName)
-            .setContentText(body)
-            .setSubText(kind.subtext)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setSmallIcon(R.drawable.ic_notification)
-            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setContentIntent(openAppIntent(context))
-            .setGroup(GROUP_OPPONENT)
-            .setAutoCancel(true)
-            .build()
-        NotificationManagerCompat.from(context).notify(notificationId++, n)
-        postSummary(context, CHANNEL_OPPONENT, GROUP_OPPONENT, 1, twinName)
-    }
-
     /** The company speaking: commendations, cull/review notices. Low importance, grouped. */
-    fun postDivisionNotice(context: Context, title: String, body: String, kind: Kind = Kind.NOTICE) {
+    fun postDivisionNotice(context: Context, title: String, body: String, kind: Kind = Kind.NOTICE, stableId: Int? = null) {
         ensureChannel(context)
         if (!allowed(context)) return
         val n = NotificationCompat.Builder(context, CHANNEL_DIVISION)
@@ -124,7 +93,7 @@ object TwinNotifier {
             .setGroup(GROUP_DIVISION)
             .setAutoCancel(true)
             .build()
-        NotificationManagerCompat.from(context).notify(notificationId++, n)
+        NotificationManagerCompat.from(context).notify(stableId ?: notificationId++, n)
         postSummary(context, CHANNEL_DIVISION, GROUP_DIVISION, 2, "Asset Performance Division")
     }
 

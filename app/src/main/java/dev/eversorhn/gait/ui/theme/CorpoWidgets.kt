@@ -813,6 +813,10 @@ fun CorpoDialog(
     confirmKind: ButtonKind = ButtonKind.PRIMARY,
     dismissText: String? = "Cancel",
     dismissible: Boolean = true,
+    /** A second, rarer action under the confirm button — a delete, a switch, a reset. */
+    extraText: String? = null,
+    onExtra: (() -> Unit)? = null,
+    extraKind: ButtonKind = ButtonKind.RISK,
 ) {
     androidx.compose.ui.window.Dialog(onDismissRequest = { if (dismissible) onDismiss() }) {
         Column(
@@ -827,6 +831,9 @@ fun CorpoDialog(
             Text(body, style = MaterialTheme.typography.bodyMedium, color = TextDim)
             Spacer(Modifier.height(2.dp))
             CorpoButton(confirmText, onClick = onConfirm, kind = confirmKind, modifier = Modifier.fillMaxWidth())
+            if (extraText != null && onExtra != null) {
+                CorpoButton(extraText, onClick = onExtra, kind = extraKind, modifier = Modifier.fillMaxWidth())
+            }
             if (dismissText != null) CorpoButton(dismissText, onClick = onDismiss, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
         }
     }

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   The mark: a G cut from a stride — one open ring with a hard horizontal bar, drawn on the
-  grid. Flat, monochrome, no gradients, no depth. Reads at 24 dp.
+  grid. Flat, monochrome throughout: one ink, one light. No accent, no gradients, no depth.
+  Reads at 24 dp.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -21,6 +22,6 @@
         android:pathData="M54,50.5 h16 v7 h-16 z" />
     <!-- stride tick: the asset moving right -->
     <path
-        android:fillColor="#FFD8A62A"
+        android:fillColor="#FFF1F2F3"
         android:pathData="M69.5,62 h4.5 v7 h-4.5 z" />
 </vector>
