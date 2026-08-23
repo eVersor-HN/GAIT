@@ -59,7 +59,6 @@ import dev.eversorhn.gait.ui.theme.pressable
 fun ProfilesScreen(
     onOpen: (Long) -> Unit,
     onNew: () -> Unit,
-    onSettings: (Long) -> Unit,
     onBriefing: () -> Unit,
 ) {
     // The list is the app's root: back here asks whether to leave the floor.
@@ -68,22 +67,7 @@ fun ProfilesScreen(
     val viewModel: ProfilesViewModel = gaitViewModel()
     val state by viewModel.uiState.collectAsState()
     var pendingDelete by remember { mutableStateOf<TwinProfileEntity?>(null) }
-    var manage by remember { mutableStateOf<ProfileRowState?>(null) }
 
-    // The row itself opens the enrolment; everything rarer lives one tap deeper, so a mis-tap
-    // can never be a delete.
-    manage?.let { row ->
-        CorpoDialog(
-            title = row.profile.profileName.ifBlank { Activities.byKey(row.profile.activityType).label },
-            body = "Settings belong to this enrolment alone. Deleting it removes its sessions, ledger and standing.",
-            onDismiss = { manage = null },
-            confirmText = "Settings",
-            onConfirm = { val p = row.profile; manage = null; viewModel.select(p.id) { onSettings(p.id) } },
-            confirmKind = ButtonKind.SAFE,
-            extraText = "Delete enrolment",
-            onExtra = { val p = row.profile; manage = null; pendingDelete = p },
-        )
-    }
 
     pendingDelete?.let { p ->
         CorpoDialog(
@@ -116,12 +100,12 @@ fun ProfilesScreen(
             ProfileRow(
                 row = row,
                 onOpen = { viewModel.select(row.profile.id) { onOpen(row.profile.id) } },
-                onManage = { manage = row },
+                onManage = { pendingDelete = row.profile },
             )
         }
 
         CorpoButton("Enrol new asset", onClick = onNew, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
-        CorpoButton("Briefing & settings", onClick = onBriefing, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
+        CorpoButton("Briefing", onClick = onBriefing, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
     }
 }

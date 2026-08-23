@@ -58,7 +58,6 @@ fun ForecastScreen(
     onMessages: () -> Unit,
     onRestDays: () -> Unit,
     onStats: () -> Unit,
-    onSettings: () -> Unit,
 ) {
     val viewModel: ForecastViewModel = dev.eversorhn.gait.ui.gaitViewModel()
     val state by viewModel.uiState.collectAsState()
@@ -268,11 +267,10 @@ fun ForecastScreen(
                 }
 
 
-                // --- Secondary navigation: one ghost row. Board, Analysis and Log are a swipe away. ---
+                // --- Secondary actions. Both are about a session; settings live in the header. ---
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CorpoButton("Log manually", onClick = onLogSession, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
-                    CorpoButton("Rest days", onClick = onRestDays, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
-                    CorpoButton("Settings", onClick = onSettings, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
+                    CorpoButton("Availability", onClick = onRestDays, kind = ButtonKind.GHOST, modifier = Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(8.dp))
             }

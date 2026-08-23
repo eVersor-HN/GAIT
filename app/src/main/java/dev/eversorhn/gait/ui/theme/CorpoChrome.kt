@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -76,7 +77,7 @@ fun CorpoBackground(content: @Composable BoxScope.() -> Unit) {
  * -- a small authenticity touch, not a decorative fake number.
  */
 @Composable
-fun CorpoStatusBar(label: String) {
+fun CorpoStatusBar(label: String, onSettings: (() -> Unit)? = null) {
     val context = LocalContext.current
     val clock by produceState(initialValue = currentTimeLabel()) {
         while (true) {
@@ -94,11 +95,22 @@ fun CorpoStatusBar(label: String) {
     ) {
         Text(clock, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-        Text(
-            batteryPercent?.let { "$it%" } ?: "—",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                batteryPercent?.let { "$it%" } ?: "—",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            // The one way into this enrolment's settings. Nowhere else offers them.
+            if (onSettings != null) {
+                Text(
+                    "⋮",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.pressable(onClick = onSettings).padding(start = 10.dp, end = 2.dp),
+                )
+            }
+        }
     }
 }
 

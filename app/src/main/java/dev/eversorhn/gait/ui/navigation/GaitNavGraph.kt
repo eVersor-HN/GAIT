@@ -97,7 +97,11 @@ fun GaitNavGraph() {
 
     CorpoBackground {
         Column(modifier = Modifier.fillMaxSize()) {
-            CorpoStatusBar(label = label)
+            CorpoStatusBar(
+                label = label,
+                // Settings belong to the enrolment you are inside — and to nowhere else.
+                onSettings = if (onHome) ({ navController.navigate(Routes.SETTINGS) }) else null,
+            )
             ledgerInfo?.let { (profile, ledger, standing) ->
                 // The ticker is the division's board feed — a Twin enrolment only. A horde has no
                 // board and no news; its page carries its own signals instead.
@@ -150,7 +154,6 @@ fun GaitNavGraph() {
                     ProfilesScreen(
                         onOpen = { navController.navigate(Routes.HOME) },
                         onNew = { navController.navigate(Routes.ENROL) },
-                        onSettings = { navController.navigate(Routes.SETTINGS) },
                         onBriefing = { navController.navigate(Routes.BRIEFING) },
                     )
                 }
@@ -172,7 +175,6 @@ fun GaitNavGraph() {
                         onStartDuel = { navController.navigate("${Routes.TRACK}?duel=true") },
                         onLogSession = { navController.navigate(Routes.LOG_SESSION) },
                         onRestDays = { navController.navigate(Routes.REST_DAYS) },
-                        onSettings = { navController.navigate(Routes.SETTINGS) },
                         onProfiles = { navController.navigate(Routes.PROFILES) { popUpTo(Routes.PROFILES) { inclusive = true } } },
                         onEnrolNew = { navController.navigate(Routes.ENROL) { popUpTo(Routes.PROFILES) { inclusive = false } } },
                     )

@@ -4,6 +4,11 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.19.1 — 2026-08-23
+
+- **One way into settings.** They belong to the enrolment you are inside and are reached from the header on every one of its pages — the three separate entry points are gone. The enrolment list offers only what a list should: open one, add one, remove one.
+- "Rest days" is called Availability everywhere now, matching the screen it opens.
+
 ## 0.19.0 — 2026-08-23
 
 The opponent trains while you don't, the lock screen carries the whole session, and the voice moves out of the app.

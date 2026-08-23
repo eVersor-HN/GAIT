@@ -49,7 +49,6 @@ fun HomeScreen(
     onStartDuel: () -> Unit,
     onLogSession: () -> Unit,
     onRestDays: () -> Unit,
-    onSettings: () -> Unit,
     onProfiles: () -> Unit,
     onEnrolNew: () -> Unit,
 ) {
@@ -82,7 +81,6 @@ fun HomeScreen(
                     onMessages = { go(HomePage.LOG) },
                     onRestDays = onRestDays,
                     onStats = { go(HomePage.LOG) },
-                    onSettings = onSettings,
                 )
                 HomePage.ANALYSIS -> CoachScreen()
                 HomePage.LOG -> StatsScreen(onDone = { go(HomePage.FORECAST) })
