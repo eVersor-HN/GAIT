@@ -22,4 +22,4 @@ GAIT can post local notifications (opponent messages, stakes, the ongoing record
 Settings → "Erase all data" removes every session, message, profile and planned day. Uninstalling the app removes everything.
 
 ## Contact
-Open an issue at https://github.com/eVersor-HN/gait.
+Open an issue at https://github.com/eVersor-HN/GAIT.

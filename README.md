@@ -44,7 +44,7 @@ The app can read exercise history from Health Connect if — and only if — you
 ## OFFICIAL SOURCE
 
 Author: eVersor-HN
-Official repository: https://github.com/eVersor-HN/gait
+Official repository: https://github.com/eVersor-HN/GAIT
 
 Binaries published anywhere else are not ours. Take releases only from the repository above.
 
@@ -52,7 +52,7 @@ Binaries published anywhere else are not ours. Take releases only from the repos
 
 ## DOWNLOAD / INSTALL
 
-1. Download the APK from the [Releases](https://github.com/eVersor-HN/gait/releases) page.
+1. Download the APK from the [Releases](https://github.com/eVersor-HN/GAIT/releases) page.
 2. Verify the SHA-256 against the hash listed in that release.
 3. Install it on your phone (allow installation from your browser or file manager when prompted).
 4. Open the app, enrol, and pick your activity and opponent. Nothing else needs configuring.
