@@ -8,7 +8,7 @@ For people who train alone and are done with generic missions, badges and leader
 
 ---
 
-## STATUS / LICENSE
+## Status & license
 
 Open-source software, licensed under the MIT License. Full terms in [LICENSE](LICENSE).
 
@@ -16,18 +16,18 @@ Android. In active development toward v1.0. Runs on a physical device today.
 
 ---
 
-## SUPPORT THE PROJECT
+## Support the project
 
 - Ko-fi: https://ko-fi.com/eversorhn
 - PayPal: https://paypal.me/FAMarco
 - Bitcoin: `bc1qv92c3eyeqvhgfnez7spfd7v2aytkhpshsl65yv`
 
-> You extracted joy and gave nothing back.
-> History's worst people started exactly this small.
+> You have spent this whole page being told you are replaceable.
+> The one person who never tried to replace you is the one who built this.
 
 ---
 
-## LOCAL FIRST / PRIVATE BY DESIGN
+## Local first, private by design
 
 Everything GAIT knows about you stays on your phone.
 
@@ -41,16 +41,17 @@ The app can read exercise history from Health Connect if — and only if — you
 
 ---
 
-## OFFICIAL SOURCE
+## Official source
 
-Author: eVersor-HN
-Official repository: https://github.com/eVersor-HN/GAIT
+Author / copyright: **© 2026 eVersor-HN**.
+This is the **official** distribution repository — get GAIT only from here:
+**https://github.com/eVersor-HN/GAIT**
 
-Binaries published anywhere else are not ours. Take releases only from the repository above.
+Binaries published anywhere else are not ours.
 
 ---
 
-## DOWNLOAD / INSTALL
+## Download & install
 
 1. Download the APK from the [Releases](https://github.com/eVersor-HN/GAIT/releases) page.
 2. Verify the SHA-256 against the hash listed in that release.
@@ -61,7 +62,7 @@ Binaries published anywhere else are not ours. Take releases only from the repos
 
 ---
 
-## VERIFY AUTHENTICITY // SHA-256
+## Verify authenticity — SHA-256
 
 Every published asset carries its SHA-256 hash in the release that contains it. Filename and hash must match exactly.
 
@@ -81,7 +82,7 @@ If a hash does not match, delete the file.
 
 ---
 
-## FEATURES
+## Features
 
 **CONTROL**
 - Runs entirely on your phone. No account, no cloud, no other people.
@@ -109,7 +110,7 @@ If a hash does not match, delete the file.
 
 ---
 
-## BUILD FROM SOURCE
+## Build from source
 
 Requirements:
 
@@ -129,7 +130,7 @@ Output lands in `app/build/outputs/apk/`. Debug builds install alongside a relea
 
 ---
 
-## SECURITY / PRIVACY NOTES
+## Security & privacy notes
 
 - **Location.** Outdoor tracking requires foreground location access and runs as a visible foreground service. Background location is never requested. Indoor tracking asks for no location permission at all.
 - **Notifications.** Optional. Denying them costs you the shade messages, nothing else.
@@ -141,7 +142,7 @@ Output lands in `app/build/outputs/apk/`. Debug builds install alongside a relea
 
 ---
 
-## SYSTEM REQUIREMENTS
+## System requirements
 
 - Android 8.0 (API 26) or newer
 - GPS for outdoor tracking (indoor works without it)
@@ -151,12 +152,12 @@ Output lands in `app/build/outputs/apk/`. Debug builds install alongside a relea
 
 ---
 
-## LICENSE
+## License
 
 MIT — see [LICENSE](LICENSE).
 
 ---
 
-## THIRD-PARTY NOTICES
+## Third-party notices
 
 GAIT is built on the Android platform and open-source components published by Google and JetBrains under the Apache License 2.0, and uses the Google Play services location APIs under their own terms. Those licenses continue to apply to those components.
