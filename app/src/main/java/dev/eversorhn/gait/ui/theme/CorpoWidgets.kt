@@ -335,7 +335,16 @@ fun LiveTrack(
     twinFraction: Float,
     modifier: Modifier = Modifier,
     twinColor: Color = Cyan,
+    /** > 0 while the opponent is gaining: the markers breathe faster and their glow grows. */
+    pressure: Float = 0f,
 ) {
+    // One shared beat drives the markers so the track reads as alive, not as a static chart.
+    val beat = rememberInfiniteTransition(label = "trackBeat")
+    val pulse by beat.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween((1500 - pressure * 700).toInt().coerceIn(500, 1500), easing = LinearEasing), RepeatMode.Reverse),
+        label = "trackPulse",
+    )
     // Normalised route vertices (x 0..1, y 0..1); the same shape every session so the eye
     // learns it. Looks like the demo's SVG, not like a map.
     val route = remember {
@@ -374,9 +383,9 @@ fun LiveTrack(
 
         val twin = at(twinFraction)
         val you = at(youFraction)
-        drawCircle(twinColor.copy(alpha = 0.25f), radius = 9.dp.toPx(), center = twin)
+        drawCircle(twinColor.copy(alpha = 0.18f + 0.22f * pulse), radius = (9 + 5 * pulse).dp.toPx(), center = twin)
         drawCircle(twinColor, radius = 5.dp.toPx(), center = twin)
-        drawCircle(Brass.copy(alpha = 0.25f), radius = 9.dp.toPx(), center = you)
+        drawCircle(Brass.copy(alpha = 0.20f + 0.20f * (1 - pulse)), radius = (9 + 4 * (1 - pulse)).dp.toPx(), center = you)
         drawCircle(Brass, radius = 5.dp.toPx(), center = you)
     }
 }

@@ -245,8 +245,14 @@ class TrackViewModel(
     private fun speak(text: String, atSeconds: Int, force: Boolean = false) {
         if (!dev.eversorhn.gait.audio.VoicePrefs.isEnabled(appContext)) return
         if (!force && (atSeconds - lastSpokenAt < 40 || spokenLines >= 20)) return
-        val c = commentator ?: dev.eversorhn.gait.audio.Commentator(appContext).also { commentator = it }
-        c.say(text)
+        val horde = _uiState.value.opponent?.isHorde == true
+        val c = commentator ?: dev.eversorhn.gait.audio.Commentator(
+            appContext,
+            if (horde) dev.eversorhn.gait.audio.VoiceFx.Voice.HORDE else dev.eversorhn.gait.audio.VoiceFx.Voice.DIVISION,
+        ).also { commentator = it }
+        // A horde caption is written for the eye ("[snarling, close]"); spoken, it is the words
+        // inside the brackets, deep and slow. The division's lines are spoken as written.
+        c.say(if (horde) text.trim().removePrefix("[").removeSuffix("]") else text)
         lastSpokenAt = atSeconds; spokenLines++
     }
 

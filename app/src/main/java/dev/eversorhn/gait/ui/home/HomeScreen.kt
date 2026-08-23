@@ -27,7 +27,6 @@ import dev.eversorhn.gait.ui.coach.CoachScreen
 import dev.eversorhn.gait.ui.forecast.ForecastScreen
 import dev.eversorhn.gait.ui.stats.StatsScreen
 import dev.eversorhn.gait.ui.theme.Brass
-import dev.eversorhn.gait.ui.theme.ExitGuard
 import dev.eversorhn.gait.ui.theme.LineSoft
 import dev.eversorhn.gait.ui.theme.TextFaint
 import dev.eversorhn.gait.ui.theme.pressable
@@ -58,7 +57,8 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     fun go(page: HomePage) { scope.launch { pager.animateScrollToPage(page.ordinal) } }
 
-    ExitGuard(opponentName = if (isHorde) "The horde" else opponentName.ifBlank { "The model" })
+    // Back inside an enrolment goes up to the list; the app only closes from there.
+    androidx.activity.compose.BackHandler(enabled = true) { onProfiles() }
 
     LaunchedEffect(pager) {
         snapshotFlow { pager.currentPage }.collect { onPageChanged(HomePage.entries[it]) }

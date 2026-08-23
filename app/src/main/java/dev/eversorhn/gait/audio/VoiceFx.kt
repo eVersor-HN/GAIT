@@ -53,31 +53,42 @@ object VoiceFx {
         )
     }
 
-    /** Process 16-bit mono PCM in place-ish; returns a new array of the same length. */
-    fun process(pcm: ShortArray, sampleRate: Int): ShortArray {
+    /** Which voice the chain is shaping. */
+    enum class Voice { DIVISION, HORDE }
+
+    /** Process 16-bit mono PCM; returns a new array of the same length. */
+    fun process(pcm: ShortArray, sampleRate: Int, voice: Voice = Voice.DIVISION): ShortArray {
         val fs = sampleRate.toDouble()
-        val chain = listOf(
+        val horde = voice == Voice.HORDE
+        val chain = if (horde) listOf(
+            // Deep and physical: keep the bottom, scoop the human-presence band, no air at all.
+            highPass(fs, 40.0, 0.707),
+            highShelf(fs, 2600.0, -8.0),
+            peaking(fs, 110.0, 0.9, 6.0),
+            peaking(fs, 900.0, 1.2, -4.0),
+        ) else listOf(
             highPass(fs, 80.0, 0.707),
             peaking(fs, 270.0, 1.0, -2.5),
             peaking(fs, 3200.0, 1.0, 3.0),
             highShelf(fs, 9500.0, 3.5),
         )
-        val delaySamples = (0.011 * fs).toInt().coerceAtLeast(1) // ~11 ms micro-double
+        // The horde's double is long and detuned — a second throat half a step behind.
+        val delaySamples = ((if (horde) 0.028 else 0.011) * fs).toInt().coerceAtLeast(1)
         val out = ShortArray(pcm.size)
-        val wet = 0.16
+        val wet = if (horde) 0.42 else 0.16
         var wobblePhase = 0.0
-        val wobbleStep = 2 * PI * 0.7 / fs // 0.7 Hz drift → subtle detune of the double
+        val wobbleStep = 2 * PI * (if (horde) 0.25 else 0.7) / fs
         for (i in pcm.indices) {
             var x = pcm[i] / 32768.0
             for (f in chain) x = f.process(x)
             // Micro-doubling: read the *filtered-input* delayed copy from the source (cheap, pre-filter),
             // wobbled by ±1 sample for a slightly synthetic shimmer.
             wobblePhase += wobbleStep
-            val wob = (sin(wobblePhase) * 1.5).toInt()
+            val wob = (sin(wobblePhase) * (if (horde) 6.0 else 1.5)).toInt()
             val j = i - delaySamples + wob
             if (j >= 0) x += (pcm[j] / 32768.0) * wet
             // Soft saturation + limiter: tanh knee, then clamp.
-            x = tanh(x * 1.25) * 0.92
+            x = if (horde) tanh(x * 2.2) * 0.95 else tanh(x * 1.25) * 0.92
             out[i] = (x * 32767.0).toInt().coerceIn(-32768, 32767).toShort()
         }
         return out

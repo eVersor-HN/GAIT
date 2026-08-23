@@ -62,6 +62,9 @@ fun ProfilesScreen(
     onSettings: (Long) -> Unit,
     onBriefing: () -> Unit,
 ) {
+    // The list is the app's root: back here asks whether to leave the floor.
+    dev.eversorhn.gait.ui.theme.ExitGuard(opponentName = "The division")
+
     val viewModel: ProfilesViewModel = gaitViewModel()
     val state by viewModel.uiState.collectAsState()
     var pendingDelete by remember { mutableStateOf<TwinProfileEntity?>(null) }

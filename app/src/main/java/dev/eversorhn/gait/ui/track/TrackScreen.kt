@@ -438,7 +438,9 @@ private fun LiveSession(
         youFraction = twinFraction
     }
     if (mode == TrackMode.OUTDOOR) {
-        LiveTrack(youFraction = youFraction, twinFraction = twinFraction, twinColor = twinColor)
+        // Pressure = how much of the model's forecast time it has eaten of your lead.
+        val pressure = projection?.gapSeconds?.let { g -> ((60 - g) / 120f).coerceIn(0f, 1f) } ?: 0.5f
+        LiveTrack(youFraction = youFraction, twinFraction = twinFraction, twinColor = twinColor, pressure = pressure)
         TrackLegend(youLabel = "You", twinLabel = name, twinColor = twinColor)
     }
 

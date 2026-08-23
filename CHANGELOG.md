@@ -4,6 +4,13 @@ All notable changes to this concept project are tracked here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.17.1] - 2026-08-23
+
+### Changed
+- **Back works the way it should**: inside an enrolment it goes up to the list; on the list it asks whether to leave (close · keep notifications / close · mute / stay).
+- **The horde gets its own voice.** The commentator now has two: the division's young synthetic one (unchanged) and, for a horde enrolment, a deep one — pitch 0.5, rate 0.78, a male engine voice where the device has one, and its own DSP chain (40 Hz high-pass, +6 dB at 110 Hz, −4 dB at 900 Hz, −8 dB shelf above 2.6 kHz, a 28 ms detuned double at 42 % and hard saturation). Spoken horde lines are the words inside the caption brackets, so it growls "snarling, close behind" rather than reading punctuation.
+- **The live track moves**: both markers breathe on a shared beat that tightens as the model eats into your lead — up to three times faster when it is on you.
+
 ## [0.17.0] - 2026-08-23
 
 The restructure: profiles first, two modes that stop borrowing each other's language, a monochrome console, and an Analysis page that answers "what do I do now?".

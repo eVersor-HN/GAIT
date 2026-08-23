@@ -29,7 +29,7 @@ object VoicePrefs {
  * CommentaryScript; cadence from TrackViewModel. If the device has no TTS engine, every call
  * is a silent no-op — the on-screen comms are the primary channel anyway.
  */
-class Commentator(context: Context) {
+class Commentator(context: Context, private val voice: VoiceFx.Voice = VoiceFx.Voice.DIVISION) {
 
     private val appContext = context.applicationContext
     private val audio = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -62,17 +62,24 @@ class Commentator(context: Context) {
         t.setAudioAttributes(attrs)
         t.language = Locale.UK.takeIf { t.isLanguageAvailable(Locale.UK) >= TextToSpeech.LANG_AVAILABLE } ?: Locale.US
         // Prefer a female, local, English voice: names on Google's engine look like "en-gb-x-gba#female_2-local".
-        val voice = runCatching { t.voices }.getOrNull()
+        val engineVoice = runCatching { t.voices }.getOrNull()
             ?.filter { it.locale.language == "en" && !it.isNetworkConnectionRequired }
             ?.sortedWith(compareBy(
-                { if (it.name.contains("female", ignoreCase = true)) 0 else 1 },
+                { if (voice == VoiceFx.Voice.HORDE) { if (it.name.contains("male", ignoreCase = true) && !it.name.contains("female", ignoreCase = true)) 0 else 1 } else if (it.name.contains("female", ignoreCase = true)) 0 else 1 },
                 { if (it.locale == Locale.UK) 0 else 1 },
                 { -it.quality },
             ))
             ?.firstOrNull()
-        if (voice != null) runCatching { t.voice = voice }
-        t.setPitch(1.08f)
-        t.setSpeechRate(1.0f)
+        if (engineVoice != null) runCatching { t.voice = engineVoice }
+        // Division: a young synthetic voice. Horde: as deep and slow as the engine allows —
+        // the DSP does the rest (see docs/voice-design.md; the horde is its counterpart).
+        if (voice == VoiceFx.Voice.HORDE) {
+            t.setPitch(0.5f)
+            t.setSpeechRate(0.78f)
+        } else {
+            t.setPitch(1.08f)
+            t.setSpeechRate(1.0f)
+        }
     }
 
     /** Speaks [text]; a line arriving while another is playing replaces it — commentary is live, not a queue. */
@@ -106,7 +113,7 @@ class Commentator(context: Context) {
                         val wav = VoiceFx.readWav(file.readBytes())
                         if (wav != null) {
                             val (rate, pcm) = wav
-                            val processed = VoiceFx.process(pcm, rate)
+                            val processed = VoiceFx.process(pcm, rate, voice)
                             track?.release()
                             val at = AudioTrack.Builder()
                                 .setAudioAttributes(attrs)
