@@ -4,6 +4,10 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.19.5 — 2026-08-24
+
+- The two session modes now read the same way: **Outdoor · GPS** and **Indoor · timed** — both name how the session is verified, not what you are standing on. The machine's name moved to where you actually read a number off it: the distance prompt when you stop.
+
 ## 0.19.4 — 2026-08-24
 
 - Loading or removing demo data updates the numbers in Settings straight away instead of showing the old ones until you leave the screen.

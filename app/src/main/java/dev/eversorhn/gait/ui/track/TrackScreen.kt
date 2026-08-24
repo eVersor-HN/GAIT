@@ -157,10 +157,10 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
             uiState.awaitingIndoorDistance -> {
                 ScreenTitle(screenEyebrow, "What did the machine say?")
                 Text(
-                    "Timed at ${formatElapsed(uiState.indoorElapsedSeconds)}. " + when (dev.eversorhn.gait.domain.activity.Activities.byKey((LocalContext.current.applicationContext as dev.eversorhn.gait.GaitApplication).repository.activeActivityType).key) {
-                        "WHEELCHAIR", "HAND_CYCLE" -> "Enter the distance from your roller or trainer display — or your best estimate."
-                        "E_SCOOTER", "E_BIKE" -> "Enter the trip distance from the display."
-                        else -> "Enter the distance shown on the console."
+                    "Timed at ${formatElapsed(uiState.indoorElapsedSeconds)}. " + when {
+                        activeActivity.key == "E_SCOOTER" || activeActivity.key == "E_BIKE" -> "Enter the trip distance from the display."
+                        activeActivity.indoorLabel.isBlank() -> "Enter your best estimate of the distance."
+                        else -> "Enter the distance shown on your ${activeActivity.indoorLabel} — or your best estimate."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -210,7 +210,7 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
                     )
                 }
                 SelectCard(
-                    title = "Indoor · ${act.indoorLabel}",
+                    title = "Indoor · timed",
                     description = "Timed only · distance entered on stop, tagged self-reported",
                     selected = false,
                     onClick = { viewModel.chooseMode(TrackMode.INDOOR) },

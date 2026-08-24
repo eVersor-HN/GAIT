@@ -24,8 +24,8 @@ android {
         applicationId = "dev.eversorhn.gait"
         minSdk = 26
         targetSdk = 35
-        versionCode = 30
-        versionName = "0.19.4"
+        versionCode = 31
+        versionName = "0.19.5"
     }
 
     signingConfigs {

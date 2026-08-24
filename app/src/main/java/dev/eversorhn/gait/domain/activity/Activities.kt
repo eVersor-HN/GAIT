@@ -18,7 +18,7 @@ data class Activity(
     val usesSpeed: Boolean = false,
     /** Pace is read per this many metres: 1000 = /km, 500 = rowing split, 100 = swimming. */
     val paceUnitMeters: Int = 1000,
-    /** What "indoor" means for this activity, for the mode card. */
+    /** The machine you read the distance off indoors. Blank when there is none. */
     val indoorLabel: String = "treadmill",
     /** Gym machines have no outdoor form — the mode picker only offers the timed one. */
     val outdoorCapable: Boolean = true,
@@ -44,11 +44,11 @@ object Activities {
     val HAND_CYCLE = Activity("HAND_CYCLE", "Hand-cycle", "ride", WHEELS, listOf("Speed", "Consistency", "Route novelty"), true, usesSpeed = true, indoorLabel = "indoor trainer")
     val WHEELCHAIR = Activity("WHEELCHAIR", "Wheelchair", "roll", WHEELS, listOf("Pace", "Consistency", "Distance"), true, indoorLabel = "roller / treadmill")
     val RACING_CHAIR = Activity("RACING_CHAIR", "Racing chair", "roll", WHEELS, listOf("Speed", "Consistency", "Distance"), true, usesSpeed = true, indoorLabel = "roller")
-    val INLINE = Activity("INLINE", "Inline skating", "skate", WHEELS, listOf("Speed", "Consistency", "Route novelty"), true, usesSpeed = true, indoorLabel = "timed only")
-    val SKATEBOARD = Activity("SKATEBOARD", "Skateboard", "ride", WHEELS, listOf("Speed", "Consistency", "Route novelty"), true, usesSpeed = true, indoorLabel = "timed only")
-    val KICK_SCOOTER = Activity("KICK_SCOOTER", "Kick scooter", "ride", WHEELS, listOf("Speed", "Consistency", "Distance"), true, usesSpeed = true, indoorLabel = "timed only")
+    val INLINE = Activity("INLINE", "Inline skating", "skate", WHEELS, listOf("Speed", "Consistency", "Route novelty"), true, usesSpeed = true, indoorLabel = "")
+    val SKATEBOARD = Activity("SKATEBOARD", "Skateboard", "ride", WHEELS, listOf("Speed", "Consistency", "Route novelty"), true, usesSpeed = true, indoorLabel = "")
+    val KICK_SCOOTER = Activity("KICK_SCOOTER", "Kick scooter", "ride", WHEELS, listOf("Speed", "Consistency", "Distance"), true, usesSpeed = true, indoorLabel = "")
     val E_BIKE = Activity("E_BIKE", "E-Bike", "ride", WHEELS, listOf("Consistency", "Route novelty", "Distance"), false, usesSpeed = true, indoorLabel = "indoor trainer")
-    val E_SCOOTER = Activity("E_SCOOTER", "E-Scooter", "ride", WHEELS, listOf("Consistency", "Route novelty", "Reliability"), false, usesSpeed = true, indoorLabel = "timed only")
+    val E_SCOOTER = Activity("E_SCOOTER", "E-Scooter", "ride", WHEELS, listOf("Consistency", "Route novelty", "Reliability"), false, usesSpeed = true, indoorLabel = "")
 
     // --- Water -------------------------------------------------------------------------------
     val ROWING = Activity("ROWING", "Rowing", "row", WATER, listOf("Split", "Consistency", "Distance"), true, paceUnitMeters = 500, indoorLabel = "rowing ergometer")
