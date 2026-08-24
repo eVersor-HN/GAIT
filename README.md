@@ -58,7 +58,7 @@ Binaries published anywhere else are not ours.
 3. Install it on your phone (allow installation from your browser or file manager when prompted).
 4. Open the app, enrol, and pick your activity and opponent. Nothing else needs configuring.
 
-`gait-…-release.apk` is the app. `gait-simdemo-…apk` is a small standalone preview with no real data, no permissions and no database — install it to look, not to train.
+`gait-…-release.apk` is the app. `gait-wear-…apk` is the optional watch app — install it on the watch, not the phone. `gait-simdemo-…apk` is a small standalone preview with no real data, no permissions and no database: install it to look, not to train.
 
 ---
 
@@ -89,7 +89,7 @@ If a hash does not match, delete the file.
 - Multiple enrolments side by side — each with its own activity, opponent, standing and settings.
 - 25 activities on foot, on wheels, on water, on snow and on gym machines, adaptive ones included.
 - Two opponents: a named rival model of you, or a horde that closes on you from behind.
-- Intensity is yours to set: from quiet rivalry to openly hostile.
+- Sound, spoken readout and vibration are three separate switches. Intensity is yours to set.
 
 **WORKFLOW**
 - Open the app, land on your standing, start from the button at the top.
@@ -99,12 +99,19 @@ If a hash does not match, delete the file.
 - Import your recent exercise history from Health Connect so the first forecasts have something to stand on.
 
 **PRESSURE**
-- A division of roughly a thousand simulated assets, ranked against you every day, with a ticker of who rose and who fell.
+- A division of roughly a thousand simulated assets, each with a working life of its own — day shifts, nights, rotating crews, part-time, studies, retirement — ranked against you every day.
+- Your opponent trains on the days you skip, and shares those sessions live the way a training partner would.
 - Your opponent stakes points on its own prediction. You can double the round.
 - Nothing talks at you. The opponent is its forecast, the score and the distance — no scripted lines, no taunts, no messages.
-- The live figures read aloud at kilometre marks and lead changes, for when the phone is in a pocket.
-- A lock-screen card that shows the gap without unlocking.
+- The live figures read aloud at kilometre marks and lead changes, and felt through the pocket: a tick every kilometre, a knock at every lead change, a pulse that tightens as the horde closes.
 - Every quarter the bottom of the division is cut. If that is you, the enrolment ends and you start again.
+
+**ON EVERY SURFACE**
+- A lock-screen card with the gap, the pace that still wins the round and your projected finish — no unlocking.
+- A home-screen widget with your rank, the standing and the days to the next cull.
+- A quick-settings tile that starts a session from anywhere.
+- A watch app showing the gap while you run and your rank when you are not.
+- Heart rate from any standard Bluetooth monitor, and sessions written back to Health Connect if you want them there.
 
 **PRIVACY**
 - Your routes, times and standings never leave the device.
@@ -126,6 +133,7 @@ Commands:
 ./gradlew :app:assembleDebug        # installable debug build
 ./gradlew :app:testDebugUnitTest    # unit tests
 ./gradlew :app:assembleRelease      # shrunk release build
+./gradlew :wear:assembleRelease     # the watch app
 ```
 
 Output lands in `app/build/outputs/apk/`. Debug builds install alongside a release build. Release signing is optional and read from an untracked `keystore.properties`; `keystore.properties.example` shows the format. Without it, the release build is unsigned.
@@ -139,7 +147,8 @@ Output lands in `app/build/outputs/apk/`. Debug builds install alongside a relea
 - **Health Connect.** Optional, read-only, and only for the activity types you are training. Nothing is written back.
 - **Network.** The app requests no internet permission and makes no network calls.
 - **Storage.** Sessions, routes, messages and standings live in a local database on the device. GAIT does not encrypt that database beyond the platform's own device encryption; anyone with unlocked access to the phone can reach app data through normal means.
-- **Not a medical device.** Distances, paces and any imported health data are for training feedback only.
+- **Not a medical device.** GAIT gives no medical, diagnostic or training advice; its targets are arithmetic on your own past sessions. Distances, paces, elevations and heart rate are approximate. The app states this on first launch and will not start until you have read it.
+- **Bluetooth.** Used only to find and read a heart-rate monitor, and only while you are pairing or recording. Nothing is scanned for location.
 - **Tone.** The opponent is designed to be blunt and, at its harshest, openly demeaning. Intensity is adjustable, including off.
 
 ---
@@ -150,7 +159,9 @@ Output lands in `app/build/outputs/apk/`. Debug builds install alongside a relea
 - GPS for outdoor tracking (indoor works without it)
 - Roughly 50 MB of storage, growing slowly with session history
 - Text-to-speech engine on the device for spoken callouts (optional)
-- Health Connect installed, if you want to import history (optional)
+- Health Connect installed, to import or write back sessions (optional)
+- A Bluetooth heart-rate monitor, for heart rate (optional)
+- Wear OS 3 or newer, for the watch app (optional)
 
 ---
 
