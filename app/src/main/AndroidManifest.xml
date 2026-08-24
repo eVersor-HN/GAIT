@@ -14,6 +14,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!--
       No ACCESS_BACKGROUND_LOCATION: tracking runs inside a foreground service with a
       visible notification, which Android explicitly exempts from the background location
@@ -23,6 +24,8 @@
 
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
     <uses-permission android:name="android.permission.health.READ_DISTANCE" />
+    <uses-permission android:name="android.permission.health.WRITE_EXERCISE" />
+    <uses-permission android:name="android.permission.health.WRITE_DISTANCE" />
 
     <application
         android:name=".GaitApplication"
@@ -48,6 +51,28 @@
             android:name=".tracking.LocationTrackingService"
             android:exported="false"
             android:foregroundServiceType="location|health" />
+
+        <receiver
+            android:name=".widget.StandingWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_standing_info" />
+        </receiver>
+
+        <service
+            android:name=".tracking.StartSessionTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_notification"
+            android:label="GAIT"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

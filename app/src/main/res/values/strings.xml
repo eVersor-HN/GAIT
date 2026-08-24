@@ -5,4 +5,5 @@
         <item quantity="one">%d session</item>
         <item quantity="other">%d sessions</item>
     </plurals>
+    <string name="widget_description">Your rank, the gap to your opponent and the days to the next cull.</string>
 </resources>

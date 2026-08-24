@@ -150,7 +150,7 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
             }
             dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Health Connect", summary = "Import last 30 days of ${dev.eversorhn.gait.domain.activity.Activities.byKey(appRepo.activeActivityType).label.lowercase()} from other apps") {
                 Text(
-                    "Reads exercise sessions and distance from Health Connect (watch, other tracker apps) and adds the ones GAIT doesn't have — as baseline material, tagged HEALTH. Nothing is written back.",
+                    "Reads exercise sessions and distance from Health Connect (watch, other tracker apps) and adds the ones GAIT doesn't have — as baseline material, tagged HEALTH.",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 CorpoButton("Import from Health Connect", onClick = {
@@ -162,6 +162,24 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
                     }
                 }, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
                 hcNote?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface) }
+
+                var exportOn by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.health.ExportPrefs.isEnabled(appCtx)) }
+                val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                    androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()
+                ) { granted ->
+                    val ok = granted.containsAll(dev.eversorhn.gait.health.HealthExport.PERMISSIONS)
+                    dev.eversorhn.gait.health.ExportPrefs.setEnabled(appCtx, ok)
+                    exportOn = ok
+                }
+                dev.eversorhn.gait.ui.theme.CorpoSwitch(
+                    label = "Write sessions back",
+                    description = "Every session you finish in GAIT is written to Health Connect, so your rings, your watch and your other apps see the same run. Sessions imported from there are never written back.",
+                    checked = exportOn,
+                    onChange = { want ->
+                        if (want) exportLauncher.launch(dev.eversorhn.gait.health.HealthExport.PERMISSIONS)
+                        else { dev.eversorhn.gait.health.ExportPrefs.setEnabled(appCtx, false); exportOn = false }
+                    },
+                )
             }
         }
 
@@ -239,6 +257,13 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
         var voiceOn by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.audio.VoicePrefs.isEnabled(appCtx)) }
         CorpoPanel {
             SectionLabel("Sound & notifications")
+            var hapticsOn by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.audio.HapticPrefs.isEnabled(appCtx)) }
+            dev.eversorhn.gait.ui.theme.CorpoSwitch(
+                label = "Pocket feedback",
+                description = "A tick at every kilometre, a knock when the lead changes, and a pulse that tightens as the horde closes.",
+                checked = hapticsOn,
+                onChange = { dev.eversorhn.gait.audio.HapticPrefs.setEnabled(appCtx, it); hapticsOn = it },
+            )
             dev.eversorhn.gait.ui.theme.CorpoSwitch(
                 label = "Spoken readout",
                 description = "Reads the live figures aloud at kilometre marks and lead changes. Ducks your music.",

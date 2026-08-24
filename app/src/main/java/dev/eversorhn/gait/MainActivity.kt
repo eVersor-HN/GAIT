@@ -15,6 +15,12 @@ import dev.eversorhn.gait.ui.navigation.GaitNavGraph
 import dev.eversorhn.gait.ui.theme.GaitTheme
 
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        /** Set by the quick-settings tile: open straight on the session screen. */
+        const val EXTRA_START_SESSION = "gait.start_session"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enterImmersiveFullscreen()
@@ -29,7 +35,7 @@ class MainActivity : ComponentActivity() {
                         .background(MaterialTheme.colorScheme.background),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    GaitNavGraph()
+                    GaitNavGraph(startSession = intent?.getBooleanExtra(EXTRA_START_SESSION, false) == true)
                 }
             }
         }

@@ -112,6 +112,32 @@ fun BriefingScreen(onDone: () -> Unit) {
             ),
         )
 
+        dev.eversorhn.gait.ui.theme.CollapsiblePanel(
+            title = "Safety and data",
+            summary = "What GAIT is not, and what it does with what you record",
+        ) {
+            Text(
+                "GAIT is not a medical device and gives no medical or training advice. Its targets " +
+                    "are arithmetic on your own past sessions. Stop if you feel pain, chest pressure, " +
+                    "dizziness or shortness of breath, and speak to a doctor before following anything " +
+                    "here if you have a condition, are pregnant, or are coming back from injury.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "Watch the road, not the phone. The spoken readout and the pocket feedback exist so " +
+                    "you never have to look at the screen while you are moving.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "The division and everyone in it are generated on this phone. Sessions, routes and " +
+                    "standings stay on the device: no account, no upload, no analytics.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
         CorpoButton("Back", onClick = onDone, kind = ButtonKind.GHOST, modifier = Modifier.fillMaxWidth())
         FootNote("GAIT · Asset Performance Division")
         Spacer(Modifier.height(8.dp))

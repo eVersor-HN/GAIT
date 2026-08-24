@@ -67,12 +67,37 @@ private val routeLabels = mapOf(
 )
 
 @Composable
-fun GaitNavGraph() {
+fun GaitNavGraph(startSession: Boolean = false) {
     val navController: NavHostController = rememberNavController()
     val currentEntry by navController.currentBackStackEntryAsState()
     val route = currentEntry?.destination?.route
     var homePage by remember { mutableStateOf(HomePage.STANDING) }
     val app = LocalContext.current.applicationContext as GaitApplication
+
+    // Nothing else runs until this has been read once. Declining closes the app.
+    val gateContext = LocalContext.current
+    var disclaimerAccepted by androidx.compose.runtime.saveable.rememberSaveable {
+        androidx.compose.runtime.mutableStateOf(
+            dev.eversorhn.gait.ui.onboarding.DisclaimerPrefs.isAccepted(gateContext)
+        )
+    }
+    if (!disclaimerAccepted) {
+        CorpoBackground {
+            Column(modifier = Modifier.fillMaxSize()) {
+                CorpoStatusBar(label = "NOTICE")
+                dev.eversorhn.gait.ui.onboarding.DisclaimerGate(onAccepted = { disclaimerAccepted = true })
+            }
+        }
+        return
+    }
+
+    // Opened from the quick-settings tile: go to the enrolment you were last in and start there.
+    androidx.compose.runtime.LaunchedEffect(startSession) {
+        if (startSession && app.repository.activeProfileId != 0L) {
+            navController.navigate(Routes.HOME)
+            navController.navigate(Routes.TRACK)
+        }
+    }
 
     val ledgerFlow = remember(route) {
         combine(app.repository.observeTwinProfile(), app.repository.observeSessions()) { profile, sessions ->

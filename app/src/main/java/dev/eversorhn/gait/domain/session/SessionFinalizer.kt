@@ -200,8 +200,7 @@ class SessionFinalizer(
         }
 
 
-        repository.logSession(
-            SessionEntity(
+        val storedSession = SessionEntity(
                 activityType = repository.activeActivityType,
                 startTimeEpochMillis = now.toEpochMilli(),
                 dayOfWeek = dayOfWeek,
@@ -225,8 +224,10 @@ class SessionFinalizer(
                 consistency = consistency,
                 routeNovelty = novelty,
                 forecastConsistency = forecastConsistency,
-            )
         )
+        repository.logSession(storedSession)
+        // What you recorded here counts everywhere else on the phone, if you asked for that.
+        appContext?.let { dev.eversorhn.gait.health.HealthExport.write(it, storedSession, indoor = dataSource != SessionSource.GPS) }
 
         // The stake is consumed by this round whether it paid out or not; one per day.
         if (stakeOpen) {

@@ -4,6 +4,17 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.22.0 — 2026-08-24
+
+The session reaches you without the screen, and the app reaches the rest of the phone.
+
+- **A notice you have to read once.** On first launch GAIT says what it is, what it is not, and that your safety comes before any number it shows you. Accepting continues; declining closes the app. It stays available under Briefing.
+- **Pocket feedback.** A tick at every kilometre, a double knock when the lead changes, and — in horde mode — a pulse that tightens as they close: from a slow knock at four hundred metres to almost continuous when they are on you. No screen, no headphones, no words. Switchable in Settings.
+- **The horde, heard.** With headphones a low growl comes from behind and to one side, louder and more often the less ground is left. It is generated on the spot rather than played from a file, so it never repeats itself.
+- **A home-screen widget.** Your rank, the standing against your opponent and the days to the next cull, updated through the day without opening anything.
+- **A quick-settings tile.** Two pulls from anywhere and you are on the session screen.
+- **Sessions can be written back to Health Connect**, so what you record here counts in your rings, on your watch and in your other apps. Off until you switch it on, and sessions imported from there are never written back.
+
 ## 0.21.1 — 2026-08-24
 
 - Tiles whose one-line caption had to be cut short can be tapped for the sentence behind it — the asset file explains level, steadiness and grit where they stand.

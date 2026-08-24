@@ -331,6 +331,10 @@ class LocationTrackingService : Service() {
 
     /** The spoken readout. It lives here so it keeps talking with the screen off. */
     private val voice by lazy { dev.eversorhn.gait.audio.SessionVoice(applicationContext) }
+    /** The pocket channel: what the session feels like without looking at anything. */
+    private val haptics by lazy { dev.eversorhn.gait.audio.SessionHaptics(applicationContext) }
+    /** The horde, heard behind you. */
+    private val presence by lazy { dev.eversorhn.gait.audio.HordePresence(applicationContext) }
 
     private fun startTicker() {
         tickerJob?.cancel()
@@ -349,8 +353,11 @@ class LocationTrackingService : Service() {
                 val snap = TrackingSessionState.snapshot.value
                 if (snap.isTracking && snap.mode == TrackingMode.OUTDOOR) {
                     val opp = LiveOpponentInfo.current
+                    val figures = LiveFigures.of(snap, opp)
                     voice.lastVoiceHorde = opp?.isHorde == true
-                    voice.onTick(LiveFigures.of(snap, opp))
+                    voice.onTick(figures)
+                    haptics.onTick(figures, elapsed * 1000L)
+                    if (figures.isHorde) presence.onTick(figures.separationMeters, elapsed * 1000L)
                 }
                 if (++secondsSincePersist >= PERSIST_EVERY_SECONDS) {
                     persist()
@@ -444,6 +451,7 @@ class LocationTrackingService : Service() {
     }
 
     private fun stopTracking() {
+        haptics.reset()
         val finalSnapshot = TrackingSessionState.snapshot.value
         if (finalSnapshot.isTracking && finalSnapshot.mode == TrackingMode.OUTDOOR && finalSnapshot.distanceMeters > 100) {
             voice.onFinish(LiveFigures.of(finalSnapshot, LiveOpponentInfo.current))
@@ -464,6 +472,7 @@ class LocationTrackingService : Service() {
         // The closing line is still speaking when we get here — the scope is about to die, so
         // the release runs on the main looper instead.
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ voice.shutdown() }, 9_000L)
+        presence.release()
         serviceScope.cancel()
     }
 
