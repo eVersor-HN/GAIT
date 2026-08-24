@@ -130,6 +130,9 @@ fun BoardScreen(
 
 // ------------------------------------------------------------------ Twin: the board
 
+/** How many places the board shows. It is never folded — the ranking is the page. */
+private const val TABLE_ROWS = 15
+
 @Composable
 private fun Board(
     snap: RosterSnapshot,
@@ -144,26 +147,20 @@ private fun Board(
     val safe = u.rank <= snap.cullLine
     val protectedDaysLeft = state.career?.let { (RosterEngine.CULL_GRACE_DAYS - it.tenureDays).coerceAtLeast(0) } ?: 0
 
-    // --- The board itself, first and open: this is what the page is for ---
-    var tableOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(true) }
-    val tableRows = if (tableOpen) 15 else 5
+    // --- The board itself, first and always open: this is what the page is for ---
     CorpoPanel {
-        Row(
-            modifier = Modifier.fillMaxWidth().pressable(onClick = { tableOpen = !tableOpen }),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             SectionLabel("#", color = TextFaint); Spacer(Modifier.width(40.dp))
             SectionLabel("Asset", color = TextFaint)
             Spacer(Modifier.weight(1f))
             SectionLabel("Index · Δ", color = TextFaint)
-            Text(if (tableOpen) "  –" else "  +", style = MaterialTheme.typography.labelLarge, color = TextFaint)
         }
         val twinRow = snap.twin
         var placed = 0
         var i = 0
         var userPlaced = false
         var twinPlaced = false
-        while (placed < tableRows) {
+        while (placed < TABLE_ROWS) {
             val next = snap.standings.getOrNull(i)
             val nextRank = next?.rank ?: Int.MAX_VALUE
             when {
@@ -174,13 +171,7 @@ private fun Board(
             }
             placed++
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().pressable(onClick = { tableOpen = !tableOpen }),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            FootNote("${if (snap.nextReviewInDays == 0) "Review today" else "Review in ${snap.nextReviewInDays} d"} · ${snap.onLeave} on leave", maxLines = 1)
-            FootNote(if (tableOpen) "show 5" else "show 15", color = Brass, maxLines = 1)
-        }
+        FootNote("${if (snap.nextReviewInDays == 0) "Review today" else "Review in ${snap.nextReviewInDays} d"} · ${snap.onLeave} on leave", maxLines = 1)
     }
 
     // --- The one action, straight under the board it is measured against ---

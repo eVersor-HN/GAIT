@@ -4,6 +4,10 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.19.7 — 2026-08-24
+
+- The board no longer folds. All fifteen places are simply there, every time — the collapse control is gone.
+
 ## 0.19.6 — 2026-08-24
 
 - **The board leads the standing page.** The division table sits at the top, open at all fifteen places instead of folded to five, with GO directly beneath it — the ranking you are being measured against, then the button that changes it. Your own numbers follow underneath.
