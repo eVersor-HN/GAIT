@@ -38,7 +38,8 @@ class SettingsViewModel(private val repository: GaitRepository) : ViewModel() {
         refresh()
     }
 
-    private fun refresh() {
+    /** Public so loading or removing demo data can re-read the numbers it just changed. */
+    fun refresh() {
         viewModelScope.launch {
             val profile = repository.getTwinProfile() ?: return@launch
             val count = repository.getSessions().size

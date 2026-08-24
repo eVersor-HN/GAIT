@@ -4,6 +4,10 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.19.4 — 2026-08-24
+
+- Loading or removing demo data updates the numbers in Settings straight away instead of showing the old ones until you leave the screen.
+
 ## 0.19.3 — 2026-08-23
 
 - **Nothing you typed is thrown away in silence.** Leaving a half-filled enrolment, or the manual session form with figures in it, now asks first — keep editing, or discard.

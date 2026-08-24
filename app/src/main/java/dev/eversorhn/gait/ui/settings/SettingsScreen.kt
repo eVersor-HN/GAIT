@@ -313,6 +313,7 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
                 CorpoButton("Remove demo data", onClick = {
                     scope.launch {
                         val n = dev.eversorhn.gait.domain.demo.DemoSeeder.remove(appRepo, appCtx)
+                        viewModel.refresh()
                         demoLoaded = false
                         demoNote = "Removed $n sample ${if (n == 1) "session" else "sessions"}."
                     }
@@ -321,6 +322,7 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
                 CorpoButton("Load demo data", onClick = {
                     scope.launch {
                         dev.eversorhn.gait.domain.demo.DemoSeeder.seed(appRepo, appCtx)
+                        viewModel.refresh()
                         demoLoaded = true
                         demoNote = "Loaded. Swipe to the Board and Forecast."
                     }
