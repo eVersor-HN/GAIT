@@ -135,6 +135,71 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
 
         // --- Asset transfer: export the division's file on you; import someone else's asset ---
         val appCtx = androidx.compose.ui.platform.LocalContext.current
+        // --- Heart rate: a strap or watch, read over the standard Bluetooth service ---
+        run {
+            val monitor = androidx.compose.runtime.remember { dev.eversorhn.gait.sensors.HeartRateMonitor(appCtx) }
+            var paired by androidx.compose.runtime.remember {
+                androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.sensors.HeartRatePrefs.name(appCtx))
+            }
+            var scanning by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            val found = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateListOf<dev.eversorhn.gait.sensors.HeartRateMonitor.Found>() }
+            val btLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+            ) { grants ->
+                if (grants.values.all { it }) {
+                    scanning = true; found.clear()
+                    monitor.scan(onFound = { found += it }, onDone = { scanning = false })
+                }
+            }
+            fun startScan() {
+                val needed = if (android.os.Build.VERSION.SDK_INT >= 31) {
+                    arrayOf(android.Manifest.permission.BLUETOOTH_SCAN, android.Manifest.permission.BLUETOOTH_CONNECT)
+                } else {
+                    arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                }
+                btLauncher.launch(needed)
+            }
+            if (monitor.isSupported()) {
+                dev.eversorhn.gait.ui.theme.CollapsiblePanel(
+                    title = "Heart rate",
+                    summary = paired?.let { "Paired · $it" } ?: "No monitor paired",
+                ) {
+                    Text(
+                        "A chest strap or watch that speaks the standard Bluetooth heart-rate service. " +
+                            "Pace says how fast you went; this says what it cost. Read during the session only.",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (paired != null) {
+                        CorpoButton("Forget monitor", onClick = {
+                            dev.eversorhn.gait.sensors.HeartRatePrefs.forget(appCtx); paired = null
+                        }, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth())
+                    } else {
+                        CorpoButton(
+                            if (scanning) "Searching…" else "Search for a monitor",
+                            onClick = { startScan() },
+                            enabled = !scanning,
+                            kind = ButtonKind.SAFE,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        found.forEach { device ->
+                            dev.eversorhn.gait.ui.enrol.SelectRow(
+                                title = device.name,
+                                detail = device.address,
+                                selected = false,
+                                onClick = {
+                                    dev.eversorhn.gait.sensors.HeartRatePrefs.remember(appCtx, device.address, device.name)
+                                    paired = device.name
+                                },
+                            )
+                        }
+                        if (!scanning && found.isEmpty()) {
+                            FootNote("Put the strap on first — most only advertise once they read a pulse.")
+                        }
+                    }
+                }
+            }
+        }
+
         // --- Health Connect: import recordings other apps made ---
         if (dev.eversorhn.gait.health.HealthImport.isAvailable(appCtx)) {
             var hcNote by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }

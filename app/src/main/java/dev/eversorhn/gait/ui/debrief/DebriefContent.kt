@@ -36,6 +36,7 @@ import dev.eversorhn.gait.ui.theme.PanelTone
 import dev.eversorhn.gait.ui.theme.PhaseTrack
 import dev.eversorhn.gait.ui.theme.ScreenTitle
 import dev.eversorhn.gait.ui.theme.SectionLabel
+import dev.eversorhn.gait.ui.theme.StatTile
 import dev.eversorhn.gait.ui.theme.Sparkline
 import dev.eversorhn.gait.ui.theme.TextFaint
 import dev.eversorhn.gait.ui.theme.formatSignedPoints
@@ -236,6 +237,16 @@ fun DebriefContent(result: DebriefResult, onDone: () -> Unit) {
                 SectionLabel("Duel won", color = Good)
                 Text("${result.metricLabel} reset → ${result.newFidelityPercent}%".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint)
                 Text("${result.generationLabel} ${result.generation} initialising".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint)
+            }
+        }
+
+        result.avgHeartRate?.let { avg ->
+            CorpoPanel {
+                SectionLabel("Heart rate")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile("Average", "$avg bpm")
+                    StatTile("Peak", result.maxHeartRate?.let { "$it bpm" } ?: "—")
+                }
             }
         }
 

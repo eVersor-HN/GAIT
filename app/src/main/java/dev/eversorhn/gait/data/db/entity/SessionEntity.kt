@@ -56,4 +56,9 @@ data class SessionEntity(
     val routeNovelty: Double? = null,
     /** The model's expected steadiness for this session (EWMA of your prior ones). */
     val forecastConsistency: Double? = null,
+
+    // --- v0.23.0: what the session cost you, when a monitor was connected ---
+    /** Mean heart rate over the session, from a paired chest strap or watch. */
+    val avgHeartRate: Int? = null,
+    val maxHeartRate: Int? = null,
 )

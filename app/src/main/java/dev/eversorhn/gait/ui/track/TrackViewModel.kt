@@ -461,6 +461,8 @@ class TrackViewModel(
                 route = snapshot.routePolyline.takeIf { it.isNotBlank() },
                 elevationGainMeters = snapshot.elevationGainMeters.takeIf { snapshot.gpsFixCount > 0 },
                 splitSeconds = snapshot.splitSeconds,
+                avgHeartRate = snapshot.avgHeartRate,
+                maxHeartRate = snapshot.maxHeartRate,
             )
             _uiState.value = _uiState.value.copy(finishing = false, result = result)
         }
@@ -474,6 +476,7 @@ class TrackViewModel(
         val distanceKm = _uiState.value.indoorDistanceKm.toDoubleOrNull() ?: return
         if (distanceKm <= 0.0) return
 
+        val hr = trackingSnapshot.value
         _uiState.value = _uiState.value.copy(finishing = true)
         viewModelScope.launch {
             val result = finalizer.finalize(
@@ -481,6 +484,8 @@ class TrackViewModel(
                 durationSeconds = _uiState.value.indoorElapsedSeconds,
                 dataSource = SessionSource.MANUAL,
                 duel = _uiState.value.duel,
+                avgHeartRate = hr.avgHeartRate,
+                maxHeartRate = hr.maxHeartRate,
             )
             _uiState.value = _uiState.value.copy(finishing = false, awaitingIndoorDistance = false, result = result)
         }

@@ -459,7 +459,10 @@ private fun LiveSession(
             StatTile("Distance", "%.2f km".format(snapshot.distanceMeters / 1000.0), sub = referenceDistance?.let { "of %.2f km".format(it / 1000.0) })
             StatTile("Moving", formatElapsed(snapshot.movingSeconds), sub = referenceFinish?.let { "of ${formatDuration(it)}" })
             if (activity.key == "HIKING" || activity.key == "CYCLING" || activity.key == "E_BIKE" || activity.key == "HAND_CYCLE" || snapshot.elevationGainMeters >= 20) {
-                StatTile("Climb", "${snapshot.elevationGainMeters.toInt()} m", sub = snapshot.splitSeconds.takeIf { it.size >= 2 }?.let { sp -> dev.eversorhn.gait.domain.route.RouteMetrics.consistency(sp)?.let { "steady ${(it * 100).toInt()}%" } })
+                snapshot.heartRate?.let { bpm ->
+                StatTile("Heart", "$bpm", sub = snapshot.avgHeartRate?.let { "avg $it" })
+            }
+            StatTile("Climb", "${snapshot.elevationGainMeters.toInt()} m", sub = snapshot.splitSeconds.takeIf { it.size >= 2 }?.let { sp -> dev.eversorhn.gait.domain.route.RouteMetrics.consistency(sp)?.let { "steady ${(it * 100).toInt()}%" } })
             }
         }
         if (snapshot.gpsFixCount == 0) {

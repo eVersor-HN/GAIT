@@ -78,6 +78,9 @@ data class DebriefResult(
     val paceWord: String = "Pace",
     /** Signed distance from the forecast — the number the session closes on. Null without one. */
     val marginLabel: String? = null,
+    /** What it cost, when a monitor was connected. */
+    val avgHeartRate: Int? = null,
+    val maxHeartRate: Int? = null,
     /** Motor-assisted activities: the round was judged on novelty/steadiness, not on pace. */
     val scoredOnDimensions: Boolean = false,
     val routeNoveltyPercent: Int? = null,
@@ -118,6 +121,8 @@ class SessionFinalizer(
         route: String? = null,
         elevationGainMeters: Double? = null,
         splitSeconds: List<Int> = emptyList(),
+        avgHeartRate: Int? = null,
+        maxHeartRate: Int? = null,
     ): DebriefResult {
         require(distanceMeters > 0.0 && durationSeconds > 0) { "finalize() needs a positive distance and duration" }
 
@@ -224,6 +229,8 @@ class SessionFinalizer(
                 consistency = consistency,
                 routeNovelty = novelty,
                 forecastConsistency = forecastConsistency,
+                avgHeartRate = avgHeartRate,
+                maxHeartRate = maxHeartRate,
         )
         repository.logSession(storedSession)
         // What you recorded here counts everywhere else on the phone, if you asked for that.
@@ -252,6 +259,8 @@ class SessionFinalizer(
             forecastPaceLabel = forecast?.let { dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(it.forecastPaceSecPerKm, repository.activeActivityType) } ?: "—",
             actualPaceLabel = dev.eversorhn.gait.domain.activity.Activities.formatPaceOrSpeed(avgPace, repository.activeActivityType),
             paceWord = dev.eversorhn.gait.domain.activity.Activities.paceWord(repository.activeActivityType),
+            avgHeartRate = avgHeartRate,
+            maxHeartRate = maxHeartRate,
             marginLabel = forecast?.let { f ->
                 val a = dev.eversorhn.gait.domain.activity.Activities.byKey(repository.activeActivityType)
                 if (a.usesSpeed) {

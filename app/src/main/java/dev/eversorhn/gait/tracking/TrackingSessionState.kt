@@ -26,6 +26,11 @@ data class TrackingSnapshot(
      * and the opponent's callouts react to what you're doing *now*. Null until enough ground.
      */
     val currentPaceSecPerKm: Double? = null,
+    /** Live heart rate from a paired strap or watch, when one is connected. */
+    val heartRate: Int? = null,
+    /** Mean and peak so far, kept for the debrief. */
+    val avgHeartRate: Int? = null,
+    val maxHeartRate: Int? = null,
     /** Outdoor only: whole-session moving pace — what the Debrief will judge. */
     val avgPaceSecPerKm: Double? = null,
     /** Outdoor only: downsampled trace "lat,lon;…" (~25 m steps), grows as you go. */

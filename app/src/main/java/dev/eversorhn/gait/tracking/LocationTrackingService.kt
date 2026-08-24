@@ -130,6 +130,7 @@ class LocationTrackingService : Service() {
         }
         persist()
         startLocationUpdatesIfOutdoor(mode)
+        startHeartRate()
         startTicker()
     }
 
@@ -158,7 +159,23 @@ class LocationTrackingService : Service() {
             )
         }
         startLocationUpdatesIfOutdoor(saved.mode)
+        startHeartRate()
         startTicker()
+    }
+
+    /** Connects the remembered monitor, if any. Absent or off is simply no heart rate. */
+    private fun startHeartRate() {
+        val address = dev.eversorhn.gait.sensors.HeartRatePrefs.address(applicationContext) ?: return
+        heart.resetSummary()
+        runCatching { heart.connect(address) }
+        serviceScope.launch {
+            heart.bpm.collect { bpm ->
+                val summary = heart.summary()
+                TrackingSessionState.update {
+                    it.copy(heartRate = bpm, avgHeartRate = summary?.first, maxHeartRate = summary?.second)
+                }
+            }
+        }
     }
 
     /**
@@ -237,7 +254,7 @@ class LocationTrackingService : Service() {
                 }
             }.ifBlank { null }
 
-            text = line1
+            text = line1 + (live.heartRate?.let { " · $it bpm" } ?: "")
             detail = line2
         }
         val sub = buildString {
@@ -335,6 +352,8 @@ class LocationTrackingService : Service() {
     private val haptics by lazy { dev.eversorhn.gait.audio.SessionHaptics(applicationContext) }
     /** The horde, heard behind you. */
     private val presence by lazy { dev.eversorhn.gait.audio.HordePresence(applicationContext) }
+    /** A paired strap or watch, if there is one. Pace says how fast; this says what it cost. */
+    private val heart by lazy { dev.eversorhn.gait.sensors.HeartRateMonitor(applicationContext) }
 
     private fun startTicker() {
         tickerJob?.cancel()
@@ -452,6 +471,7 @@ class LocationTrackingService : Service() {
 
     private fun stopTracking() {
         haptics.reset()
+        runCatching { heart.disconnect() }
         val finalSnapshot = TrackingSessionState.snapshot.value
         if (finalSnapshot.isTracking && finalSnapshot.mode == TrackingMode.OUTDOOR && finalSnapshot.distanceMeters > 100) {
             voice.onFinish(LiveFigures.of(finalSnapshot, LiveOpponentInfo.current))

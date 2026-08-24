@@ -19,7 +19,7 @@ import dev.eversorhn.gait.data.db.entity.TwinProfileEntity
 
 @Database(
     entities = [SessionEntity::class, TwinProfileEntity::class, TwinMessageEntity::class, PlannedDayOffEntity::class, ImportedAssetEntity::class],
-    version = 12,
+    version = 13,
     exportSchema = true,
 )
 abstract class GaitDatabase : RoomDatabase() {
@@ -41,7 +41,7 @@ abstract class GaitDatabase : RoomDatabase() {
                 )
                     // Real migrations from v5 on -- there is installed data on real devices
                     // now. Destructive fallback stays only for pre-v5 leftovers nobody has.
-                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                     .fallbackToDestructiveMigration()
                     .build().also { instance = it }
             }
@@ -61,6 +61,14 @@ abstract class GaitDatabase : RoomDatabase() {
           * to a profile id instead of an activity string; profiles get a user-visible name.
           * Existing rows are attached to the profile of their activity (or the first profile).
           */
+        /** v0.23.0: heart rate, when a monitor was paired for the session. */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sessions ADD COLUMN avgHeartRate INTEGER")
+                db.execSQL("ALTER TABLE sessions ADD COLUMN maxHeartRate INTEGER")
+            }
+        }
+
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE twin_profiles ADD COLUMN profileName TEXT NOT NULL DEFAULT ''")

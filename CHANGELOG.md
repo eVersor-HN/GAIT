@@ -4,6 +4,10 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.23.0 — 2026-08-24
+
+- **Heart rate from a strap or watch.** Pair any Bluetooth monitor that speaks the standard heart-rate service — no vendor app, no account — and the session carries what it cost you, not only how fast you went: live on the track screen and the lock-screen card, average and peak on the debrief. Read during a session only, and never sent anywhere.
+
 ## 0.22.0 — 2026-08-24
 
 The session reaches you without the screen, and the app reaches the rest of the phone.
