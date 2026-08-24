@@ -112,6 +112,8 @@ data class TrackUiState(
     val finishing: Boolean = false,
     /** START was pressed and the service is coming up — the picker is done, recording isn't live yet. */
     val starting: Boolean = false,
+    /** The heart-rate range you have actually shown lately, for the effort bar. Null without history. */
+    val heartRateRange: Pair<Int, Int>? = null,
     /** Indoor only: timer stopped, waiting for the user to type the distance off the machine. */
     val awaitingIndoorDistance: Boolean = false,
     val indoorElapsedSeconds: Int = 0,
@@ -312,7 +314,18 @@ class TrackViewModel(
                     dev.eversorhn.gait.domain.ledger.Ledger.from(sessions), (profile.fidelity * 100).toInt(), dev.eversorhn.gait.domain.ledger.Ledger.from(sessions),
                 ).user.rank
             }.getOrNull() else null
+            // The band your own heart rate has actually moved in lately — the effort bar is
+            // scaled to you, not to a formula about your age.
+            val hrLows = sessions.mapNotNull { it.avgHeartRate }.take(20)
+            val hrHighs = sessions.mapNotNull { it.maxHeartRate }.take(20)
+            val hrRange = if (hrLows.isNotEmpty() && hrHighs.isNotEmpty()) {
+                val low = (hrLows.minOrNull() ?: 100) - 5
+                val high = (hrHighs.maxOrNull() ?: 180) + 2
+                if (high - low >= 20) low to high else null
+            } else null
+
             _uiState.value = _uiState.value.copy(
+                heartRateRange = hrRange,
                 opponent = LiveOpponent(
                     name = profile.twinName,
                     isHorde = profile.isHorde,

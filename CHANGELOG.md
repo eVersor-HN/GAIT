@@ -4,6 +4,22 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.25.0 — 2026-08-24
+
+The session screen becomes an instrument panel, and the phone's own sensors join in.
+
+- **The gap moves instead of jumping.** The number that says where you stand slides to its new value and fades between colours, so a session reads as something happening rather than a screen that refreshes.
+- **A race bar under it**: how much of the forecast distance is behind you, where the model is on the same scale, and what is left — one glance instead of arithmetic across two tiles.
+- **The horde is drawn, not just counted.** Range rings with a dot closing on you, beating harder the nearer it gets.
+- **Splits are bars.** Your kilometre over theirs, longest bar the slowest — visible instead of read.
+- **Climb from the barometer**, which resolves a single flight of stairs where GPS altitude cannot.
+- **Cadence** from the phone's own step counter: steps a minute, the one running figure pace cannot give you, and the only one that still works on a treadmill.
+- **Effort** as a five-segment bar scaled to the heart-rate range you have actually shown in recent sessions — no formula about your age, no personal data asked for.
+- **The screen stays awake** while a session is on it.
+- **An About page** in Settings: what GAIT is, who built it, the licence, the version, and links to the source and to supporting it.
+- Fixed: a bad GPS fix could add kilometres nobody ran. A step implying a speed no tracked activity reaches is now discarded.
+- Fixed: heart rate only appeared on hiking and cycling sessions.
+
 ## 0.24.0 — 2026-08-24
 
 - **GAIT on the wrist.** A watch app shows the two figures worth a glance: while a session runs, the gap to your opponent with your distance, pace and heart rate underneath; between sessions, your rank and where the ledger stands. The watch computes nothing — the phone sends it, so the two halves can never disagree — and it says so plainly when the phone is out of reach.

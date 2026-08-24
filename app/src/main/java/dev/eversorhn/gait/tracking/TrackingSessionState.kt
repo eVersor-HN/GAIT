@@ -28,6 +28,10 @@ data class TrackingSnapshot(
     val currentPaceSecPerKm: Double? = null,
     /** Live heart rate from a paired strap or watch, when one is connected. */
     val heartRate: Int? = null,
+    /** Steps per minute, from the phone's own step counter. Works on a treadmill too. */
+    val cadence: Int? = null,
+    /** Climb measured by the barometer, which resolves a staircase where GPS altitude cannot. */
+    val barometricClimbMeters: Double? = null,
     /** Mean and peak so far, kept for the debrief. */
     val avgHeartRate: Int? = null,
     val maxHeartRate: Int? = null,

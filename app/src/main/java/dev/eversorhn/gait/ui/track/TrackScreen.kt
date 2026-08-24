@@ -131,6 +131,12 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
     }
 
     val opponent = uiState.opponent
+    val keepAwakeView = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(snapshot.isTracking) {
+        keepAwakeView.keepScreenOn = snapshot.isTracking
+        onDispose { keepAwakeView.keepScreenOn = false }
+    }
+
     val activeActivity = dev.eversorhn.gait.domain.activity.Activities.byKey(
         (LocalContext.current.applicationContext as dev.eversorhn.gait.GaitApplication).repository.activeActivityType
     )
@@ -259,6 +265,7 @@ fun TrackScreen(duel: Boolean, onDone: () -> Unit) {
                     isDuel = isDuel,
                     callouts = uiState.callouts,
                     projection = uiState.projection,
+                    heartRateRange = uiState.heartRateRange,
                 )
                 CorpoButton(
                     text = if (uiState.finishing) "Saving…" else "Stop",
@@ -324,6 +331,7 @@ private fun LiveSession(
     isDuel: Boolean,
     callouts: List<LiveCallout>,
     projection: LiveProjection?,
+    heartRateRange: Pair<Int, Int>? = null,
 ) {
     val name = opponent?.name ?: "Twin"
     val activity = dev.eversorhn.gait.domain.activity.Activities.byKey(
@@ -364,6 +372,8 @@ private fun LiveSession(
         }) {
             if (opponent.isHorde) {
                 SectionLabel(if ((p.separationMeters ?: 0) >= 0) "Separation" else "Overrun", color = if ((p.separationMeters ?: 0) < 50) Alert else MaterialTheme.colorScheme.onSurfaceVariant)
+                // The ground between you, drawn: rings, and a dot that closes and beats harder.
+                dev.eversorhn.gait.ui.theme.ProximityRadar(separationMeters = p.separationMeters ?: 600)
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("${kotlin.math.abs(p.separationMeters ?: 0)} m", style = MaterialTheme.typography.headlineLarge, color = if ((p.separationMeters ?: 0) < 50) Alert else Brass)
                     Text(
@@ -382,12 +392,21 @@ private fun LiveSession(
             } else {
                 SectionLabel(if (ahead) "Ahead of $name" else "Behind $name", color = if (ahead) Good else Alert)
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        (if (ahead) "+" else "−") + formatElapsed(kotlin.math.abs(p.gapSeconds)),
-                        style = MaterialTheme.typography.headlineLarge,
+                    dev.eversorhn.gait.ui.theme.LiveNumber(
+                        value = (if (ahead) "+" else "−") + formatElapsed(kotlin.math.abs(p.gapSeconds)),
                         color = if (ahead) Good else Alert,
                     )
                     Text("at ${"%.2f".format(snapshot.distanceMeters / 1000.0)} km".uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint, modifier = Modifier.padding(bottom = 6.dp))
+                }
+                // How much of it is behind you, and where the model is on the same scale.
+                referenceDistance?.takeIf { it > 0 }?.let { target ->
+                    val remaining = ((target - snapshot.distanceMeters) / 1000.0).coerceAtLeast(0.0)
+                    dev.eversorhn.gait.ui.theme.RaceBar(
+                        youFraction = (snapshot.distanceMeters / target).toFloat(),
+                        twinFraction = referenceFinish?.takeIf { it > 0 }?.let { snapshot.movingSeconds.toFloat() / it } ?: 0f,
+                        remainingLabel = if (remaining > 0.01) "%.2f km left".format(remaining) else "past the forecast distance",
+                        twinColor = twinColor,
+                    )
                 }
                 // What it takes from here: hold this pace over the remaining distance and the round is yours.
                 val remainingKm = opponent.forecastDistanceMeters?.let { (it - snapshot.distanceMeters) / 1000.0 } ?: 0.0
@@ -458,11 +477,27 @@ private fun LiveSession(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatTile("Distance", "%.2f km".format(snapshot.distanceMeters / 1000.0), sub = referenceDistance?.let { "of %.2f km".format(it / 1000.0) })
             StatTile("Moving", formatElapsed(snapshot.movingSeconds), sub = referenceFinish?.let { "of ${formatDuration(it)}" })
-            if (activity.key == "HIKING" || activity.key == "CYCLING" || activity.key == "E_BIKE" || activity.key == "HAND_CYCLE" || snapshot.elevationGainMeters >= 20) {
-                snapshot.heartRate?.let { bpm ->
+            // Heart rate stands on its own: it is not a climbing figure.
+            snapshot.heartRate?.let { bpm ->
                 StatTile("Heart", "$bpm", sub = snapshot.avgHeartRate?.let { "avg $it" })
             }
-            StatTile("Climb", "${snapshot.elevationGainMeters.toInt()} m", sub = snapshot.splitSeconds.takeIf { it.size >= 2 }?.let { sp -> dev.eversorhn.gait.domain.route.RouteMetrics.consistency(sp)?.let { "steady ${(it * 100).toInt()}%" } })
+            snapshot.cadence?.let { spm ->
+                StatTile("Cadence", "$spm", sub = "steps/min", info = "Steps a minute, from the phone's own step counter. The one running figure pace cannot tell you — and the only one that still works on a treadmill.")
+            }
+            if (activity.key == "HIKING" || activity.key == "CYCLING" || activity.key == "E_BIKE" || activity.key == "HAND_CYCLE" || snapshot.elevationGainMeters >= 20) {
+                // The barometer resolves a staircase; GPS altitude does not. Prefer it when there is one.
+                val climb = snapshot.barometricClimbMeters ?: snapshot.elevationGainMeters
+                StatTile(
+                    "Climb",
+                    "${climb.toInt()} m",
+                    sub = if (snapshot.barometricClimbMeters != null) "barometer" else snapshot.splitSeconds.takeIf { it.size >= 2 }?.let { sp -> dev.eversorhn.gait.domain.route.RouteMetrics.consistency(sp)?.let { "steady ${(it * 100).toInt()}%" } },
+                )
+            }
+        }
+        snapshot.heartRate?.let { bpm ->
+            val range = heartRateRange
+            if (range != null) {
+                dev.eversorhn.gait.ui.theme.EffortBar(bpm = bpm, lowBpm = range.first, highBpm = range.second)
             }
         }
         if (snapshot.gpsFixCount == 0) {
@@ -507,16 +542,11 @@ private fun LiveSession(
         projection?.splits?.takeIf { it.isNotEmpty() }?.let { splits ->
             CorpoPanel {
                 SectionLabel("Splits · you vs. ${if (opponent?.isHorde == true) "horde" else name}")
-                splits.asReversed().take(6).forEach { sp ->
-                    val d = sp.modelSeconds - sp.yourSeconds
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("KM ${sp.km}", style = MaterialTheme.typography.labelSmall, color = TextFaint, modifier = Modifier.width(52.dp))
-                        Text(formatElapsed(sp.yourSeconds), style = MaterialTheme.typography.titleMedium, color = Brass, modifier = Modifier.weight(1f))
-                        Text(formatElapsed(sp.modelSeconds), style = MaterialTheme.typography.titleMedium, color = twinColor, modifier = Modifier.weight(1f))
-                        Text((if (d >= 0) "−" else "+") + formatElapsed(kotlin.math.abs(d)), style = MaterialTheme.typography.titleMedium, color = if (d >= 0) Good else Alert)
-                    }
-                }
-                FootNote("Your split · their split · difference")
+                dev.eversorhn.gait.ui.theme.SplitBars(
+                    splits = splits.asReversed().take(6).map { Triple(it.km, it.yourSeconds, it.modelSeconds) },
+                    twinColor = twinColor,
+                )
+                FootNote("Your bar over theirs · longest bar is the slowest kilometre")
             }
         }
 

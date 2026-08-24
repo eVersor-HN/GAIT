@@ -59,6 +59,8 @@ class LocationTrackingService : Service() {
         private const val MIN_DISTANCE_FOR_PACE_METERS = 30.0
 
         /** An interval slower than this (m/s) counts as standing still -> auto-pause. ~1.8 km/h. */
+        /** 30 m/s ≈ 108 km/h: faster than any activity GAIT tracks, so it can only be a bad fix. */
+        private const val MAX_PLAUSIBLE_SPEED_MPS = 30.0
         private const val AUTO_PAUSE_SPEED_MPS = 0.5
 
         /** How often the in-progress session is persisted for crash recovery. */
@@ -131,6 +133,7 @@ class LocationTrackingService : Service() {
         persist()
         startLocationUpdatesIfOutdoor(mode)
         startHeartRate()
+        startSensors()
         startTicker()
     }
 
@@ -160,7 +163,14 @@ class LocationTrackingService : Service() {
         }
         startLocationUpdatesIfOutdoor(saved.mode)
         startHeartRate()
+        startSensors()
         startTicker()
+    }
+
+    /** Starts the phone's own sensors. Any it does not have simply report nothing. */
+    private fun startSensors() {
+        sensors.reset()
+        runCatching { sensors.start() }
     }
 
     /** Connects the remembered monitor, if any. Absent or off is simply no heart rate. */
@@ -354,6 +364,8 @@ class LocationTrackingService : Service() {
     private val presence by lazy { dev.eversorhn.gait.audio.HordePresence(applicationContext) }
     /** A paired strap or watch, if there is one. Pace says how fast; this says what it cost. */
     private val heart by lazy { dev.eversorhn.gait.sensors.HeartRateMonitor(applicationContext) }
+    /** The instruments the phone already has: barometer, step counter, compass. */
+    private val sensors by lazy { dev.eversorhn.gait.sensors.SessionSensors(applicationContext) }
 
     private fun startTicker() {
         tickerJob?.cancel()
@@ -367,6 +379,10 @@ class LocationTrackingService : Service() {
                     // Indoor has no GPS: the whole session is "moving" time by definition.
                     val moving = if (s.mode == TrackingMode.INDOOR) elapsed else s.movingSeconds
                     s.copy(elapsedSeconds = elapsed, movingSeconds = moving)
+                }
+                // The phone's own instruments, read on the same beat as everything else.
+                TrackingSessionState.update {
+                    it.copy(cadence = sensors.cadence, barometricClimbMeters = sensors.climb)
                 }
                 refreshLiveNotification()
                 val snap = TrackingSessionState.snapshot.value
@@ -400,6 +416,10 @@ class LocationTrackingService : Service() {
         // Speed over this interval decides whether it counts as moving. The very first fix
         // has no interval and contributes neither distance nor moving time.
         val intervalSpeed = if (intervalSeconds > 0.0) addedMeters / intervalSeconds else 0.0
+        // A fix that implies a speed nobody reaches on foot or on wheels is a jump, not a
+        // movement: providers do emit one when they switch source or come out of a cold start,
+        // and a single one of those would otherwise add kilometres that were never run.
+        if (intervalSeconds > 0.0 && intervalSpeed > MAX_PLAUSIBLE_SPEED_MPS) return
         val moved = intervalSeconds > 0.0 && intervalSpeed >= AUTO_PAUSE_SPEED_MPS
 
         TrackingSessionState.update { s ->
@@ -473,6 +493,7 @@ class LocationTrackingService : Service() {
     private fun stopTracking() {
         haptics.reset()
         runCatching { heart.disconnect() }
+        runCatching { sensors.stop() }
         val finalSnapshot = TrackingSessionState.snapshot.value
         if (finalSnapshot.isTracking && finalSnapshot.mode == TrackingMode.OUTDOOR && finalSnapshot.distanceMeters > 100) {
             voice.onFinish(LiveFigures.of(finalSnapshot, LiveOpponentInfo.current))

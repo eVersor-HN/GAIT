@@ -428,6 +428,58 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
             demoNote?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface) }
         }
 
+        // --- About: who made this, what it is, where it lives ---
+        dev.eversorhn.gait.ui.theme.CollapsiblePanel(
+            title = "About",
+            summary = "GAIT ${dev.eversorhn.gait.BuildConfig.VERSION_NAME} · eVersor-HN",
+        ) {
+            Text(
+                "GAIT — local movement tracking with one opponent: a model of you, built from your " +
+                    "own history, that predicts what you will do today and gets sharper every time " +
+                    "it is right.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                "Built by eVersor-HN. Free software under the MIT licence, open source, no account, " +
+                    "no telemetry, no cloud. Everything it knows about you stays on this phone.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FootNote("Version ${dev.eversorhn.gait.BuildConfig.VERSION_NAME} (${dev.eversorhn.gait.BuildConfig.VERSION_CODE})")
+            CorpoButton(
+                "Source and releases on GitHub",
+                onClick = {
+                    runCatching {
+                        appCtx.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse("https://github.com/eVersor-HN/GAIT"),
+                            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
+                },
+                kind = ButtonKind.SAFE,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            CorpoButton(
+                "Support the project",
+                onClick = {
+                    runCatching {
+                        appCtx.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse("https://ko-fi.com/eversorhn"),
+                            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
+                },
+                kind = ButtonKind.GHOST,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FootNote("Ko-fi · PayPal @FAMarco · Bitcoin bc1qv92c3eyeqvhgfnez7spfd7v2aytkhpshsl65yv")
+        }
+
         dev.eversorhn.gait.ui.theme.CollapsiblePanel(title = "Danger zone", summary = "Erase everything on this device", tone = dev.eversorhn.gait.ui.theme.PanelTone.WARN) {
             CorpoButton("Erase all data", onClick = { confirmWipe = true }, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth())
         }

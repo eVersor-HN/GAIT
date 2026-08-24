@@ -334,6 +334,186 @@ fun StageBar(progress: Float, stages: List<Pair<String, Float>>, reached: Int, a
     }
 }
 
+
+/**
+ * A number big enough to read at a glance while moving, that *slides* to its new value instead
+ * of jumping. A gap that ticks down reads as something happening; a gap that snaps reads as a
+ * refresh. The colour crossfades with it.
+ */
+@Composable
+fun LiveNumber(value: String, color: Color, modifier: Modifier = Modifier) {
+    val animated by androidx.compose.animation.animateColorAsState(color, tween(600), label = "liveNumberColor")
+    androidx.compose.animation.AnimatedContent(
+        targetState = value,
+        transitionSpec = {
+            androidx.compose.animation.ContentTransform(
+                targetContentEnter = androidx.compose.animation.slideInVertically { it / 3 } + androidx.compose.animation.fadeIn(tween(220)),
+                initialContentExit = androidx.compose.animation.slideOutVertically { -it / 3 } + androidx.compose.animation.fadeOut(tween(180)),
+            )
+        },
+        label = "liveNumber",
+        modifier = modifier,
+    ) { shown ->
+        Text(shown, style = MaterialTheme.typography.headlineLarge, color = animated, maxLines = 1, softWrap = false)
+    }
+}
+
+/**
+ * How much of the session is behind you and how much of it the model has eaten: one bar, your
+ * fill and their line, with what is left written under it. Answers "how much longer" without
+ * arithmetic across two tiles.
+ */
+@Composable
+fun RaceBar(
+    youFraction: Float,
+    twinFraction: Float,
+    remainingLabel: String?,
+    modifier: Modifier = Modifier,
+    twinColor: Color = Cyan,
+) {
+    val you by androidx.compose.animation.core.animateFloatAsState(youFraction.coerceIn(0f, 1f), tween(900), label = "raceYou")
+    val twin by androidx.compose.animation.core.animateFloatAsState(twinFraction.coerceIn(0f, 1f), tween(900), label = "raceTwin")
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier.fillMaxWidth()) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(10.dp)) {
+            val r = 5.dp.toPx()
+            drawRoundRect(Ink2, cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r))
+            drawRoundRect(LineSoft, cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r), style = Stroke(1f))
+            if (you > 0f) {
+                drawRoundRect(
+                    Brass.copy(alpha = 0.65f),
+                    size = androidx.compose.ui.geometry.Size(size.width * you, size.height),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r),
+                )
+            }
+            val x = size.width * twin
+            drawLine(twinColor, Offset(x, -2.dp.toPx()), Offset(x, size.height + 2.dp.toPx()), strokeWidth = 3.dp.toPx())
+        }
+        if (remainingLabel != null) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                FootNote("${(you * 100).toInt()}% done", maxLines = 1)
+                FootNote(remainingLabel, maxLines = 1)
+            }
+        }
+    }
+}
+
+/**
+ * Effort, without asking anyone their age. Five segments across the heart-rate range *you* have
+ * actually shown in recent sessions, so it says "this is hard for you today" instead of
+ * pretending to know your physiology.
+ */
+@Composable
+fun EffortBar(bpm: Int, lowBpm: Int, highBpm: Int, modifier: Modifier = Modifier) {
+    val span = (highBpm - lowBpm).coerceAtLeast(1)
+    val fraction = ((bpm - lowBpm).toFloat() / span).coerceIn(0f, 1f)
+    val lit = (fraction * 5).toInt().coerceIn(0, 4)
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+            repeat(5) { i ->
+                val on = i <= lit
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(8.dp)
+                        .background(
+                            when {
+                                !on -> Ink2
+                                i >= 4 -> Alert
+                                i >= 3 -> Brass
+                                else -> LineSoft
+                            },
+                            RoundedCornerShape(2.dp),
+                        )
+                )
+            }
+        }
+        FootNote("$bpm bpm · ${(fraction * 100).toInt()}% of your recent range")
+    }
+}
+
+/**
+ * The horde as a picture: range rings, a dot closing on the centre, breathing faster the nearer
+ * it gets. The number tells you they are at eighty metres; this makes you feel it.
+ */
+@Composable
+fun ProximityRadar(separationMeters: Int, modifier: Modifier = Modifier, maxMeters: Int = 600) {
+    val closeness = (1f - (separationMeters.coerceAtLeast(0).toFloat() / maxMeters)).coerceIn(0f, 1f)
+    val beat = rememberInfiniteTransition(label = "radarBeat")
+    val pulse by beat.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            tween((1600 - closeness * 1200).toInt().coerceIn(320, 1600), easing = LinearEasing),
+            RepeatMode.Reverse,
+        ),
+        label = "radarPulse",
+    )
+    val animatedCloseness by androidx.compose.animation.core.animateFloatAsState(closeness, tween(900), label = "radarCloseness")
+    Canvas(modifier = modifier.fillMaxWidth().height(150.dp)) {
+        val centre = Offset(size.width / 2f, size.height * 0.78f)
+        val maxRadius = size.height * 0.68f
+        repeat(3) { i ->
+            drawCircle(
+                LineSoft.copy(alpha = 0.5f - i * 0.12f),
+                radius = maxRadius * (i + 1) / 3f,
+                center = centre,
+                style = Stroke(width = 1.dp.toPx()),
+            )
+        }
+        drawCircle(Brass.copy(alpha = 0.18f), radius = (9 + 3 * (1 - pulse)).dp.toPx(), center = centre)
+        drawCircle(Brass, radius = 5.dp.toPx(), center = centre)
+
+        val theirRadius = maxRadius * (1f - animatedCloseness).coerceIn(0.06f, 1f)
+        val dot = Offset(centre.x, centre.y - theirRadius)
+        val glow = if (animatedCloseness > 0.6f) Alert else LineSoft
+        drawCircle(glow.copy(alpha = 0.10f + 0.28f * pulse), radius = (14 + 12 * pulse).dp.toPx(), center = dot)
+        drawCircle(glow, radius = (5 + 2 * animatedCloseness).dp.toPx(), center = dot)
+    }
+}
+
+/**
+ * The kilometres behind you, as bars: yours over theirs, longest bar = slowest split. A column
+ * of numbers has to be read; this can be seen.
+ */
+@Composable
+fun SplitBars(
+    splits: List<Triple<Int, Int, Int>>,
+    modifier: Modifier = Modifier,
+    twinColor: Color = Cyan,
+) {
+    if (splits.isEmpty()) return
+    val slowest = splits.flatMap { listOf(it.second, it.third) }.maxOrNull()?.coerceAtLeast(1) ?: 1
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier.fillMaxWidth()) {
+        splits.forEach { (km, yours, theirs) ->
+            val faster = yours <= theirs
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("KM $km", style = MaterialTheme.typography.labelSmall, color = TextFaint, modifier = Modifier.width(46.dp))
+                Canvas(modifier = Modifier.weight(1f).height(16.dp)) {
+                    val h = size.height / 2 - 2.dp.toPx()
+                    drawRoundRect(
+                        Brass.copy(alpha = 0.85f),
+                        size = androidx.compose.ui.geometry.Size(size.width * (yours.toFloat() / slowest), h),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx(), 2.dp.toPx()),
+                    )
+                    drawRoundRect(
+                        twinColor.copy(alpha = 0.7f),
+                        topLeft = Offset(0f, h + 4.dp.toPx()),
+                        size = androidx.compose.ui.geometry.Size(size.width * (theirs.toFloat() / slowest), h),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx(), 2.dp.toPx()),
+                    )
+                }
+                Text(
+                    (if (faster) "−" else "+") + splitSeconds(kotlin.math.abs(theirs - yours)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (faster) Good else Alert,
+                    modifier = Modifier.width(50.dp),
+                )
+            }
+        }
+    }
+}
+
+private fun splitSeconds(s: Int): String = "${s / 60}:${(s % 60).toString().padStart(2, '0')}"
+
 /** `.quote`: a line of opponent speech with a brass rule on the left. */
 @Composable
 fun Quote(text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
