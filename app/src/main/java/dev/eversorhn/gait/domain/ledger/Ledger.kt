@@ -27,6 +27,8 @@ data class LedgerState(
     val twinPoints: Int,
     /** Newest first. */
     val rounds: List<Round>,
+    /** Days since your last session. The model trains on those days; you did not. */
+    val daysSinceLastSession: Int = 0,
 ) {
     val roundsPlayed: Int get() = rounds.size
     val lead: Int get() = userPoints - twinPoints
@@ -106,7 +108,7 @@ object Ledger {
         return if (newRoute || steadier) Side.USER else Side.TWIN
     }
 
-    fun from(sessionsNewestFirst: List<SessionEntity>): LedgerState {
+    fun from(sessionsNewestFirst: List<SessionEntity>, nowEpochMillis: Long = System.currentTimeMillis()): LedgerState {
         val rounds = sessionsNewestFirst.mapNotNull { s ->
             val winner = winnerOf(s) ?: return@mapNotNull null
             Round(
@@ -119,10 +121,14 @@ object Ledger {
                 isDuel = s.isDuel,
             )
         }
+        val away = sessionsNewestFirst.firstOrNull()?.let {
+            ((nowEpochMillis - it.startTimeEpochMillis) / 86_400_000L).toInt().coerceAtLeast(0)
+        } ?: 0
         return LedgerState(
             userPoints = rounds.filter { it.winner == Side.USER }.sumOf { it.stake },
             twinPoints = rounds.filter { it.winner == Side.TWIN }.sumOf { it.stake },
             rounds = rounds,
+            daysSinceLastSession = away,
         )
     }
 

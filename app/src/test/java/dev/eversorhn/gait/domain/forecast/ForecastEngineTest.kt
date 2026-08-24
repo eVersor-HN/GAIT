@@ -87,4 +87,27 @@ class ForecastEngineTest {
         val result = engine.forecast(listOf(session(ageDays = 1.0, paceSecPerKm = 300.0, distanceMeters = 5000.0)), 2, now)!!
         assertEquals(1500, result.forecastFinishSeconds) // 300 s/km * 5 km
     }
+
+    @Test
+    fun `pace is projected onto the forecast distance, not averaged across distances`() {
+        // A history of short fast sessions and long slow ones. Averaging pace raw lands between
+        // the two; projecting each onto the forecast distance (Riegel) lands on a pace that
+        // actually belongs to that distance.
+        val sessions = (0 until 8).map { i ->
+            val short = i % 2 == 0
+            session(
+                ageDays = i.toDouble(),
+                paceSecPerKm = if (short) 300.0 else 360.0,
+                distanceMeters = if (short) 3_000.0 else 12_000.0,
+            )
+        }
+        val f = ForecastEngine().forecast(sessions, 1, now)!!
+        val rawMean = sessions.map { it.avgPaceSecPerKm }.average()
+        // The forecast distance is ~7.5 km; a 3 km at 5:00 projects slower and a 12 km at 6:00
+        // projects faster, so the result must not simply be the arithmetic middle.
+        assertTrue("forecast pace ${f.forecastPaceSecPerKm} should differ from the raw mean $rawMean",
+            kotlin.math.abs(f.forecastPaceSecPerKm - rawMean) > 0.5)
+        assertTrue("forecast pace must stay between the two efforts", f.forecastPaceSecPerKm in 300.0..360.0)
+    }
+
 }

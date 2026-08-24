@@ -4,6 +4,15 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.20.0 — 2026-08-24
+
+A pass over everything the division does on its own, so the board behaves the way the app says it does.
+
+- **Everyone starts last, including them.** New arrivals used to appear in the middle of the table on their first day while you started at the bottom. They now enter provisional, below the floor, and climb toward their real level over their first weeks — the same entry every asset gets, including you.
+- **Days away move the board.** The model trains on the days you skip; until now it said so but nothing changed. Missing days now cost you index and hand it to the model, from the second day onward and capped, so a holiday costs ground but never the whole board. Your row falls the day it happens.
+- **Forecasts respect distance.** A pace is only meaningful for the distance it was run at. With a mixed history — short fast sessions and long slow ones — the forecast used to land on a pace nobody had run. Every past session is now projected onto the forecast distance before it counts, using the endurance power law that race predictors are built on.
+- The containment record keeps the most recent releases rather than growing without limit.
+
 ## 0.19.7 — 2026-08-24
 
 - The board no longer folds. All fifteen places are simply there, every time — the collapse control is gone.

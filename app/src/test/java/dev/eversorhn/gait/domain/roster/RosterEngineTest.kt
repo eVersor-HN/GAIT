@@ -47,11 +47,45 @@ class RosterEngineTest {
         val start = RosterEngine.userIndex(empty, 50)
         assertTrue("a new asset starts under the floor, got $start", start < RosterEngine.FLOOR)
         val s = RosterEngine.snapshot(20_000, 20_100, 12 * 60, empty, 50, empty)
-        assertTrue("new user starts at the bottom (rank ${s.user.rank} of ${s.enrolled})", s.user.rank >= s.enrolled - 1)
-        assertEquals("the model starts last, behind the user", s.enrolled, s.twin!!.rank)
+        // Every asset now enters provisional at the bottom, so a new user sits among the newest
+        // hires rather than alone in last place — but still in the bottom tenth of the board.
+        assertTrue("new user starts at the bottom (rank ${s.user.rank} of ${s.enrolled})", s.user.rank > s.enrolled * 0.9)
+        assertTrue("the model starts behind the user at parity", s.twin!!.rank > s.user.rank)
         assertTrue(RosterEngine.userIndex(LedgerState(6, 0, emptyList()), 50) > start + 150)
         assertTrue(RosterEngine.userIndex(LedgerState(0, 6, emptyList()), 50) < start)
         assertTrue(RosterEngine.userIndex(empty, 96) < RosterEngine.userIndex(empty, 50))
         assertTrue(RosterEngine.userIndex(LedgerState(40, 0, emptyList()), 50) < RosterEngine.CEILING)
     }
+
+    @Test
+    fun `a day away costs index and hands it to the model`() {
+        val level = LedgerState(4, 2, emptyList())
+        val away = LedgerState(4, 2, emptyList(), daysSinceLastSession = 8)
+        assertTrue("absence has to cost ground", RosterEngine.userIndex(away, 60) < RosterEngine.userIndex(level, 60))
+        assertTrue("the model has to gain it", RosterEngine.twinIndex(away, 60) > RosterEngine.twinIndex(level, 60))
+        // One day off is a rest day, not a decline.
+        val oneDay = LedgerState(4, 2, emptyList(), daysSinceLastSession = 1)
+        assertEquals(RosterEngine.userIndex(level, 60), RosterEngine.userIndex(oneDay, 60), 0.001)
+        // Capped: a long holiday costs ground, not the whole board.
+        val holiday = LedgerState(4, 2, emptyList(), daysSinceLastSession = 300)
+        assertEquals(
+            RosterEngine.userIndex(LedgerState(4, 2, emptyList(), daysSinceLastSession = 22), 60),
+            RosterEngine.userIndex(holiday, 60),
+            0.001,
+        )
+    }
+
+    @Test
+    fun `hires enter at the bottom and climb out of it`() {
+        // A board built well after founding contains hires of every tenure; the newest of them
+        // must sit below the settled ones rather than appearing mid-table.
+        val s = RosterEngine.snapshot(20_000, 20_300, 23 * 60, empty, 50, empty)
+        val newest = s.standings.filter { it.asset.hiredDay > 20_300 - RosterEngine.PROVISIONAL_DAYS && it.asset.hiredDay > 19_700 }
+        assertTrue("expected some provisional hires on the board", newest.isNotEmpty())
+        val settled = s.standings.filter { 20_300 - it.asset.hiredDay > 200 }
+        val medianNew = newest.map { it.index }.sorted()[newest.size / 2]
+        val medianOld = settled.map { it.index }.sorted()[settled.size / 2]
+        assertTrue("new hires ($medianNew) must rank below settled staff ($medianOld)", medianNew < medianOld)
+    }
+
 }

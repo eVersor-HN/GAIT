@@ -111,7 +111,8 @@ class BoardViewModel(private val repository: GaitRepository) : ViewModel() {
             val enrolled = RosterEngine.epochDay(repository.earliestEnrolmentEpochMillis() ?: profile.createdAtEpochMillis, offset)
             val startOfToday = (today * 86_400_000L) - offset
             val ledger = Ledger.from(sessions)
-            val ledgerYesterday = Ledger.from(sessions.filter { it.startTimeEpochMillis < startOfToday })
+            // Read as of yesterday's close, so a day away shows up as today's fall.
+            val ledgerYesterday = Ledger.from(sessions.filter { it.startTimeEpochMillis < startOfToday }, startOfToday)
             val fidelity = (profile.fidelity * 100).toInt()
 
             val imported = repository.getImportedAssets().mapNotNull { row ->
@@ -133,7 +134,7 @@ class BoardViewModel(private val repository: GaitRepository) : ViewModel() {
             var cullsSurvived = 0
             for (cullDay in RosterEngine.cullDaysSince(enrolled, today)) {
                 val endOfCullDay = ((cullDay + 1) * 86_400_000L) - offset
-                val ledgerThen = Ledger.from(sessions.filter { it.startTimeEpochMillis < endOfCullDay })
+                val ledgerThen = Ledger.from(sessions.filter { it.startTimeEpochMillis < endOfCullDay }, endOfCullDay)
                 val verdict = RosterEngine.cullVerdict(cullDay, RosterEngine.userIndex(ledgerThen, fidelity)) ?: continue
                 if (verdict.culled) {
                     termination = Termination(cullDay, verdict.rank, verdict.headcount, verdict.cullLine, today - cullDay)

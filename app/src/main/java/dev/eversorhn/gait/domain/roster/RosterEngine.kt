@@ -132,9 +132,13 @@ object RosterEngine {
     const val FLOOR = 340.0
     const val CEILING = 1000.0
     const val REVIEW_EVERY_DAYS = 14
+    /** How long a new hire is treated as provisional: it climbs from last toward its level. */
+    const val PROVISIONAL_DAYS = 45L
     /** How far back the division exists before the user enrolled — gives the board a history. */
     const val PREHISTORY_DAYS = 420L
     private const val REHIRE_GAP_DAYS = 3
+    /** The containment list is a record, not an archive — the map and the page read the newest. */
+    private const val MAX_DECOMMISSIONED_KEPT = 600
     private const val MS_PER_DAY = 86_400_000L
 
     // ---------------------------------------------------------------- hashing
@@ -234,7 +238,9 @@ object RosterEngine {
         if (st.rehireAt == day) {
             if (st.asset.transferId == null) {
                 st.asset = asset(st.asset.slot, st.asset.hireIndex + 1, day)
-                st.index = st.asset.talent - 40 + n(st.asset.slot.toLong(), st.asset.hireIndex.toLong(), 30) * 30
+                // A new hire enters where every new asset enters: last. The board's promise is
+                // that nothing above the floor is given, and the user starts there too.
+                st.index = START_INDEX + n(st.asset.slot.toLong(), st.asset.hireIndex.toLong(), 30) * 12
             }
             // imported: keep the fixed asset and its start index (set when the slot was created)
             st.injuryUntil = -1; st.leaveUntil = -1; st.rehireAt = -1
@@ -270,7 +276,12 @@ object RosterEngine {
             // faster for gritty assets when they're below level.
             val drift = a.trend * (tenure / 30.0)
             val form = 24 * sin(2 * Math.PI * (day / 41.0 + u(s, h, 45))) + 12 * sin(2 * Math.PI * (day / 13.0 + u(s, h, 46)))
-            val level = (a.talent + drift + form).coerceIn(FLOOR - 80, CEILING)
+            // Provisional: for its first weeks an asset is only credited part of its level, so it
+            // climbs out of the bottom rather than appearing mid-table on day one. Founding-day
+            // staff are exempt — the division existed before anyone was watching.
+            val settled = if (a.hiredDay <= foundingDay) 1.0 else (tenure / PROVISIONAL_DAYS.toDouble()).coerceIn(0.0, 1.0)
+            val full = (a.talent + drift + form).coerceIn(FLOOR - 80, CEILING)
+            val level = START_INDEX + (full - START_INDEX) * settled
             val noise = n(s, h, day, 47) * (34 * (1 - a.consistency) + 4)
             val target = level + noise
             val below = target > st.index
@@ -377,7 +388,7 @@ object RosterEngine {
             underReview = standings.count { it.status == AssetStatus.UNDER_REVIEW },
             onLeave = standings.count { it.status == AssetStatus.ON_LEAVE || it.status == AssetStatus.MAINTENANCE },
             newHires30d = standings.count { todayEpochDay - it.asset.hiredDay <= 30 },
-            decommissioned = c.fired.asReversed(),
+            decommissioned = c.fired.asReversed().take(MAX_DECOMMISSIONED_KEPT),
             decommissioned30d = c.fired.count { todayEpochDay - it.day <= 30 },
             movers = movers,
             nextReviewInDays = if (sinceReview == 0) 0 else REVIEW_EVERY_DAYS - sinceReview,
@@ -497,7 +508,7 @@ object RosterEngine {
     fun userIndex(ledger: LedgerState, fidelityPercent: Int): Double {
         val lead = ledger.lead.toDouble()
         val streak = ledger.streak?.let { (side, n) -> if (side == dev.eversorhn.gait.domain.ledger.Side.USER) n else -n } ?: 0
-        val raw = START_INDEX + 30.0 * lead + 6.0 * streak - 1.5 * (fidelityPercent - 50)
+        val raw = START_INDEX + 30.0 * lead + 6.0 * streak - 1.5 * (fidelityPercent - 50) - ABSENCE_PER_DAY * absentDays(ledger)
         // Soft clamp so it can't run away with a long lead.
         return (CEILING / (1 + exp(-(raw - 500) / 220)) ).coerceIn(0.0, CEILING)
     }
@@ -510,9 +521,21 @@ object RosterEngine {
     fun twinIndex(ledger: LedgerState, fidelityPercent: Int): Double {
         val lead = -ledger.lead.toDouble()
         val streak = ledger.streak?.let { (side, n) -> if (side == dev.eversorhn.gait.domain.ledger.Side.TWIN) n else -n } ?: 0
-        val raw = START_INDEX + 30.0 * lead + 6.0 * streak + 1.5 * (fidelityPercent - 50)
+        val raw = START_INDEX + 30.0 * lead + 6.0 * streak + 1.5 * (fidelityPercent - 50) + ABSENCE_PER_DAY * absentDays(ledger)
         return (CEILING / (1 + exp(-(raw - 500) / 220))).coerceIn(0.0, CEILING)
     }
+
+    /**
+     * Index points the model takes off you per day you were away. It trains on those days —
+     * that is the premise — so the board has to move even when you record nothing. Capped, so
+     * a holiday costs you ground but never the whole board.
+     */
+    private const val ABSENCE_PER_DAY = 9.0
+    private const val ABSENCE_CAP_DAYS = 21
+
+    /** Days away, past the first: one missed day is a rest day, not a decline. */
+    private fun absentDays(ledger: LedgerState): Int =
+        (ledger.daysSinceLastSession - 1).coerceIn(0, ABSENCE_CAP_DAYS)
 
     fun epochDay(epochMillis: Long, zoneOffsetMillis: Long): Long = Math.floorDiv(epochMillis + zoneOffsetMillis, MS_PER_DAY)
 
