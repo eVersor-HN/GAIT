@@ -329,6 +329,13 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
                 checked = hapticsOn,
                 onChange = { dev.eversorhn.gait.audio.HapticPrefs.setEnabled(appCtx, it); hapticsOn = it },
             )
+            var soundOn by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(dev.eversorhn.gait.audio.SoundPrefs.isEnabled(appCtx)) }
+            dev.eversorhn.gait.ui.theme.CorpoSwitch(
+                label = "Session sound",
+                description = "The horde behind you, in headphones: a low growl from one side that comes closer and more often the less ground is left.",
+                checked = soundOn,
+                onChange = { dev.eversorhn.gait.audio.SoundPrefs.setEnabled(appCtx, it); soundOn = it },
+            )
             dev.eversorhn.gait.ui.theme.CorpoSwitch(
                 label = "Spoken readout",
                 description = "Reads the live figures aloud at kilometre marks and lead changes. Ducks your music.",

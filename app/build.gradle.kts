@@ -24,8 +24,8 @@ android {
         applicationId = "dev.eversorhn.gait"
         minSdk = 26
         targetSdk = 35
-        versionCode = 38
-        versionName = "0.23.0"
+        versionCode = 39
+        versionName = "0.24.0"
     }
 
     signingConfigs {
@@ -96,6 +96,7 @@ dependencies {
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.play.services.location)
+    implementation(libs.play.services.wearable)
     // Health Connect intentionally not depended on yet -- heart-rate input is v1.1+ per
     // docs/scope-and-stack.md, and an unused dependency is just APK weight.
 

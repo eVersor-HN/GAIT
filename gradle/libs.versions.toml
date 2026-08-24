@@ -10,6 +10,8 @@ room = "2.6.1"
 ksp = "2.0.21-1.0.28"
 work = "2.10.0"
 playServicesLocation = "21.3.0"
+playServicesWearable = "18.2.0"
+wearCompose = "1.4.0"
 junit = "4.13.2"
 
 [libraries]
@@ -26,6 +28,9 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-health-connect = { group = "androidx.health.connect", name = "connect-client", version = "1.1.0-alpha07" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
+androidx-wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "wearCompose" }
+androidx-wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }

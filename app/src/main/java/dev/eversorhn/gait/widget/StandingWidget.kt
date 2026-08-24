@@ -56,8 +56,8 @@ object WidgetRenderer {
 
     internal suspend fun renderInternal(context: Context) {
         val manager = AppWidgetManager.getInstance(context)
+        // No widget placed is fine: the watch still wants the same figures.
         val ids = manager.getAppWidgetIds(ComponentName(context, StandingWidget::class.java))
-        if (ids.isEmpty()) return
 
         val app = context.applicationContext as? GaitApplication ?: return
         val repository = app.repository
@@ -80,6 +80,7 @@ object WidgetRenderer {
             views.setTextViewText(R.id.widget_ledger, "Enrol to be assigned an opponent")
             views.setTextViewText(R.id.widget_cull, "")
             ids.forEach { manager.updateAppWidget(it, views) }
+            dev.eversorhn.gait.wear.WearPublisher.publishStanding(context, "", "—", "No enrolment")
             return
         }
 
@@ -115,6 +116,15 @@ object WidgetRenderer {
             } ?: "",
         )
         ids.forEach { manager.updateAppWidget(it, views) }
+
+        // The same two figures go to the watch, so the wrist is never behind the home screen.
+        dev.eversorhn.gait.wear.WearPublisher.publishStanding(
+            context = context,
+            opponentName = if (profile.isHorde) "the horde" else profile.twinName,
+            rank = snap?.let { "#${it.user.rank}" } ?: "—",
+            standing = if (ledger.roundsPlayed == 0) "No rounds yet"
+            else Ledger.standingLabel(ledger, profile.twinName, profile.isHorde),
+        )
     }
 }
 

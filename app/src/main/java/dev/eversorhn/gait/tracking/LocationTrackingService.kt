@@ -377,6 +377,7 @@ class LocationTrackingService : Service() {
                     voice.onTick(figures)
                     haptics.onTick(figures, elapsed * 1000L)
                     if (figures.isHorde) presence.onTick(figures.separationMeters, elapsed * 1000L)
+                    dev.eversorhn.gait.wear.WearPublisher.publishLive(applicationContext, figures, snap.heartRate)
                 }
                 if (++secondsSincePersist >= PERSIST_EVERY_SECONDS) {
                     persist()

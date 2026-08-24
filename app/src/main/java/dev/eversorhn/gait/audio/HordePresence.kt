@@ -35,7 +35,7 @@ class HordePresence(private val context: Context) {
      * @param nowElapsedMillis the session clock, so the cadence is independent of wall time
      */
     fun onTick(separationMeters: Int?, nowElapsedMillis: Long) {
-        if (!VoicePrefs.isEnabled(context)) return
+        if (!SoundPrefs.isEnabled(context)) return
         val sep = separationMeters ?: return
         val interval = intervalMillis(sep)
         if (nowElapsedMillis - lastPlayedAt < interval) return
@@ -122,4 +122,20 @@ class HordePresence(private val context: Context) {
 
     /** Unused for now; kept so the class can duck music later without changing its callers. */
     private fun audioManager(): AudioManager? = context.getSystemService(AudioManager::class.java)
+}
+
+/**
+ * Ambient sound during a session, separate from the spoken readout: some want the numbers read
+ * out and no atmosphere, some want the opposite.
+ */
+object SoundPrefs {
+    private const val PREFS = "gait_sound"
+    private const val KEY = "enabled"
+
+    fun isEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY, true)
+
+    fun setEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY, enabled).apply()
+    }
 }

@@ -4,6 +4,11 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.24.0 — 2026-08-24
+
+- **GAIT on the wrist.** A watch app shows the two figures worth a glance: while a session runs, the gap to your opponent with your distance, pace and heart rate underneath; between sessions, your rank and where the ledger stands. The watch computes nothing — the phone sends it, so the two halves can never disagree — and it says so plainly when the phone is out of reach.
+- **Sound and vibration are separate switches.** The spoken readout, the session sound and the pocket feedback can each be turned off on their own.
+
 ## 0.23.0 — 2026-08-24
 
 - **Heart rate from a strap or watch.** Pair any Bluetooth monitor that speaks the standard heart-rate service — no vendor app, no account — and the session carries what it cost you, not only how fast you went: live on the track screen and the lock-screen card, average and peak on the debrief. Read during a session only, and never sent anywhere.
