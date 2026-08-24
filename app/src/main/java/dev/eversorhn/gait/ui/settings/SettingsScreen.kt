@@ -47,23 +47,11 @@ import dev.eversorhn.gait.ui.theme.CorpoPanel
 fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
     val viewModel: SettingsViewModel = gaitViewModel()
     val state by viewModel.uiState.collectAsState()
-    var confirmSwitch by remember { mutableStateOf(false) }
     var confirmWipe by remember { mutableStateOf(false) }
     var showSaved by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.wiped) { if (state.wiped) onWiped() }
     LaunchedEffect(state.savedTick) { if (state.savedTick > 0) showSaved = true }
-
-    if (confirmSwitch) {
-        dev.eversorhn.gait.ui.theme.CorpoDialog(
-            title = if (state.isHorde) "Switch to a Rival Twin?" else "Release the Horde?",
-            body = "This is a new opponent: ${if (state.isHorde) "Fidelity and Generation" else "Proximity and Wave"} start over. Your session history is untouched — it's still yours.",
-            onDismiss = { confirmSwitch = false },
-            confirmText = "Switch opponent",
-            onConfirm = { confirmSwitch = false; viewModel.switchOpponentType() },
-            confirmKind = dev.eversorhn.gait.ui.theme.ButtonKind.RISK,
-        )
-    }
 
     if (confirmWipe) {
         dev.eversorhn.gait.ui.theme.CorpoDialog(
@@ -390,7 +378,6 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
             Text("Saved.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
         }
 
-        CorpoButton(if (state.isHorde) "Switch to Rival Twin" else "Switch to Zombie Horde", onClick = { confirmSwitch = true }, kind = ButtonKind.SAFE, modifier = Modifier.fillMaxWidth())
 
         // --- Demo data: see the app lived-in without six weeks of running ---
         var demoNote by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }

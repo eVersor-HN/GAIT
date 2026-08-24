@@ -4,6 +4,10 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.25.2 — 2026-08-24
+
+- Settings no longer offers to swap the opponent halfway through. An enrolment is one activity, one opponent and one standing; swapping made the same score mean two different things. Want the other opponent? Enrol again — they run side by side.
+
 ## 0.25.1 — 2026-08-24
 
 - About names the person who built it.

@@ -2,7 +2,6 @@ package dev.eversorhn.gait.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.eversorhn.gait.data.db.entity.OpponentType
 import dev.eversorhn.gait.data.db.entity.isHorde
 import dev.eversorhn.gait.data.repository.GaitRepository
 import dev.eversorhn.gait.domain.horde.HordeIntensity
@@ -82,34 +81,6 @@ class SettingsViewModel(private val repository: GaitRepository) : ViewModel() {
     }
 
     /** Twin <-> Horde. A new opponent: Fidelity/Proximity and Generation/Wave reset. */
-    fun switchOpponentType() {
-        val s = _uiState.value
-        viewModelScope.launch {
-            val profile = repository.getTwinProfile() ?: return@launch
-            val switched = if (profile.isHorde) {
-                profile.copy(
-                    opponentType = OpponentType.TWIN,
-                    personaKey = null,
-                    hordeIntensity = null,
-                    twinName = "The model",
-                    fidelity = 0.5f,
-                    generation = 1,
-                )
-            } else {
-                profile.copy(
-                    opponentType = OpponentType.HORDE,
-                    personaKey = null,
-                    hordeIntensity = s.hordeIntensity,
-                    twinName = "The Horde",
-                    fidelity = 0.5f,
-                    generation = 1,
-                )
-            }
-            repository.updateTwinProfile(switched)
-            refresh()
-        }
-    }
-
     /** Everything gone: sessions and opponent. The nav graph returns to setup afterwards. */
     fun wipeEverything() {
         viewModelScope.launch {
