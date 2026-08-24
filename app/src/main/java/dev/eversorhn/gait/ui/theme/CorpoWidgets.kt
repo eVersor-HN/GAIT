@@ -141,7 +141,47 @@ fun FootNote(text: String, color: Color = TextFaint, maxLines: Int = Int.MAX_VAL
 
 /** `.stat`: a small key/value tile; `accent` colours the value (brass = you, cyan = twin). */
 @Composable
-fun RowScope.StatTile(label: String, value: String, accent: Color = MaterialTheme.colorScheme.onSurface, sub: String? = null) {
+fun RowScope.StatTile(
+    label: String,
+    value: String,
+    accent: Color = MaterialTheme.colorScheme.onSurface,
+    sub: String? = null,
+    /** When set, the tile can be tapped for the sentence a three-line tile has no room for. */
+    info: String? = null,
+) {
+    var showInfo by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (showInfo && info != null) {
+        androidx.compose.ui.window.Popup(
+            alignment = Alignment.Center,
+            onDismissRequest = { showInfo = false },
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .widthIn(max = 260.dp)
+                    .background(Ink2, RoundedCornerShape(6.dp))
+                    .border(BorderStroke(1.dp, Line), RoundedCornerShape(6.dp))
+                    .pressable(onClick = { showInfo = false })
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextFaint)
+                Text(info, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+            }
+        }
+    }
+    StatTileBody(label, value, accent, sub, info != null) { showInfo = true }
+}
+
+@Composable
+private fun RowScope.StatTileBody(
+    label: String,
+    value: String,
+    accent: Color,
+    sub: String?,
+    tappable: Boolean,
+    onTap: () -> Unit,
+) {
     // Always three lines (label / value / sub) so every tile in a row is the same height — a
     // missing sub is an empty line, never a shorter tile. Values are one line, stepping down a size when long.
     Column(
@@ -149,6 +189,7 @@ fun RowScope.StatTile(label: String, value: String, accent: Color = MaterialThem
             .weight(1f)
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
             .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(6.dp))
+            .then(if (tappable) Modifier.pressable(onClick = onTap) else Modifier)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -162,7 +203,11 @@ fun RowScope.StatTile(label: String, value: String, accent: Color = MaterialThem
             },
             color = accent, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
         )
-        Text(sub ?: " ", style = MaterialTheme.typography.labelSmall, color = TextFaint, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+        Text(
+            if (tappable && sub != null) "$sub ⌄" else sub ?: " ",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextFaint, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

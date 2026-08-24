@@ -4,6 +4,10 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.21.1 — 2026-08-24
+
+- Tiles whose one-line caption had to be cut short can be tapped for the sentence behind it — the asset file explains level, steadiness and grit where they stand.
+
 ## 0.21.0 — 2026-08-24
 
 Everyone on the board now has a life outside it, and the board itself opens all the way up.

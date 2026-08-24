@@ -515,9 +515,18 @@ private fun DossierDialog(d: RosterEngine.Dossier, standing: Standing?, today: L
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatTile("Level", "${d.talentIndex}", sub = "long-run")
-                    StatTile("Steady", "${d.consistencyPercent}%", sub = "day to day")
-                    StatTile("Grit", "${d.gritPercent}%", sub = "bounces back")
+                    StatTile(
+                        "Level", "${d.talentIndex}", sub = "long-run",
+                        info = "The index this asset settles at over months. Day to day it lands above or below; this is the middle it keeps returning to.",
+                    )
+                    StatTile(
+                        "Steady", "${d.consistencyPercent}%", sub = "daily",
+                        info = "How alike its days are. High means it lands on its level almost every session; low means big swings either way.",
+                    )
+                    StatTile(
+                        "Grit", "${d.gritPercent}%", sub = "recovery",
+                        info = "How fast it climbs back after a bad stretch. High grit means a slump is short.",
+                    )
                 }
                 SectionLabel("Week", color = TextFaint)
                 Text(
