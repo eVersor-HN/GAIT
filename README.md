@@ -112,6 +112,7 @@ If a hash does not match, delete the file.
 - A quick-settings tile that starts a session from anywhere.
 - A watch app showing the gap while you run and your rank when you are not.
 - Heart rate from any standard Bluetooth monitor, and sessions written back to Health Connect if you want them there.
+- The instruments the phone already has: the barometer for climb that resolves a single flight of stairs, and the step counter for cadence — which still works on a treadmill.
 
 **PRIVACY**
 - Your routes, times and standings never leave the device.
@@ -161,6 +162,7 @@ Output lands in `app/build/outputs/apk/`. Debug builds install alongside a relea
 - Text-to-speech engine on the device for spoken callouts (optional)
 - Health Connect installed, to import or write back sessions (optional)
 - A Bluetooth heart-rate monitor, for heart rate (optional)
+- A barometer and a step counter, for climb and cadence (optional; most phones have both)
 - Wear OS 3 or newer, for the watch app (optional)
 
 ---
