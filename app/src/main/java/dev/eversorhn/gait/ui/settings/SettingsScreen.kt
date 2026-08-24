@@ -431,7 +431,7 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
         // --- About: who made this, what it is, where it lives ---
         dev.eversorhn.gait.ui.theme.CollapsiblePanel(
             title = "About",
-            summary = "GAIT ${dev.eversorhn.gait.BuildConfig.VERSION_NAME} · eVersor-HN",
+            summary = "GAIT ${dev.eversorhn.gait.BuildConfig.VERSION_NAME} · Marco Aurelio Fattizzo",
         ) {
             Text(
                 "GAIT — local movement tracking with one opponent: a model of you, built from your " +
@@ -441,8 +441,9 @@ fun SettingsScreen(onDone: () -> Unit, onWiped: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                "Built by eVersor-HN. Free software under the MIT licence, open source, no account, " +
-                    "no telemetry, no cloud. Everything it knows about you stays on this phone.",
+                "Built by Marco Aurelio Fattizzo — eVersor-HN on GitHub. Free software under the MIT " +
+                    "licence, open source, no account, no telemetry, no cloud. Everything it knows about " +
+                    "you stays on this phone.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

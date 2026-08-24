@@ -15,8 +15,6 @@ import kotlin.math.roundToInt
  *   single flight of stairs, which is what makes a hill count.
  * - **Step counter** for cadence — steps per minute, the one running figure pace cannot tell
  *   you, and the only one that still works on a treadmill.
- * - **Compass** for heading, so the horde can sit behind where you are actually facing rather
- *   than behind an arbitrary line.
  *
  * Every one of them is optional: a phone without the sensor simply reports nothing, and nothing
  * above this class has to care.
@@ -27,7 +25,6 @@ class SessionSensors(context: Context) : SensorEventListener {
 
     private val pressure: Sensor? = manager?.getDefaultSensor(Sensor.TYPE_PRESSURE)
     private val stepCounter: Sensor? = manager?.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
-    private val rotation: Sensor? = manager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
 
     // --- climb ---
     private var lastAltitude: Double? = null
@@ -40,10 +37,6 @@ class SessionSensors(context: Context) : SensorEventListener {
     private var lastStepAtMillis = 0L
     private var recentCadence: Int? = null
 
-    // --- heading ---
-    private var headingDegrees: Float? = null
-    private val rotationMatrix = FloatArray(9)
-    private val orientation = FloatArray(3)
 
     /** Positive altitude gain since the session started, in metres. Null without a barometer. */
     val climb: Double? get() = if (pressure == null) null else climbMeters
@@ -54,16 +47,12 @@ class SessionSensors(context: Context) : SensorEventListener {
     /** Total steps this session. Null without a step counter. */
     val steps: Long? get() = firstStepCount?.let { lastStepCount - it }
 
-    /** Where the phone is pointing, 0 = north. Null without a compass. */
-    val heading: Float? get() = headingDegrees
-
     val hasBarometer: Boolean get() = pressure != null
     val hasStepCounter: Boolean get() = stepCounter != null
 
     fun start() {
         pressure?.let { manager?.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
         stepCounter?.let { manager?.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
-        rotation?.let { manager?.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
     }
 
     fun stop() {
@@ -79,7 +68,6 @@ class SessionSensors(context: Context) : SensorEventListener {
         when (event.sensor.type) {
             Sensor.TYPE_PRESSURE -> onPressure(event.values.firstOrNull() ?: return)
             Sensor.TYPE_STEP_COUNTER -> onSteps((event.values.firstOrNull() ?: return).toLong())
-            Sensor.TYPE_ROTATION_VECTOR -> onRotation(event.values)
         }
     }
 
@@ -117,15 +105,6 @@ class SessionSensors(context: Context) : SensorEventListener {
             recentCadence = (stepDelta / seconds * 60.0).roundToInt().takeIf { it in 20..260 }
             lastStepCount = total
             lastStepAtMillis = now
-        }
-    }
-
-    private fun onRotation(values: FloatArray) {
-        runCatching {
-            SensorManager.getRotationMatrixFromVector(rotationMatrix, values)
-            SensorManager.getOrientation(rotationMatrix, orientation)
-            val degrees = Math.toDegrees(orientation[0].toDouble()).toFloat()
-            headingDegrees = (degrees + 360f) % 360f
         }
     }
 

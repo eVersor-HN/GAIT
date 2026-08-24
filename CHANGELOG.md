@@ -4,6 +4,11 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.25.1 — 2026-08-24
+
+- About names the person who built it.
+- Dropped the compass reading: it decided nothing and the phone in a pocket already points the way you do.
+
 ## 0.25.0 — 2026-08-24
 
 The session screen becomes an instrument panel, and the phone's own sensors join in.
