@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -147,7 +148,7 @@ private fun Board(
     val safe = u.rank <= snap.cullLine
     val protectedDaysLeft = state.career?.let { (RosterEngine.CULL_GRACE_DAYS - it.tenureDays).coerceAtLeast(0) } ?: 0
 
-    // --- The board itself, first and always open: this is what the page is for ---
+    // --- The board itself: every place, scrolled inside its own frame ---
     CorpoPanel {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             SectionLabel("#", color = TextFaint); Spacer(Modifier.width(40.dp))
@@ -155,23 +156,39 @@ private fun Board(
             Spacer(Modifier.weight(1f))
             SectionLabel("Index · Δ", color = TextFaint)
         }
-        val twinRow = snap.twin
-        var placed = 0
-        var i = 0
-        var userPlaced = false
-        var twinPlaced = false
-        while (placed < TABLE_ROWS) {
-            val next = snap.standings.getOrNull(i)
-            val nextRank = next?.rank ?: Int.MAX_VALUE
-            when {
-                !userPlaced && u.rank < nextRank && (twinRow == null || twinPlaced || u.rank < twinRow.rank) -> { UserRowInline(u.rank, u.delta, u.index, u.prevRank); userPlaced = true }
-                twinRow != null && !twinPlaced && twinRow.rank < nextRank -> { TwinRowInline(opponentName, twinRow); twinPlaced = true }
-                next != null -> { StandingRow(next, onClick = { onRow(next.asset.slot) }); i++ }
-                else -> break
+        // A lazy list: only the rows actually on screen are built, so the whole division costs
+        // no more than a screenful. Bounded height, or it would fight the page's own scroll.
+        val rows = androidx.compose.runtime.remember(snap.day, u.rank, snap.twin?.rank) { boardRows(snap, opponentName) }
+        val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+        val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
+        androidx.compose.foundation.lazy.LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxWidth().height(minOf(TABLE_ROWS * 58, (screenHeight * 0.62).toInt()).dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            items(rows, key = { it.key }) { row ->
+                when (row) {
+                    is BoardRow.AssetRow -> StandingRow(
+                        row.standing,
+                        onClick = { onRow(row.standing.asset.slot) },
+                        belowCullLine = row.standing.rank > snap.cullLine,
+                    )
+                    is BoardRow.You -> UserRowInline(u.rank, u.delta, u.index, u.prevRank)
+                    is BoardRow.Twin -> snap.twin?.let { TwinRowInline(opponentName, it) }
+                    is BoardRow.CullLine -> Text(
+                        "— cull line · #${snap.cullLine} —".uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Alert,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
             }
-            placed++
         }
-        FootNote("${if (snap.nextReviewInDays == 0) "Review today" else "Review in ${snap.nextReviewInDays} d"} · ${snap.onLeave} on leave", maxLines = 1)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            FootNote("${if (snap.nextReviewInDays == 0) "Review today" else "Review in ${snap.nextReviewInDays} d"} · ${snap.onLeave} on leave", maxLines = 1)
+            FootNote("${"%,d".format(snap.enrolled)} assets", color = TextFaint, maxLines = 1)
+        }
     }
 
     // --- The one action, straight under the board it is measured against ---
@@ -318,17 +335,71 @@ private fun Board(
     Spacer(Modifier.height(8.dp))
 }
 
+
+/** One line of the board: an asset, you, the model, or the line the cull cuts at. */
+private sealed interface BoardRow {
+    val key: String
+
+    data class AssetRow(val standing: Standing) : BoardRow {
+        override val key: String get() = "a${standing.asset.slot}"
+    }
+
+    data object You : BoardRow { override val key: String get() = "you" }
+    data object Twin : BoardRow { override val key: String get() = "twin" }
+    data object CullLine : BoardRow { override val key: String get() = "cull" }
+}
+
+/** The ranked division with you, the model and the cull line spliced in at their real places. */
+private fun boardRows(snap: RosterSnapshot, opponentName: String): List<BoardRow> {
+    val out = ArrayList<BoardRow>(snap.standings.size + 3)
+    var youPlaced = false
+    var twinPlaced = false
+    var linePlaced = false
+    val twinRank = snap.twin?.rank
+    for (st in snap.standings) {
+        if (!youPlaced && snap.user.rank <= st.rank) { out += BoardRow.You; youPlaced = true }
+        if (!twinPlaced && twinRank != null && twinRank <= st.rank) { out += BoardRow.Twin; twinPlaced = true }
+        if (!linePlaced && st.rank > snap.cullLine) { out += BoardRow.CullLine; linePlaced = true }
+        out += BoardRow.AssetRow(st)
+    }
+    if (!youPlaced) out += BoardRow.You
+    if (!twinPlaced && twinRank != null) out += BoardRow.Twin
+    return out
+}
+
 @Composable
-private fun StandingRow(row: Standing, onClick: () -> Unit) {
+private fun StandingRow(row: Standing, onClick: () -> Unit, belowCullLine: Boolean = false) {
     val rankDelta = row.prevRank?.let { it - row.rank } ?: 0
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // Below the line the ground is already red: these are the places the next cull takes.
+            .background(
+                // The podium gets a little light, the cull zone a little red. Everything between
+                // stays plain — the board is a monochrome instrument with three signals.
+                when {
+                    belowCullLine -> Alert.copy(alpha = 0.10f)
+                    row.rank == 1 -> Brass.copy(alpha = 0.16f)
+                    row.rank == 2 -> Brass.copy(alpha = 0.10f)
+                    row.rank == 3 -> Brass.copy(alpha = 0.06f)
+                    else -> Color.Transparent
+                },
+                RoundedCornerShape(4.dp),
+            )
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(vertical = 3.dp),
+            .padding(vertical = 3.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("${row.rank}", style = MaterialTheme.typography.titleMedium, color = TextDim, modifier = Modifier.width(34.dp))
+        Text(
+            "${row.rank}",
+            style = MaterialTheme.typography.titleMedium,
+            color = when {
+                belowCullLine -> Alert
+                row.rank <= 3 -> Brass
+                else -> TextDim
+            },
+            modifier = Modifier.width(34.dp),
+        )
         Arrow(rankDelta)
         Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -443,6 +514,30 @@ private fun DossierDialog(d: RosterEngine.Dossier, standing: Standing?, today: L
                     "Reads as ${d.readsAs} · ${d.trendLabel} this month · ${d.landingLabel}",
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile("Level", "${d.talentIndex}", sub = "long-run")
+                    StatTile("Steady", "${d.consistencyPercent}%", sub = "day to day")
+                    StatTile("Grit", "${d.gritPercent}%", sub = "bounces back")
+                }
+                SectionLabel("Week", color = TextFaint)
+                Text(
+                    d.workLabel.replaceFirstChar { it.uppercase() } +
+                        " · " + (if (d.restingToday) "resting today" else if (d.workingToday) "working today" else "off today") +
+                        " · ~${d.sessionsPerWeek} sessions a week",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val today = java.time.LocalDate.now().dayOfWeek.value
+                    d.weekAhead.forEachIndexed { i, working ->
+                        val iso = ((today - 1 + i) % 7) + 1
+                        Text(
+                            DayOfWeek.of(iso).getDisplayName(TextStyle.NARROW, Locale.ENGLISH),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (working) Brass else TextFaint,
+                        )
+                    }
+                }
+                Text("Next session ${d.nextSessionLabel}", style = MaterialTheme.typography.bodyMedium, color = TextDim)
                 Text(
                     if (d.restDays.isEmpty()) (if (d.asset.kind == AssetKind.SYNTH) "No rest days. Maintenance windows only." else "No fixed rest days.")
                     else "Rests " + d.restDays.joinToString(", ") { DayOfWeek.of(it).getDisplayName(TextStyle.SHORT, Locale.ENGLISH) } + ".",

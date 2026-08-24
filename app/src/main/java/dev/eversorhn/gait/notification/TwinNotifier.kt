@@ -27,6 +27,7 @@ import dev.eversorhn.gait.R
 object TwinNotifier {
 
     private const val CHANNEL_DIVISION = "division_notices"
+    private const val CHANNEL_OPPONENT_SESSION = "opponent_session"
     private const val TRACKING_CHANNEL_ID = "tracking_status"
     private const val GROUP_DIVISION = "gait.division"
     private var notificationId = 1000
@@ -39,6 +40,14 @@ object TwinNotifier {
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java)
+        if (manager.getNotificationChannel(CHANNEL_OPPONENT_SESSION) == null) {
+            manager.createNotificationChannel(
+                NotificationChannel(CHANNEL_OPPONENT_SESSION, "Opponent sessions", NotificationManager.IMPORTANCE_LOW).apply {
+                    description = "The live card while your opponent is training. Silent; it only sits in the shade."
+                    setShowBadge(false)
+                }
+            )
+        }
         if (manager.getNotificationChannel(CHANNEL_DIVISION) == null) {
             manager.createNotificationChannel(
                 NotificationChannel(CHANNEL_DIVISION, "Division notices", NotificationManager.IMPORTANCE_LOW).apply {
@@ -75,6 +84,70 @@ object TwinNotifier {
             return ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         }
         return true
+    }
+
+
+    /**
+     * The opponent's session as it happens — the way a training partner's live share reads:
+     * who, how far, how fast, how much is done, and a countdown the system ticks itself so the
+     * card stays live without the app doing anything.
+     *
+     * [stableId] keeps one card per enrolment, replaced on every update rather than stacked.
+     */
+    fun postOpponentSession(
+        context: Context,
+        stableId: Int,
+        who: String,
+        title: String,
+        body: String,
+        progressPercent: Int,
+        endsAtEpochMillis: Long,
+    ) {
+        ensureChannel(context)
+        if (!allowed(context)) return
+        val n = NotificationCompat.Builder(context, CHANNEL_OPPONENT_SESSION)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setSubText(who)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setSmallIcon(R.drawable.ic_notification)
+            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(openAppIntent(context))
+            .setProgress(100, progressPercent.coerceIn(0, 100), false)
+            // The system counts this down once a second on its own — live, at no cost.
+            .setUsesChronometer(true)
+            .setChronometerCountDown(true)
+            .setWhen(endsAtEpochMillis)
+            .setShowWhen(true)
+            .setOnlyAlertOnce(true)
+            .setOngoing(false)
+            .build()
+        NotificationManagerCompat.from(context).notify(stableId, n)
+    }
+
+    /** What it ended up doing. Replaces the live card and can be swiped away. */
+    fun postOpponentSessionDone(context: Context, stableId: Int, who: String, title: String, body: String) {
+        ensureChannel(context)
+        if (!allowed(context)) return
+        val n = NotificationCompat.Builder(context, CHANNEL_OPPONENT_SESSION)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setSubText(who)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setSmallIcon(R.drawable.ic_notification)
+            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(openAppIntent(context))
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(context).notify(stableId, n)
+    }
+
+    fun cancelOpponentSession(context: Context, stableId: Int) {
+        NotificationManagerCompat.from(context).cancel(stableId)
     }
 
     /** The company speaking: commendations, cull/review notices. Low importance, grouped. */

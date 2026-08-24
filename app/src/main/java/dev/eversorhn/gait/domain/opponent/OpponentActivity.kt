@@ -49,10 +49,8 @@ object OpponentActivity {
             return Report(daysAbsent, 0, 0.0, forecastPaceSecPerKm, 0)
         }
 
-        // Which weekdays you actually train on: any day carrying at least a fifth of your sessions.
-        val byWeekday = sessionsNewestFirst.groupingBy { it.dayOfWeek }.eachCount()
-        val busiest = byWeekday.values.maxOrNull() ?: 0
-        val trainingDays = byWeekday.filter { it.value * 5 >= busiest }.keys
+        // The same weekday rule the live session card uses, so the two can never disagree.
+        val trainingDays = OpponentSession.trainingWeekdays(sessionsNewestFirst)
 
         var count = 0
         val lastEpochDay = last.startTimeEpochMillis / MILLIS_PER_DAY

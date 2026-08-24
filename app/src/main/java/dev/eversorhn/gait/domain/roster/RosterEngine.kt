@@ -35,6 +35,7 @@ enum class Archetype(val label: String) {
 
 enum class AssetStatus { ACTIVE, NEW_HIRE, ON_LEAVE, UNDER_REVIEW, INJURED, MAINTENANCE }
 
+
 /** An asset taken in from another user's division (domain/transfer): fixed traits, simulated from its import day. */
 data class ImportedSpec(
     val id: String,
@@ -68,8 +69,12 @@ data class SimAsset(
     val grit: Double,
     /** Index points per 30 days of underlying drift (−12..+14). */
     val trend: Double,
-    /** Minute of day their session result lands. */
+    /** Minute of day their session result lands on an ordinary day. */
     val trainingMinute: Int,
+    /** How their week is shaped — decides when they can train (domain/roster/WorkPattern). */
+    val work: WorkPattern = WorkPattern.NINE_TO_FIVE,
+    /** Rotating crews and seasonal blocks are offset per person so they don't move in lockstep. */
+    val crew: Int = 0,
     /** Bit (isoDay−1) set = rests that weekday. */
     val restMask: Int,
     val hiredDay: Long,
@@ -204,11 +209,19 @@ object RosterEngine {
             Archetype.GRINDER, Archetype.COMEBACK -> 4.0 + u(s, h, 18) * 10
             else -> -4.0 + u(s, h, 18) * 8
         }.let { if (kind == AssetKind.SYNTH) it * 0.3 else it }
-        val trainingMinute = when (archetype) {
-            Archetype.EARLY_BIRD -> 5 * 60 + (u(s, h, 19) * 90).toInt()
-            Archetype.NIGHT_OWL -> 20 * 60 + (u(s, h, 19) * 150).toInt()
-            else -> if (kind == AssetKind.SYNTH) 3 * 60 + (u(s, h, 19) * 60).toInt() else 6 * 60 + (u(s, h, 19) * 14 * 60).toInt()
+        // The week's shape. Archetypes that are defined by a time of day override the roll:
+        // an early bird is not on a night shift.
+        val work = when {
+            kind == AssetKind.SYNTH -> WorkPattern.MAINTENANCE_WINDOW
+            archetype == Archetype.EARLY_BIRD -> WorkPattern.EARLY_RISER
+            archetype == Archetype.NIGHT_OWL -> WorkPattern.NIGHT_SHIFT
+            else -> WorkPattern.byRoll(u(s, h, 28))
         }
+        val crew = (u(s, h, 29) * 4).toInt()
+        // Their usual hour inside that pattern's working-day window; the day-by-day time moves
+        // around it (see trainingMinuteOn).
+        val trainingMinute = work.workDayWindow.first +
+            (u(s, h, 19) * (work.workDayWindow.last - work.workDayWindow.first).coerceAtLeast(1)).toInt()
         val restMask = when {
             kind == AssetKind.SYNTH -> 0
             archetype == Archetype.WEEKENDER -> 0b0011111 // rests Mon–Fri
@@ -220,7 +233,85 @@ object RosterEngine {
             AssetKind.SYNTH -> "SX-%04d".format(slot)
             else -> "AX-%04d".format(slot)
         }
-        return SimAsset(slot, hireIndex, id, name, kind, unit, archetype, talent, consistency, grit, trend, trainingMinute, restMask, hiredDay)
+        return SimAsset(slot, hireIndex, id, name, kind, unit, archetype, talent, consistency, grit, trend, trainingMinute, work, crew, restMask, hiredDay)
+    }
+
+
+    // ---------------------------------------------------------------- the shape of a week
+    /**
+     * Is this a working day for [a]? Weekday patterns work Monday to Friday; rotating crews
+     * follow a 2-2-3 pattern over a 28-day cycle, half of it on nights; seasonal work comes in
+     * blocks; on-call is decided day by day; the not-employed have no working days at all.
+     */
+    fun worksOn(a: SimAsset, day: Long): Boolean {
+        val iso = isoDayOf(day)
+        val s = a.slot.toLong(); val h = a.hireIndex.toLong()
+        return when (a.work) {
+            WorkPattern.STUDENT, WorkPattern.NINE_TO_FIVE, WorkPattern.EARLY_RISER,
+            WorkPattern.FLEXITIME, WorkPattern.HYBRID_REMOTE,
+            WorkPattern.PART_TIME_MORNINGS, WorkPattern.PART_TIME_AFTERNOONS -> iso <= 5
+            WorkPattern.COMPRESSED_WEEK -> iso <= 5 && iso != 1 + (a.crew % 5)
+            WorkPattern.EARLY_SHIFT, WorkPattern.LATE_SHIFT, WorkPattern.NIGHT_SHIFT ->
+                // Five days in seven, but not the same two off every week.
+                ((day + a.crew) % 7L) >= 2L
+            WorkPattern.SPLIT_SHIFT -> iso != 7
+            WorkPattern.ROTATING_TWELVES -> pitmanWorks(a, day)
+            WorkPattern.SEASONAL -> ((day + a.crew * 9) / 21L) % 2L == 0L
+            WorkPattern.ON_CALL -> u(s, h, day, 70) < 0.6
+            WorkPattern.PARENT_AT_HOME, WorkPattern.RETIRED, WorkPattern.BETWEEN_JOBS,
+            WorkPattern.MAINTENANCE_WINDOW -> false
+        }
+    }
+
+    /** Rotating twelves: two on, two off, three on over fourteen days; the second fortnight is nights. */
+    private fun pitmanWorks(a: SimAsset, day: Long): Boolean {
+        val phase = (((day + a.crew * 7L) % 28L) + 28L) % 28L
+        val inFortnight = (phase % 14L).toInt()
+        val pattern = booleanArrayOf(true, true, false, false, true, true, true, false, false, true, true, false, false, false)
+        return pattern[inFortnight]
+    }
+
+    /** True while a rotating crew is in its night fortnight — they train earlier on those days. */
+    private fun inNightBlock(a: SimAsset, day: Long): Boolean =
+        (((day + a.crew * 7L) % 28L) + 28L) % 28L >= 14L
+
+    /**
+     * The minute [a]'s session lands on [day]: their pattern's window for that kind of day,
+     * their usual place inside it, and a little movement so no two days are identical.
+     */
+    fun trainingMinuteOn(a: SimAsset, day: Long): Int {
+        val working = worksOn(a, day)
+        val window = if (working) a.work.workDayWindow else a.work.freeDayWindow
+        val s = a.slot.toLong(); val h = a.hireIndex.toLong()
+        val span = (window.last - window.first).coerceAtLeast(1)
+        // Their habitual place in the window, kept across days.
+        val habit = ((a.trainingMinute - a.work.workDayWindow.first).toDouble() /
+            (a.work.workDayWindow.last - a.work.workDayWindow.first).coerceAtLeast(1)).coerceIn(0.0, 1.0)
+        val base = when (a.work) {
+            // Flexitime and on-call genuinely move: the habit counts for little.
+            WorkPattern.FLEXITIME, WorkPattern.ON_CALL -> window.first + (u(s, h, day, 71) * span).toInt()
+            else -> window.first + (habit * span).toInt()
+        }
+        // A rotating crew on nights trains in the early afternoon instead of the evening.
+        val shifted = if (a.work == WorkPattern.ROTATING_TWELVES && working && inNightBlock(a, day)) base - 6 * 60 else base
+        // Hybrid weeks: office days are evening days, home days are midday days.
+        val hybrid = if (a.work == WorkPattern.HYBRID_REMOTE && working && u(s, h, day, 72) < 0.5) shifted + 6 * 60 else shifted
+        val jitter = ((u(s, h, day, 60) - 0.5) * 50).toInt()
+        return (hybrid + jitter).coerceIn(0, 24 * 60 - 1)
+    }
+
+    private fun isoDayOf(day: Long): Int = ((((day % 7) + 7) % 7 + 3) % 7 + 1).toInt()
+
+    /**
+     * Does [a] rest on [day]? Weekday patterns keep their declared rest days. Rotating crews
+     * rest on their night-shift working days — nobody trains around a twelve-hour night — and
+     * seasonal workers rest on the last day of each block.
+     */
+    fun restsOn(a: SimAsset, day: Long): Boolean {
+        if (a.kind == AssetKind.SYNTH) return false
+        if (a.work == WorkPattern.ROTATING_TWELVES) return worksOn(a, day) && inNightBlock(a, day)
+        if (a.work == WorkPattern.NIGHT_SHIFT && worksOn(a, day) && u(a.slot.toLong(), a.hireIndex.toLong(), day, 73) < 0.35) return true
+        return (a.restMask shr (isoDayOf(day) - 1)) and 1 == 1
     }
 
     // ---------------------------------------------------------------- per-slot day simulation
@@ -269,7 +360,7 @@ object RosterEngine {
         if (st.injuryUntil >= day) return DayResult(st.index, AssetStatus.INJURED)
 
         // Training day?
-        val rests = (a.restMask shr (isoDay - 1)) and 1 == 1
+        val rests = restsOn(a, day)
         if (!rests) {
             // Underlying level: talent + trend drift + slow form cycles; the day's result is a
             // noisy draw around it; the index moves a fraction of the way there (mean reversion),
@@ -399,8 +490,7 @@ object RosterEngine {
     }
 
     /** The minute today's result lands for [a]: its habitual training time ± up to 40 min, per day. */
-    fun landingMinute(a: SimAsset, day: Long): Int =
-        (a.trainingMinute + ((u(a.slot.toLong(), a.hireIndex.toLong(), day, 60) - 0.5) * 80).toInt()).coerceIn(0, 24 * 60 - 1)
+    fun landingMinute(a: SimAsset, day: Long): Int = trainingMinuteOn(a, day)
 
     /**
      * The dossier: what the division has on one asset. Read from the cached simulation, so it
@@ -416,15 +506,35 @@ object RosterEngine {
         val readsAs: String,             // archetype hint
         val bestIndex14: Int,
         val worstIndex14: Int,
+        // --- how the week is shaped ---
+        val workLabel: String,           // "rotating twelve-hour crews"
+        val workingToday: Boolean,
+        val restingToday: Boolean,
+        val weekAhead: List<Boolean>,    // works? for the next 7 days incl. today
+        val nextSessionLabel: String,    // "next session ~15:40 tomorrow"
+        // --- how they are doing ---
+        val consistencyPercent: Int,
+        val gritPercent: Int,
+        val talentIndex: Int,
+        val sessionsPerWeek: Int,
+        val daysSinceInjury: Long?,
+        val statusLabel: String,
     )
+
+    /** True while today's session is still ahead of them. */
+    private fun minuteNotPast(a: SimAsset, day: Long): Boolean = true
 
     fun dossier(slot: Int, day: Long): Dossier? {
         val c = cache?.takeIf { it.day == day } ?: return null
         val a = c.assets.getOrNull(slot) ?: return null
         val raw = c.history[slot].filter { !it.isNaN() }
         val norm = raw.map { ((it - FLOOR) / (CEILING - FLOOR)).toFloat().coerceIn(0f, 1f) }
-        val lm = a.trainingMinute
+        val lm = trainingMinuteOn(a, day)
         val rest = (1..7).filter { (a.restMask shr (it - 1)) and 1 == 1 }
+        val week = (0 until 7).map { worksOn(a, day + it) }
+        val nextDay = (0 until 8).firstOrNull { !restsOn(a, day + it) && (it > 0 || minuteNotPast(a, day)) } ?: 0
+        val nextMinute = trainingMinuteOn(a, day + nextDay)
+        val trainingDays = (0 until 14).count { !restsOn(a, day + it) }
         return Dossier(
             asset = a,
             history14 = norm,
@@ -435,6 +545,20 @@ object RosterEngine {
             readsAs = a.archetype.label,
             bestIndex14 = raw.maxOrNull()?.roundToInt() ?: 0,
             worstIndex14 = raw.minOrNull()?.roundToInt() ?: 0,
+            workLabel = a.work.label,
+            workingToday = worksOn(a, day),
+            restingToday = restsOn(a, day),
+            weekAhead = week,
+            nextSessionLabel = "%s ~%02d:%02d".format(
+                when (nextDay) { 0 -> "later today"; 1 -> "tomorrow"; else -> "in $nextDay days" },
+                nextMinute / 60, nextMinute % 60,
+            ),
+            consistencyPercent = (a.consistency * 100).roundToInt(),
+            gritPercent = (a.grit * 100).roundToInt(),
+            talentIndex = a.talent.roundToInt(),
+            sessionsPerWeek = (trainingDays / 2.0).roundToInt(),
+            daysSinceInjury = null,
+            statusLabel = "",
         )
     }
 

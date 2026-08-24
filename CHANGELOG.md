@@ -4,6 +4,15 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.21.0 — 2026-08-24
+
+Everyone on the board now has a life outside it, and the board itself opens all the way up.
+
+- **Eighteen ways to have a week.** Every asset is on a real working-time pattern — nine to five, flexitime, hybrid, a compressed four-day week, part-time mornings or afternoons, early, late and night shifts, rotating twelve-hour crews on a 28-day cycle, split shifts, on call, seasonal blocks — plus the people not on a payroll: students, parents at home, the retired, the between-jobs. The pattern decides which days they work and what time they can train, so results land across the whole clock instead of clustering. Rotating crews shift to the early afternoon during their night fortnight and rest on those nights.
+- **The whole division scrolls.** The table on the standing page runs from first place to last inside its own frame — only the rows on screen are built, so a thousand-odd places cost no more than a screenful. The cull zone sits on red ground, the podium on light, and the line itself is marked.
+- **Deeper files.** Tapping an asset now shows its long-run level, steadiness and grit, the shape of its week with the working days lit, when its next session lands, and how many sessions a week it does — alongside the standing, the fortnight of history and the tenure it already had.
+- **Your opponent shares its sessions.** When it trains, a card appears in the shade the way a training partner's live share does: how far it is in, its pace, and a countdown to the finish that ticks by itself. It closes with what it did. Silent, on its own channel, off with the rest of the notifications.
+
 ## 0.20.0 — 2026-08-24
 
 A pass over everything the division does on its own, so the board behaves the way the app says it does.

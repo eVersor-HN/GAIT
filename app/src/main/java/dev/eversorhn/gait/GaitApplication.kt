@@ -9,6 +9,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import dev.eversorhn.gait.notification.TwinNotifier
 import dev.eversorhn.gait.work.DivisionReportWorker
+import dev.eversorhn.gait.work.OpponentSessionWorker
 import java.util.concurrent.TimeUnit
 
 class GaitApplication : Application() {
@@ -19,6 +20,7 @@ class GaitApplication : Application() {
         super.onCreate()
         TwinNotifier.ensureChannel(this)
         scheduleDivisionReport()
+        scheduleOpponentSessions()
         preloadRoster()
     }
 
@@ -51,6 +53,19 @@ class GaitApplication : Application() {
         val request = PeriodicWorkRequestBuilder<DivisionReportWorker>(1, TimeUnit.DAYS, 4, TimeUnit.HOURS).build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             DivisionReportWorker.UNIQUE_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
+    }
+
+    /**
+     * The opponent's own sessions, shared live. A quarter-hour beat is enough to notice one
+     * starting; while it runs the worker re-enqueues itself every few minutes.
+     */
+    private fun scheduleOpponentSessions() {
+        val request = PeriodicWorkRequestBuilder<OpponentSessionWorker>(15, TimeUnit.MINUTES).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            OpponentSessionWorker.UNIQUE_WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             request,
         )
