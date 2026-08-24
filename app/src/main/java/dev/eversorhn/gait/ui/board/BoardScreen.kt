@@ -144,7 +144,46 @@ private fun Board(
     val safe = u.rank <= snap.cullLine
     val protectedDaysLeft = state.career?.let { (RosterEngine.CULL_GRACE_DAYS - it.tenureDays).coerceAtLeast(0) } ?: 0
 
-    // --- The one action, first ---
+    // --- The board itself, first and open: this is what the page is for ---
+    var tableOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(true) }
+    val tableRows = if (tableOpen) 15 else 5
+    CorpoPanel {
+        Row(
+            modifier = Modifier.fillMaxWidth().pressable(onClick = { tableOpen = !tableOpen }),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SectionLabel("#", color = TextFaint); Spacer(Modifier.width(40.dp))
+            SectionLabel("Asset", color = TextFaint)
+            Spacer(Modifier.weight(1f))
+            SectionLabel("Index · Δ", color = TextFaint)
+            Text(if (tableOpen) "  –" else "  +", style = MaterialTheme.typography.labelLarge, color = TextFaint)
+        }
+        val twinRow = snap.twin
+        var placed = 0
+        var i = 0
+        var userPlaced = false
+        var twinPlaced = false
+        while (placed < tableRows) {
+            val next = snap.standings.getOrNull(i)
+            val nextRank = next?.rank ?: Int.MAX_VALUE
+            when {
+                !userPlaced && u.rank < nextRank && (twinRow == null || twinPlaced || u.rank < twinRow.rank) -> { UserRowInline(u.rank, u.delta, u.index, u.prevRank); userPlaced = true }
+                twinRow != null && !twinPlaced && twinRow.rank < nextRank -> { TwinRowInline(opponentName, twinRow); twinPlaced = true }
+                next != null -> { StandingRow(next, onClick = { onRow(next.asset.slot) }); i++ }
+                else -> break
+            }
+            placed++
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().pressable(onClick = { tableOpen = !tableOpen }),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            FootNote("${if (snap.nextReviewInDays == 0) "Review today" else "Review in ${snap.nextReviewInDays} d"} · ${snap.onLeave} on leave", maxLines = 1)
+            FootNote(if (tableOpen) "show 5" else "show 15", color = Brass, maxLines = 1)
+        }
+    }
+
+    // --- The one action, straight under the board it is measured against ---
     CorpoButton(if (state.trialEligible) "GO · TRIAL OPEN" else "GO", onClick = onGo, kind = ButtonKind.PRIMARY, modifier = Modifier.fillMaxWidth())
 
     // --- Where you stand against the model, in one line of numbers ---
@@ -223,45 +262,6 @@ private fun Board(
             Meter(fraction = state.proximityPercent / 100f, color = Alert, threshold = 0.95f)
             CorpoButton("Contest · 3 pts", onClick = onStartDuel, kind = ButtonKind.RISK, modifier = Modifier.fillMaxWidth())
             FootNote(state.trialDeadlineDays?.let { if (it == 0) "Auto-review today" else "Auto-review in $it d" } ?: "Beat your best over 1 km", color = Alert)
-        }
-    }
-
-    // --- The table ---
-    var tableOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
-    val tableRows = if (tableOpen) 15 else 5
-    CorpoPanel {
-        Row(
-            modifier = Modifier.fillMaxWidth().pressable(onClick = { tableOpen = !tableOpen }),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SectionLabel("#", color = TextFaint); Spacer(Modifier.width(40.dp))
-            SectionLabel("Asset", color = TextFaint)
-            Spacer(Modifier.weight(1f))
-            SectionLabel("Index · Δ", color = TextFaint)
-            Text(if (tableOpen) "  –" else "  +", style = MaterialTheme.typography.labelLarge, color = TextFaint)
-        }
-        val twinRow = snap.twin
-        var placed = 0
-        var i = 0
-        var userPlaced = false
-        var twinPlaced = false
-        while (placed < tableRows) {
-            val next = snap.standings.getOrNull(i)
-            val nextRank = next?.rank ?: Int.MAX_VALUE
-            when {
-                !userPlaced && u.rank < nextRank && (twinRow == null || twinPlaced || u.rank < twinRow.rank) -> { UserRowInline(u.rank, u.delta, u.index, u.prevRank); userPlaced = true }
-                twinRow != null && !twinPlaced && twinRow.rank < nextRank -> { TwinRowInline(opponentName, twinRow); twinPlaced = true }
-                next != null -> { StandingRow(next, onClick = { onRow(next.asset.slot) }); i++ }
-                else -> break
-            }
-            placed++
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().pressable(onClick = { tableOpen = !tableOpen }),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            FootNote("${if (snap.nextReviewInDays == 0) "Review today" else "Review in ${snap.nextReviewInDays} d"} · ${snap.onLeave} on leave", maxLines = 1)
-            FootNote(if (tableOpen) "show 5" else "show 15", color = Brass, maxLines = 1)
         }
     }
 

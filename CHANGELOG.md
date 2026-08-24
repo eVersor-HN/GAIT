@@ -4,6 +4,10 @@ Built forward. Tracked clearly. Newest first.
 
 ---
 
+## 0.19.6 — 2026-08-24
+
+- **The board leads the standing page.** The division table sits at the top, open at all fifteen places instead of folded to five, with GO directly beneath it — the ranking you are being measured against, then the button that changes it. Your own numbers follow underneath.
+
 ## 0.19.5 — 2026-08-24
 
 - The two session modes now read the same way: **Outdoor · GPS** and **Indoor · timed** — both name how the session is verified, not what you are standing on. The machine's name moved to where you actually read a number off it: the distance prompt when you stop.
