@@ -14,12 +14,12 @@ val keystoreProps = Properties().apply {
 val hasReleaseKeystore = keystoreProps.getProperty("storeFile")?.isNotBlank() == true
 
 android {
-    namespace = "dev.eversorhn.gait.wear"
+    namespace = "dev.eversorhn.momentum.wear"
     compileSdk = 35
 
     defaultConfig {
         // Same applicationId as the phone app: that is how Wear OS pairs the two halves.
-        applicationId = "dev.eversorhn.gait"
+        applicationId = "dev.eversorhn.momentum"
         minSdk = 30
         targetSdk = 34
         versionCode = 1

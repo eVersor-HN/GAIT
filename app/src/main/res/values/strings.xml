@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">GAIT</string>
+    <string name="app_name">MOMENTUM</string>
 
     <plurals name="sessions_count">
         <item quantity="one">%d session</item>

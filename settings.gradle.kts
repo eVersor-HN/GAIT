@@ -13,7 +13,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GAIT"
+rootProject.name = "MOMENTUM"
 include(":app")
 include(":simdemo")
 include(":wear")

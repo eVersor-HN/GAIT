@@ -1,8 +1,15 @@
-# What's New in GAIT
+# What's New in MOMENTUM
 
 Built forward. Tracked clearly. Newest first.
 
 ---
+
+## 0.26.0 — 2026-08-26
+
+The app is called MOMENTUM.
+
+- **New name, same app.** GAIT named the walk; MOMENTUM names what the app is actually about — what you keep going, and what you lose when you stop. Nothing about how it works has changed.
+- **This one installs fresh.** The rename changes the app's identity on the phone, so MOMENTUM does not replace an existing GAIT install and starts with no history. Keep the old app until you have exported anything you want to keep, then uninstall it.
 
 ## 0.25.2 — 2026-08-24
 
@@ -25,13 +32,13 @@ The session screen becomes an instrument panel, and the phone's own sensors join
 - **Cadence** from the phone's own step counter: steps a minute, the one running figure pace cannot give you, and the only one that still works on a treadmill.
 - **Effort** as a five-segment bar scaled to the heart-rate range you have actually shown in recent sessions — no formula about your age, no personal data asked for.
 - **The screen stays awake** while a session is on it.
-- **An About page** in Settings: what GAIT is, who built it, the licence, the version, and links to the source and to supporting it.
+- **An About page** in Settings: what MOMENTUM is, who built it, the licence, the version, and links to the source and to supporting it.
 - Fixed: a bad GPS fix could add kilometres nobody ran. A step implying a speed no tracked activity reaches is now discarded.
 - Fixed: heart rate only appeared on hiking and cycling sessions.
 
 ## 0.24.0 — 2026-08-24
 
-- **GAIT on the wrist.** A watch app shows the two figures worth a glance: while a session runs, the gap to your opponent with your distance, pace and heart rate underneath; between sessions, your rank and where the ledger stands. The watch computes nothing — the phone sends it, so the two halves can never disagree — and it says so plainly when the phone is out of reach.
+- **MOMENTUM on the wrist.** A watch app shows the two figures worth a glance: while a session runs, the gap to your opponent with your distance, pace and heart rate underneath; between sessions, your rank and where the ledger stands. The watch computes nothing — the phone sends it, so the two halves can never disagree — and it says so plainly when the phone is out of reach.
 - **Sound and vibration are separate switches.** The spoken readout, the session sound and the pocket feedback can each be turned off on their own.
 
 ## 0.23.0 — 2026-08-24
@@ -42,7 +49,7 @@ The session screen becomes an instrument panel, and the phone's own sensors join
 
 The session reaches you without the screen, and the app reaches the rest of the phone.
 
-- **A notice you have to read once.** On first launch GAIT says what it is, what it is not, and that your safety comes before any number it shows you. Accepting continues; declining closes the app. It stays available under Briefing.
+- **A notice you have to read once.** On first launch MOMENTUM says what it is, what it is not, and that your safety comes before any number it shows you. Accepting continues; declining closes the app. It stays available under Briefing.
 - **Pocket feedback.** A tick at every kilometre, a double knock when the lead changes, and — in horde mode — a pulse that tightens as they close: from a slow knock at four hundred metres to almost continuous when they are on you. No screen, no headphones, no words. Switchable in Settings.
 - **The horde, heard.** With headphones a low growl comes from behind and to one side, louder and more often the less ground is left. It is generated on the spot rather than played from a file, so it never repeats itself.
 - **A home-screen widget.** Your rank, the standing against your opponent and the days to the next cull, updated through the day without opening anything.
@@ -219,7 +226,7 @@ A pass through every activity, as a multi-sport user would use it.
 
 ## 0.10.0 — 2026-08-21
 
-- **Asset transfer.** Export the division's assessment of you as a readable text block and share it however you like. Anyone else running GAIT can paste it in — your asset then occupies a slot in their division with your traits, climbs there, gets reviewed there, and can be cut there. Imported assets are listed and removable.
+- **Asset transfer.** Export the division's assessment of you as a readable text block and share it however you like. Anyone else running MOMENTUM can paste it in — your asset then occupies a slot in their division with your traits, climbs there, gets reviewed there, and can be cut there. Imported assets are listed and removable.
 
 ## 0.9.0 — 2026-08-21
 
@@ -311,7 +318,7 @@ A hardening pass: one shipped crash fixed, several features made actually true, 
 
 The first real build: a working Android app, not design documents. Setup, forecast, tracking and debrief run end to end on a physical device.
 
-- **The app is named GAIT**, and the rival model becomes its core mechanic — competition that never depends on anyone else's schedule.
+- **The app is named MOMENTUM**, and the rival model becomes its core mechanic — competition that never depends on anyone else's schedule.
 - **The six-phase loop** designed and built: setup, forecast, live divergence, debrief, decommission trial, generational handoff.
 - **Name your own opponent** at setup, and pick from 17 personas, each with its own voice.
 - **Real GPS tracking** in a visible foreground service, with accuracy filtering and no background-location requirement.

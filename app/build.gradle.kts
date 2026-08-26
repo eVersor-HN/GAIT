@@ -17,15 +17,15 @@ val keystoreProps = Properties().apply {
 val hasReleaseKeystore = keystoreProps.getProperty("storeFile")?.isNotBlank() == true
 
 android {
-    namespace = "dev.eversorhn.gait"
+    namespace = "dev.eversorhn.momentum"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.eversorhn.gait"
+        applicationId = "dev.eversorhn.momentum"
         minSdk = 26
         targetSdk = 35
-        versionCode = 42
-        versionName = "0.25.2"
+        versionCode = 43
+        versionName = "0.26.0"
     }
 
     signingConfigs {

@@ -16,7 +16,7 @@ The "random jabs every few days, not annoying" ask. Deliberately not a fixed dai
 - The first-ever run only sets the initial due-time — it never taunts immediately on install.
 - Content comes from a persona's `idleLines`: lighter than in-session Predatory lines, since these aren't reacting to a specific weak session, just reminding the user the Twin exists.
 
-Implementation: `IdleTauntWorker` (`app/.../work/IdleTauntWorker.kt`), scheduled once in `GaitApplication.onCreate()`.
+Implementation: `IdleTauntWorker` (`app/.../work/IdleTauntWorker.kt`), scheduled once in `MomentumApplication.onCreate()`.
 
 ## Permissions
 

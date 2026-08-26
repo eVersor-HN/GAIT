@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Demo-app sibling of the main GAIT icon: same three strides, but in the app's cyan
-  "opponent" color instead of brass, and a dashed scanline: recognizably GAIT,
+  Demo-app sibling of the main MOMENTUM icon: same three strides, but in the app's cyan
+  "opponent" color instead of brass, and a dashed scanline: recognizably MOMENTUM,
   visibly not the real thing.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"

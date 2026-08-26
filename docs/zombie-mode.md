@@ -7,7 +7,7 @@ Chosen at setup instead of a Rival Twin. Same underlying engines (Forecast, Fide
 
 ## Lore: where the horde comes from
 
-Every Twin that loses its Decommission Trial doesn't get deleted — GAIT recycles it into a shared, anonymous pool of failed prediction units. No name, no voice left, just distance. This isn't a disconnected gimmick bolted onto the app: it's the in-fiction explanation for why this mode exists at all, and it ties the two opponent types into one world instead of two unrelated features. See [`composure-system.md`](composure-system.md) and [`concept.md`](concept.md) for the surrounding lore.
+Every Twin that loses its Decommission Trial doesn't get deleted — MOMENTUM recycles it into a shared, anonymous pool of failed prediction units. No name, no voice left, just distance. This isn't a disconnected gimmick bolted onto the app: it's the in-fiction explanation for why this mode exists at all, and it ties the two opponent types into one world instead of two unrelated features. See [`composure-system.md`](composure-system.md) and [`concept.md`](concept.md) for the surrounding lore.
 
 ## Three tiers
 

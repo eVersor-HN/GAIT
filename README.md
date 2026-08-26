@@ -1,8 +1,8 @@
-# GAIT
+# MOMENTUM
 
 Local movement tracking. One opponent. No strangers, no leaderboards, no cloud.
 
-GAIT records your runs, rides, walks and rolls and puts a single adversary against them: a model of you, built from your own history, that predicts what you will do today and gets sharper every time it is right. You are an asset. It is your proposed replacement. A fictional corporate division keeps score between you, and every session is a round you either take or lose.
+MOMENTUM records your runs, rides, walks and rolls and puts a single adversary against them: a model of you, built from your own history, that predicts what you will do today and gets sharper every time it is right. You are an asset. It is your proposed replacement. A fictional corporate division keeps score between you, and every session is a round you either take or lose.
 
 For people who train alone and are done with generic missions, badges and leaderboards full of strangers. There is no scheduling, no waiting on anyone else, no social feed — only a standing you hold or lose, and an opponent that reads your data back to you.
 
@@ -29,7 +29,7 @@ Android. In active development toward v1.0. Runs on a physical device today.
 
 ## Local first, private by design
 
-Everything GAIT knows about you stays on your phone.
+Everything MOMENTUM knows about you stays on your phone.
 
 - No account. No sign-up. No profile on anyone's server.
 - No telemetry, no analytics, no crash reporting.
@@ -37,15 +37,15 @@ Everything GAIT knows about you stays on your phone.
 - The division, its roster and its rankings are simulated on your device. There are no other players and no network behind them.
 - Erase all data from Settings removes it permanently. Uninstalling removes it with the app.
 
-The app can read exercise history from Health Connect if — and only if — you grant it. That read is one-way: GAIT never writes back.
+The app can read exercise history from Health Connect if — and only if — you grant it. That read is one-way: MOMENTUM never writes back.
 
 ---
 
 ## Official source
 
 Author / copyright: **© 2026 eVersor-HN**.
-This is the **official** distribution repository — get GAIT only from here:
-**https://github.com/eVersor-HN/GAIT**
+This is the **official** distribution repository — get MOMENTUM only from here:
+**https://github.com/eVersor-HN/MOMENTUM**
 
 Binaries published anywhere else are not ours.
 
@@ -53,12 +53,12 @@ Binaries published anywhere else are not ours.
 
 ## Download & install
 
-1. Download the APK from the [Releases](https://github.com/eVersor-HN/GAIT/releases) page.
+1. Download the APK from the [Releases](https://github.com/eVersor-HN/MOMENTUM/releases) page.
 2. Verify the SHA-256 against the hash listed in that release.
 3. Install it on your phone (allow installation from your browser or file manager when prompted).
 4. Open the app, enrol, and pick your activity and opponent. Nothing else needs configuring.
 
-`gait-…-release.apk` is the app. `gait-wear-…apk` is the optional watch app — install it on the watch, not the phone. `gait-simdemo-…apk` is a small standalone preview with no real data, no permissions and no database: install it to look, not to train.
+`momentum-…-release.apk` is the app. `momentum-wear-…apk` is the optional watch app — install it on the watch, not the phone. `momentum-simdemo-…apk` is a small standalone preview with no real data, no permissions and no database: install it to look, not to train.
 
 ---
 
@@ -69,13 +69,13 @@ Every published asset carries its SHA-256 hash in the release that contains it. 
 Windows:
 
 ```
-certutil -hashfile gait-vX.Y.Z-release.apk SHA256
+certutil -hashfile momentum-vX.Y.Z-release.apk SHA256
 ```
 
 Linux / macOS:
 
 ```
-sha256sum gait-vX.Y.Z-release.apk
+sha256sum momentum-vX.Y.Z-release.apk
 ```
 
 If a hash does not match, delete the file.
@@ -147,8 +147,8 @@ Output lands in `app/build/outputs/apk/`. Debug builds install alongside a relea
 - **Notifications.** Optional. Denying them costs you the shade messages, nothing else.
 - **Health Connect.** Optional, read-only, and only for the activity types you are training. Nothing is written back.
 - **Network.** The app requests no internet permission and makes no network calls.
-- **Storage.** Sessions, routes, messages and standings live in a local database on the device. GAIT does not encrypt that database beyond the platform's own device encryption; anyone with unlocked access to the phone can reach app data through normal means.
-- **Not a medical device.** GAIT gives no medical, diagnostic or training advice; its targets are arithmetic on your own past sessions. Distances, paces, elevations and heart rate are approximate. The app states this on first launch and will not start until you have read it.
+- **Storage.** Sessions, routes, messages and standings live in a local database on the device. MOMENTUM does not encrypt that database beyond the platform's own device encryption; anyone with unlocked access to the phone can reach app data through normal means.
+- **Not a medical device.** MOMENTUM gives no medical, diagnostic or training advice; its targets are arithmetic on your own past sessions. Distances, paces, elevations and heart rate are approximate. The app states this on first launch and will not start until you have read it.
 - **Bluetooth.** Used only to find and read a heart-rate monitor, and only while you are pairing or recording. Nothing is scanned for location.
 - **Tone.** The opponent is designed to be blunt and, at its harshest, openly demeaning. Intensity is adjustable, including off.
 
@@ -175,4 +175,4 @@ MIT — see [LICENSE](LICENSE).
 
 ## Third-party notices
 
-GAIT is built on the Android platform and open-source components published by Google and JetBrains under the Apache License 2.0, and uses the Google Play services location APIs under their own terms. Those licenses continue to apply to those components.
+MOMENTUM is built on the Android platform and open-source components published by Google and JetBrains under the Apache License 2.0, and uses the Google Play services location APIs under their own terms. Those licenses continue to apply to those components.

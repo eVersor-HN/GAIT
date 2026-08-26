@@ -1,4 +1,4 @@
-# Voice Design — the one GAIT voice
+# Voice Design — the one MOMENTUM voice
 
 > **Changed in v0.18.0.** Nobody speaks any more. The voice survives only as a spoken
 > *instrument readout* — kilometre marks, the gap, what is riding on the round — read aloud for
@@ -46,6 +46,6 @@ bottom (+6 dB at 110 Hz), scoops the presence band (−4 dB at 900 Hz), removes 
 (−8 dB shelf above 2.6 kHz), adds a 28 ms detuned double at 42 % — a second throat half a step
 behind — and saturates hard. It speaks only what is inside the caption brackets.
 
-## Implementation notes (GAIT)
+## Implementation notes (MOMENTUM)
 - Lines are data-grounded templates (docs/twin-personas.md), so they cannot all be pre-rendered. Plan: on-device `TextToSpeech` with a selected female neural system voice, pitch ≈ 1.08, rate ≈ 1.0, synthesised to PCM (`synthesizeToFile` / `AudioTrack`) and run through a light DSP chain (high-pass, presence, air, micro-doubling, short reverb, limiter) before playback — the chain above, reduced to what's cheap on a phone. If the system voice can't carry the timbre, a pre-rendered bank of fixed phrases (numbers, km marks, stock reactions) from a neural TTS provider is the fallback, assembled at runtime.
 - Audio focus ducking against the user's music; never more than the text Comms cap (12 lines per session, 45 s cooldown) — see docs/live-audio.md.

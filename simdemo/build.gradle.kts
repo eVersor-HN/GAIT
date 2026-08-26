@@ -14,13 +14,13 @@ val keystoreProps = Properties().apply {
 val hasReleaseKeystore = keystoreProps.getProperty("storeFile")?.isNotBlank() == true
 
 android {
-    namespace = "dev.eversorhn.gait.simdemo"
+    namespace = "dev.eversorhn.momentum.simdemo"
     compileSdk = 35
 
     defaultConfig {
         // Deliberately a different applicationId from :app -- this installs side by side
         // with the real app rather than colliding with it. See docs/simulation-mode.md.
-        applicationId = "dev.eversorhn.gait.simdemo"
+        applicationId = "dev.eversorhn.momentum.simdemo"
         minSdk = 26
         targetSdk = 35
         versionCode = 2

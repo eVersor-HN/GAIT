@@ -28,5 +28,5 @@ Rival factions actively try to poach the user, with personalized counter-offers 
 
 ## World building (cross-cutting)
 
-- **GAIT** — the app/platform itself, reads gait and movement data.
+- **MOMENTUM** — the app/platform itself, reads momentum and movement data.
 - **Meridian Group** (endurance & consistency), **Helix Systems** (pace & intervals), **Obsidian Dynamics** (recovery & patterns) — three rival corporations competing for user data. Currently primarily relevant to the Data Broker module, potentially also conceivable as the client behind an Asset Twin.
